@@ -1,0 +1,11 @@
+{
+  "name": "impactlens-pre-hackathon-research",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24.0.0" },
+  "scripts": {
+    "test": "node --test prototype/mrt/tests/*.test.ts",
+    "mrt:validate": "node prototype/mrt/cli.ts",
+    "mrt:report": "node prototype/mrt/cli.ts --write"
+  }
+}

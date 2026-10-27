@@ -1,0 +1,5781 @@
+{
+  "schemaVersion": 1,
+  "researchOnly": true,
+  "date": "2026-10-27",
+  "sourceHashes": {
+    "agency.txt": "4eeb1ce0bbc2d3c6fc3236fdbff216e09de31ef3137f23b93d2a8bd144a3cb39",
+    "stops.txt": "577caf2542dc4ea6ba2a90c3333138c82a8580e6c280c9dfe8ff253faa3453e2",
+    "routes.txt": "a88aad9d2a2a79a47a88c4cf69cf6da6812cb2dcf9d6a72e500c5ea392b5c605",
+    "trips.txt": "1b2ee851e6538d7c73f85a1757cfc6a9029684e57330938ae99d39da7dab8791",
+    "stop_times.txt": "857c9484302739c08e5d1274ec1f8cae15d58daca1a06ae48a822c3e16f4511e",
+    "calendar.txt": "50ddaf51ea641fd4fc58695972b317555d7dfbc2503ee3d1bb7b101fd00c669b",
+    "calendar_dates.txt": "6c513a05c52753763f12f26bb53ae5c5a290d5fee63b08cc006540d2082fdf58",
+    "feed_info.txt": "a22a98f993a3a7e36db57ed63d73fb1db396c872658a27dd68cb78ffdca81199"
+  },
+  "feedInfo": [
+    {
+      "row": 2,
+      "values": {
+        "feed_publisher_name": "Land Transport Authority",
+        "feed_publisher_url": "https://www.lta.gov.sg/",
+        "feed_lang": "en",
+        "feed_start_date": "20250101",
+        "feed_end_date": "20261231",
+        "feed_version": "0.1"
+      }
+    }
+  ],
+  "calendar": [
+    {
+      "row": 2,
+      "values": {
+        "service_id": "SERVICE_WD",
+        "monday": "1",
+        "tuesday": "1",
+        "wednesday": "1",
+        "thursday": "1",
+        "friday": "1",
+        "saturday": "0",
+        "sunday": "0",
+        "start_date": "20260101",
+        "end_date": "20261231"
+      }
+    },
+    {
+      "row": 3,
+      "values": {
+        "service_id": "SERVICE_WE",
+        "monday": "0",
+        "tuesday": "0",
+        "wednesday": "0",
+        "thursday": "0",
+        "friday": "0",
+        "saturday": "1",
+        "sunday": "0",
+        "start_date": "20260101",
+        "end_date": "20261231"
+      }
+    },
+    {
+      "row": 4,
+      "values": {
+        "service_id": "SERVICE_PH",
+        "monday": "0",
+        "tuesday": "0",
+        "wednesday": "0",
+        "thursday": "0",
+        "friday": "0",
+        "saturday": "0",
+        "sunday": "1",
+        "start_date": "20260101",
+        "end_date": "20261231"
+      }
+    },
+    {
+      "row": 5,
+      "values": {
+        "service_id": "SERVICE_WD_CCL",
+        "monday": "1",
+        "tuesday": "1",
+        "wednesday": "1",
+        "thursday": "1",
+        "friday": "1",
+        "saturday": "0",
+        "sunday": "0",
+        "start_date": "20260101",
+        "end_date": "20261231"
+      }
+    },
+    {
+      "row": 6,
+      "values": {
+        "service_id": "SERVICE_WE_CCL",
+        "monday": "0",
+        "tuesday": "0",
+        "wednesday": "0",
+        "thursday": "0",
+        "friday": "0",
+        "saturday": "1",
+        "sunday": "0",
+        "start_date": "20260101",
+        "end_date": "20261231"
+      }
+    },
+    {
+      "row": 7,
+      "values": {
+        "service_id": "SERVICE_PH_CCL",
+        "monday": "0",
+        "tuesday": "0",
+        "wednesday": "0",
+        "thursday": "0",
+        "friday": "0",
+        "saturday": "0",
+        "sunday": "1",
+        "start_date": "20260101",
+        "end_date": "20261231"
+      }
+    }
+  ],
+  "calendarDates": [],
+  "policy": {
+    "reviewedOn": "2026-10-27",
+    "interchanges": [
+      {
+        "canonical": "NS4",
+        "alias": "BP1",
+        "name": "Choa Chu Kang",
+        "source": "https://www.lta.gov.sg/content/dam/ltagov/who_we_are/statistics_and_publications/books/pdf/REthink_190918web.pdf"
+      },
+      {
+        "canonical": "DT1",
+        "alias": "BP6",
+        "name": "Bukit Panjang",
+        "source": "https://www.lta.gov.sg/content/dam/ltagov/news/press/2025/250106_DTL2e_System_map_DTL2_AnnexC.pdf"
+      }
+    ],
+    "suspectPairs": [
+      {
+        "from": "NS13",
+        "to": "NS18",
+        "reason": "Yishun to Braddell skips intervening calls; service intent unverified."
+      },
+      {
+        "from": "NS16",
+        "to": "NS20",
+        "reason": "Ang Mo Kio to Novena occurs in a northbound-labelled trip; direction and calls conflict."
+      },
+      {
+        "from": "CC33",
+        "to": "TE23",
+        "reason": "Marina Bay to Tanjong Rhu omits Gardens by the Bay; service intent unverified."
+      }
+    ],
+    "costAssumptions": {
+      "transferWalkSeconds": 180,
+      "waitSeconds": 120,
+      "initialWaitSeconds": 120
+    }
+  },
+  "baseline": {
+    "stationNodes": 184,
+    "routingStates": 217,
+    "travelEdges": 426,
+    "transferEdges": 72,
+    "edges": 498,
+    "stationWeakComponents": [
+      184
+    ],
+    "stateWeakComponents": [
+      217
+    ],
+    "stateStrongComponents": [
+      217
+    ],
+    "unreachableStationPairs": 0,
+    "unservedStationIds": [],
+    "activeTrips": 7129,
+    "acceptedTrips": 7128,
+    "quarantinedActiveTrips": 1,
+    "invalidTripsAllServices": 0
+  },
+  "raw": {
+    "stationNodes": 186,
+    "routingStates": 217,
+    "travelEdges": 427,
+    "transferEdges": 0,
+    "edges": 427,
+    "stationWeakComponents": [
+      173,
+      13
+    ],
+    "stateWeakComponents": [
+      35,
+      33,
+      33,
+      27,
+      27,
+      17,
+      15,
+      14,
+      13,
+      3
+    ],
+    "stateStrongComponents": [
+      35,
+      33,
+      33,
+      27,
+      27,
+      17,
+      15,
+      14,
+      13,
+      3
+    ],
+    "unreachableStationPairs": 28922,
+    "unservedStationIds": [],
+    "activeTrips": 7129,
+    "acceptedTrips": 7129,
+    "quarantinedActiveTrips": 1,
+    "invalidTripsAllServices": 0
+  },
+  "checks": [
+    {
+      "date": "2026-10-27",
+      "summary": {
+        "stationNodes": 184,
+        "routingStates": 217,
+        "travelEdges": 426,
+        "transferEdges": 72,
+        "edges": 498,
+        "stationWeakComponents": [
+          184
+        ],
+        "stateWeakComponents": [
+          217
+        ],
+        "stateStrongComponents": [
+          217
+        ],
+        "unreachableStationPairs": 0,
+        "unservedStationIds": [],
+        "activeTrips": 7129,
+        "acceptedTrips": 7128,
+        "quarantinedActiveTrips": 1,
+        "invalidTripsAllServices": 0
+      }
+    },
+    {
+      "date": "2026-10-31",
+      "summary": {
+        "stationNodes": 184,
+        "routingStates": 217,
+        "travelEdges": 426,
+        "transferEdges": 72,
+        "edges": 498,
+        "stationWeakComponents": [
+          184
+        ],
+        "stateWeakComponents": [
+          217
+        ],
+        "stateStrongComponents": [
+          217
+        ],
+        "unreachableStationPairs": 0,
+        "unservedStationIds": [],
+        "activeTrips": 5906,
+        "acceptedTrips": 5898,
+        "quarantinedActiveTrips": 8,
+        "invalidTripsAllServices": 0
+      }
+    },
+    {
+      "date": "2026-11-01",
+      "summary": {
+        "stationNodes": 184,
+        "routingStates": 217,
+        "travelEdges": 426,
+        "transferEdges": 72,
+        "edges": 498,
+        "stationWeakComponents": [
+          184
+        ],
+        "stateWeakComponents": [
+          217
+        ],
+        "stateStrongComponents": [
+          217
+        ],
+        "unreachableStationPairs": 0,
+        "unservedStationIds": [],
+        "activeTrips": 6084,
+        "acceptedTrips": 6076,
+        "quarantinedActiveTrips": 8,
+        "invalidTripsAllServices": 0
+      }
+    }
+  ],
+  "samples": [
+    {
+      "origin": "NS4",
+      "destination": "NS2",
+      "originName": "Choa Chu Kang",
+      "destinationName": "Bukit Batok",
+      "totalMinutes": 8.47,
+      "travelMinutes": 6.47,
+      "transfers": 0,
+      "transferAt": [],
+      "lines": [
+        "NS"
+      ],
+      "stationIds": [
+        "NS4",
+        "NS3",
+        "NS2"
+      ],
+      "edgeIds": [
+        "ride:NS4|NS>NS3|NS",
+        "ride:NS3|NS>NS2|NS"
+      ]
+    },
+    {
+      "origin": "EW1",
+      "destination": "EW33",
+      "originName": "Pasir Ris",
+      "destinationName": "Tuas Link",
+      "totalMinutes": 90.47,
+      "travelMinutes": 88.47,
+      "transfers": 0,
+      "transferAt": [],
+      "lines": [
+        "EW"
+      ],
+      "stationIds": [
+        "EW1",
+        "DT32",
+        "EW3",
+        "EW4",
+        "EW5",
+        "EW6",
+        "EW7",
+        "CC9",
+        "EW9",
+        "EW10",
+        "EW11",
+        "DT14",
+        "EW13",
+        "EW14",
+        "EW15",
+        "EW16",
+        "EW17",
+        "EW18",
+        "EW19",
+        "EW20",
+        "CC22",
+        "EW22",
+        "EW23",
+        "EW24",
+        "EW25",
+        "EW26",
+        "EW27",
+        "EW28",
+        "EW29",
+        "EW30",
+        "EW31",
+        "EW32",
+        "EW33"
+      ],
+      "edgeIds": [
+        "ride:EW1|EW>DT32|EW",
+        "ride:DT32|EW>EW3|EW",
+        "ride:EW3|EW>EW4|EW",
+        "ride:EW4|EW>EW5|EW",
+        "ride:EW5|EW>EW6|EW",
+        "ride:EW6|EW>EW7|EW",
+        "ride:EW7|EW>CC9|EW",
+        "ride:CC9|EW>EW9|EW",
+        "ride:EW9|EW>EW10|EW",
+        "ride:EW10|EW>EW11|EW",
+        "ride:EW11|EW>DT14|EW",
+        "ride:DT14|EW>EW13|EW",
+        "ride:EW13|EW>EW14|EW",
+        "ride:EW14|EW>EW15|EW",
+        "ride:EW15|EW>EW16|EW",
+        "ride:EW16|EW>EW17|EW",
+        "ride:EW17|EW>EW18|EW",
+        "ride:EW18|EW>EW19|EW",
+        "ride:EW19|EW>EW20|EW",
+        "ride:EW20|EW>CC22|EW",
+        "ride:CC22|EW>EW22|EW",
+        "ride:EW22|EW>EW23|EW",
+        "ride:EW23|EW>EW24|EW",
+        "ride:EW24|EW>EW25|EW",
+        "ride:EW25|EW>EW26|EW",
+        "ride:EW26|EW>EW27|EW",
+        "ride:EW27|EW>EW28|EW",
+        "ride:EW28|EW>EW29|EW",
+        "ride:EW29|EW>EW30|EW",
+        "ride:EW30|EW>EW31|EW",
+        "ride:EW31|EW>EW32|EW",
+        "ride:EW32|EW>EW33|EW"
+      ]
+    },
+    {
+      "origin": "NE18",
+      "destination": "CC29",
+      "originName": "Punggol Coast",
+      "destinationName": "HarbourFront",
+      "totalMinutes": 38.13,
+      "travelMinutes": 36.13,
+      "transfers": 0,
+      "transferAt": [],
+      "lines": [
+        "NE"
+      ],
+      "stationIds": [
+        "NE18",
+        "NE17",
+        "NE16",
+        "NE15",
+        "NE14",
+        "NE13",
+        "CC13",
+        "NE11",
+        "NE10",
+        "NE9",
+        "NE8",
+        "DT12",
+        "NS24",
+        "NE5",
+        "DT19",
+        "EW16",
+        "CC29"
+      ],
+      "edgeIds": [
+        "ride:NE18|NE>NE17|NE",
+        "ride:NE17|NE>NE16|NE",
+        "ride:NE16|NE>NE15|NE",
+        "ride:NE15|NE>NE14|NE",
+        "ride:NE14|NE>NE13|NE",
+        "ride:NE13|NE>CC13|NE",
+        "ride:CC13|NE>NE11|NE",
+        "ride:NE11|NE>NE10|NE",
+        "ride:NE10|NE>NE9|NE",
+        "ride:NE9|NE>NE8|NE",
+        "ride:NE8|NE>DT12|NE",
+        "ride:DT12|NE>NS24|NE",
+        "ride:NS24|NE>NE5|NE",
+        "ride:NE5|NE>DT19|NE",
+        "ride:DT19|NE>EW16|NE",
+        "ride:EW16|NE>CC29|NE"
+      ]
+    },
+    {
+      "origin": "TE1",
+      "destination": "TE29",
+      "originName": "Woodlands North",
+      "destinationName": "Bayshore",
+      "totalMinutes": 64.73,
+      "travelMinutes": 62.73,
+      "transfers": 0,
+      "transferAt": [],
+      "lines": [
+        "TE"
+      ],
+      "stationIds": [
+        "TE1",
+        "NS9",
+        "TE3",
+        "TE4",
+        "TE5",
+        "TE6",
+        "TE7",
+        "TE8",
+        "CC17",
+        "DT10",
+        "TE12",
+        "TE13",
+        "NS22",
+        "TE15",
+        "TE16",
+        "EW16",
+        "TE18",
+        "TE19",
+        "CC33",
+        "TE22",
+        "TE23",
+        "TE24",
+        "TE25",
+        "TE26",
+        "TE27",
+        "TE28",
+        "TE29"
+      ],
+      "edgeIds": [
+        "ride:TE1|TE>NS9|TE",
+        "ride:NS9|TE>TE3|TE",
+        "ride:TE3|TE>TE4|TE",
+        "ride:TE4|TE>TE5|TE",
+        "ride:TE5|TE>TE6|TE",
+        "ride:TE6|TE>TE7|TE",
+        "ride:TE7|TE>TE8|TE",
+        "ride:TE8|TE>CC17|TE",
+        "ride:CC17|TE>DT10|TE",
+        "ride:DT10|TE>TE12|TE",
+        "ride:TE12|TE>TE13|TE",
+        "ride:TE13|TE>NS22|TE",
+        "ride:NS22|TE>TE15|TE",
+        "ride:TE15|TE>TE16|TE",
+        "ride:TE16|TE>EW16|TE",
+        "ride:EW16|TE>TE18|TE",
+        "ride:TE18|TE>TE19|TE",
+        "ride:TE19|TE>CC33|TE",
+        "ride:CC33|TE>TE22|TE",
+        "ride:TE22|TE>TE23|TE",
+        "ride:TE23|TE>TE24|TE",
+        "ride:TE24|TE>TE25|TE",
+        "ride:TE25|TE>TE26|TE",
+        "ride:TE26|TE>TE27|TE",
+        "ride:TE27|TE>TE28|TE",
+        "ride:TE28|TE>TE29|TE"
+      ]
+    },
+    {
+      "origin": "BP2",
+      "destination": "NS2",
+      "originName": "South View",
+      "destinationName": "Bukit Batok",
+      "totalMinutes": 15.13,
+      "travelMinutes": 8.13,
+      "transfers": 1,
+      "transferAt": [
+        "NS4"
+      ],
+      "lines": [
+        "BP",
+        "NS"
+      ],
+      "stationIds": [
+        "BP2",
+        "NS4",
+        "NS3",
+        "NS2"
+      ],
+      "edgeIds": [
+        "ride:BP2|BP>NS4|BP",
+        "transfer:NS4|BP>NS4|NS",
+        "ride:NS4|NS>NS3|NS",
+        "ride:NS3|NS>NS2|NS"
+      ]
+    },
+    {
+      "origin": "BP13",
+      "destination": "DT4",
+      "originName": "Senja",
+      "destinationName": "Hume",
+      "totalMinutes": 13.52,
+      "travelMinutes": 6.52,
+      "transfers": 1,
+      "transferAt": [
+        "DT1"
+      ],
+      "lines": [
+        "BP",
+        "DT"
+      ],
+      "stationIds": [
+        "BP13",
+        "DT1",
+        "DT2",
+        "DT3",
+        "DT4"
+      ],
+      "edgeIds": [
+        "ride:BP13|BP>DT1|BP",
+        "transfer:DT1|BP>DT1|DT",
+        "ride:DT1|DT>DT2|DT",
+        "ride:DT2|DT>DT3|DT",
+        "ride:DT3|DT>DT4|DT"
+      ]
+    },
+    {
+      "origin": "EW1",
+      "destination": "NE18",
+      "originName": "Pasir Ris",
+      "destinationName": "Punggol Coast",
+      "totalMinutes": 58.75,
+      "travelMinutes": 41.75,
+      "transfers": 3,
+      "transferAt": [
+        "DT32",
+        "CC10",
+        "CC13"
+      ],
+      "lines": [
+        "EW",
+        "DT",
+        "CC",
+        "NE"
+      ],
+      "stationIds": [
+        "EW1",
+        "DT32",
+        "DT31",
+        "DT30",
+        "DT29",
+        "DT28",
+        "DT27",
+        "CC10",
+        "CC11",
+        "CC12",
+        "CC13",
+        "NE13",
+        "NE14",
+        "NE15",
+        "NE16",
+        "NE17",
+        "NE18"
+      ],
+      "edgeIds": [
+        "ride:EW1|EW>DT32|EW",
+        "transfer:DT32|EW>DT32|DT",
+        "ride:DT32|DT>DT31|DT",
+        "ride:DT31|DT>DT30|DT",
+        "ride:DT30|DT>DT29|DT",
+        "ride:DT29|DT>DT28|DT",
+        "ride:DT28|DT>DT27|DT",
+        "ride:DT27|DT>CC10|DT",
+        "transfer:CC10|DT>CC10|CC",
+        "ride:CC10|CC>CC11|CC",
+        "ride:CC11|CC>CC12|CC",
+        "ride:CC12|CC>CC13|CC",
+        "transfer:CC13|CC>CC13|NE",
+        "ride:CC13|NE>NE13|NE",
+        "ride:NE13|NE>NE14|NE",
+        "ride:NE14|NE>NE15|NE",
+        "ride:NE15|NE>NE16|NE",
+        "ride:NE16|NE>NE17|NE",
+        "ride:NE17|NE>NE18|NE"
+      ]
+    },
+    {
+      "origin": "TE1",
+      "destination": "CG2",
+      "originName": "Woodlands North",
+      "destinationName": "Changi Airport",
+      "totalMinutes": 78.98,
+      "travelMinutes": 61.98,
+      "transfers": 3,
+      "transferAt": [
+        "CC17",
+        "CC9",
+        "EW4"
+      ],
+      "lines": [
+        "TE",
+        "CC",
+        "EW",
+        "CG"
+      ],
+      "stationIds": [
+        "TE1",
+        "NS9",
+        "TE3",
+        "TE4",
+        "TE5",
+        "TE6",
+        "TE7",
+        "TE8",
+        "CC17",
+        "CC16",
+        "CC15",
+        "CC14",
+        "CC13",
+        "CC12",
+        "CC11",
+        "CC10",
+        "CC9",
+        "EW7",
+        "EW6",
+        "EW5",
+        "EW4",
+        "CG1",
+        "CG2"
+      ],
+      "edgeIds": [
+        "ride:TE1|TE>NS9|TE",
+        "ride:NS9|TE>TE3|TE",
+        "ride:TE3|TE>TE4|TE",
+        "ride:TE4|TE>TE5|TE",
+        "ride:TE5|TE>TE6|TE",
+        "ride:TE6|TE>TE7|TE",
+        "ride:TE7|TE>TE8|TE",
+        "ride:TE8|TE>CC17|TE",
+        "transfer:CC17|TE>CC17|CC",
+        "ride:CC17|CC>CC16|CC",
+        "ride:CC16|CC>CC15|CC",
+        "ride:CC15|CC>CC14|CC",
+        "ride:CC14|CC>CC13|CC",
+        "ride:CC13|CC>CC12|CC",
+        "ride:CC12|CC>CC11|CC",
+        "ride:CC11|CC>CC10|CC",
+        "ride:CC10|CC>CC9|CC",
+        "transfer:CC9|CC>CC9|EW",
+        "ride:CC9|EW>EW7|EW",
+        "ride:EW7|EW>EW6|EW",
+        "ride:EW6|EW>EW5|EW",
+        "ride:EW5|EW>EW4|EW",
+        "transfer:EW4|EW>EW4|CG",
+        "ride:EW4|CG>CG1|CG",
+        "ride:CG1|CG>CG2|CG"
+      ]
+    },
+    {
+      "origin": "NE16",
+      "destination": "PW7",
+      "originName": "Sengkang",
+      "destinationName": "Soo Teck",
+      "totalMinutes": 13.63,
+      "travelMinutes": 6.63,
+      "transfers": 1,
+      "transferAt": [
+        "NE17"
+      ],
+      "lines": [
+        "NE",
+        "PG"
+      ],
+      "stationIds": [
+        "NE16",
+        "NE17",
+        "PW7"
+      ],
+      "edgeIds": [
+        "ride:NE16|NE>NE17|NE",
+        "transfer:NE17|NE>NE17|PG",
+        "ride:NE17|PG>PW7|PG"
+      ]
+    },
+    {
+      "origin": "NS13",
+      "destination": "NS18",
+      "originName": "Yishun",
+      "destinationName": "Braddell",
+      "totalMinutes": 18.3,
+      "travelMinutes": 16.3,
+      "transfers": 0,
+      "transferAt": [],
+      "lines": [
+        "NS"
+      ],
+      "stationIds": [
+        "NS13",
+        "NS14",
+        "NS15",
+        "NS16",
+        "CC15",
+        "NS18"
+      ],
+      "edgeIds": [
+        "ride:NS13|NS>NS14|NS",
+        "ride:NS14|NS>NS15|NS",
+        "ride:NS15|NS>NS16|NS",
+        "ride:NS16|NS>CC15|NS",
+        "ride:CC15|NS>NS18|NS"
+      ]
+    },
+    {
+      "origin": "NS16",
+      "destination": "NS20",
+      "originName": "Ang Mo Kio",
+      "destinationName": "Novena",
+      "totalMinutes": 12.4,
+      "travelMinutes": 10.4,
+      "transfers": 0,
+      "transferAt": [],
+      "lines": [
+        "NS"
+      ],
+      "stationIds": [
+        "NS16",
+        "CC15",
+        "NS18",
+        "NS19",
+        "NS20"
+      ],
+      "edgeIds": [
+        "ride:NS16|NS>CC15|NS",
+        "ride:CC15|NS>NS18|NS",
+        "ride:NS18|NS>NS19|NS",
+        "ride:NS19|NS>NS20|NS"
+      ]
+    },
+    {
+      "origin": "CC33",
+      "destination": "TE23",
+      "originName": "Marina Bay",
+      "destinationName": "Tanjong Rhu",
+      "totalMinutes": 9.02,
+      "travelMinutes": 7.02,
+      "transfers": 0,
+      "transferAt": [],
+      "lines": [
+        "TE"
+      ],
+      "stationIds": [
+        "CC33",
+        "TE22",
+        "TE23"
+      ],
+      "edgeIds": [
+        "ride:CC33|TE>TE22|TE",
+        "ride:TE22|TE>TE23|TE"
+      ]
+    }
+  ],
+  "audit": {
+    "activeServices": [
+      "SERVICE_WD",
+      "SERVICE_WD_CCL"
+    ],
+    "activeTripCount": 7129,
+    "usedTripCount": 7128,
+    "quarantined": [
+      {
+        "trip": {
+          "row": 9834,
+          "values": {
+            "route_id": "TEL_TE1_TE29",
+            "service_id": "SERVICE_WE",
+            "trip_id": "TEL_CB_WE_142_0891",
+            "trip_headsign": "Bayshore",
+            "direction_id": "0",
+            "block_id": ""
+          }
+        },
+        "stopTimes": [
+          {
+            "row": 125336,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "17:14:09",
+              "departure_time": "17:14:09",
+              "stop_id": "TE1_A",
+              "stop_sequence": "1",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125337,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "17:16:03",
+              "departure_time": "17:16:51",
+              "stop_id": "TE2_A",
+              "stop_sequence": "2",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125338,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "17:18:26",
+              "departure_time": "17:19:00",
+              "stop_id": "TE3_A",
+              "stop_sequence": "3",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125339,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "17:23:00",
+              "departure_time": "17:23:34",
+              "stop_id": "TE4_A",
+              "stop_sequence": "4",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125340,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "17:26:06",
+              "departure_time": "17:26:40",
+              "stop_id": "TE5_A",
+              "stop_sequence": "5",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125341,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "17:28:31",
+              "departure_time": "17:29:05",
+              "stop_id": "TE6_A",
+              "stop_sequence": "6",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125342,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "17:30:28",
+              "departure_time": "17:31:02",
+              "stop_id": "TE7_A",
+              "stop_sequence": "7",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125343,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "17:32:40",
+              "departure_time": "17:33:14",
+              "stop_id": "TE8_A",
+              "stop_sequence": "8",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125344,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "17:35:29",
+              "departure_time": "17:36:17",
+              "stop_id": "TE9_A",
+              "stop_sequence": "9",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125345,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "17:39:40",
+              "departure_time": "17:40:28",
+              "stop_id": "TE11_A",
+              "stop_sequence": "10",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125346,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "17:42:24",
+              "departure_time": "17:42:58",
+              "stop_id": "TE12_A",
+              "stop_sequence": "11",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125347,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "17:44:10",
+              "departure_time": "17:44:44",
+              "stop_id": "TE13_A",
+              "stop_sequence": "12",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125348,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "17:46:05",
+              "departure_time": "17:46:53",
+              "stop_id": "TE14_A",
+              "stop_sequence": "13",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125349,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "17:48:22",
+              "departure_time": "17:48:55",
+              "stop_id": "TE15_A",
+              "stop_sequence": "14",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125350,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "17:49:58",
+              "departure_time": "17:50:31",
+              "stop_id": "TE16_A",
+              "stop_sequence": "15",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125351,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "17:51:48",
+              "departure_time": "17:52:36",
+              "stop_id": "TE17_A",
+              "stop_sequence": "16",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125352,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "17:53:33",
+              "departure_time": "17:54:06",
+              "stop_id": "TE18_A",
+              "stop_sequence": "17",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125353,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "17:55:18",
+              "departure_time": "17:55:51",
+              "stop_id": "TE19_A",
+              "stop_sequence": "18",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125354,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "17:56:51",
+              "departure_time": "17:57:39",
+              "stop_id": "TE20_A",
+              "stop_sequence": "19",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125355,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "18:03:55",
+              "departure_time": "18:04:28",
+              "stop_id": "TE23_A",
+              "stop_sequence": "20",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125356,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "18:06:11",
+              "departure_time": "18:06:44",
+              "stop_id": "TE24_A",
+              "stop_sequence": "21",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125357,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "18:08:18",
+              "departure_time": "18:08:51",
+              "stop_id": "TE25_A",
+              "stop_sequence": "22",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125358,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "18:10:14",
+              "departure_time": "18:10:47",
+              "stop_id": "TE26_A",
+              "stop_sequence": "23",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125359,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "18:12:16",
+              "departure_time": "18:12:49",
+              "stop_id": "TE27_A",
+              "stop_sequence": "24",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125360,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "18:14:31",
+              "departure_time": "18:15:04",
+              "stop_id": "TE28_A",
+              "stop_sequence": "25",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125361,
+            "values": {
+              "trip_id": "TEL_CB_WE_142_0891",
+              "arrival_time": "18:16:38",
+              "departure_time": "18:17:58",
+              "stop_id": "TE29_A",
+              "stop_sequence": "26",
+              "stop_headsign": ""
+            }
+          }
+        ],
+        "reasons": [
+          "Marina Bay to Tanjong Rhu omits Gardens by the Bay; service intent unverified."
+        ],
+        "pairs": [
+          {
+            "from": "CC33",
+            "to": "TE23",
+            "fromRow": 125354,
+            "toRow": 125355
+          }
+        ]
+      },
+      {
+        "trip": {
+          "row": 9835,
+          "values": {
+            "route_id": "TEL_TE1_TE29",
+            "service_id": "SERVICE_WE",
+            "trip_id": "TEL_CB_WE_103_0101",
+            "trip_headsign": "Bayshore",
+            "direction_id": "0",
+            "block_id": ""
+          }
+        },
+        "stopTimes": [
+          {
+            "row": 125362,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "17:16:59",
+              "departure_time": "17:16:59",
+              "stop_id": "TE1_A",
+              "stop_sequence": "1",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125363,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "17:18:43",
+              "departure_time": "17:19:31",
+              "stop_id": "TE2_A",
+              "stop_sequence": "2",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125364,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "17:21:06",
+              "departure_time": "17:21:40",
+              "stop_id": "TE3_A",
+              "stop_sequence": "3",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125365,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "17:25:40",
+              "departure_time": "17:26:14",
+              "stop_id": "TE4_A",
+              "stop_sequence": "4",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125366,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "17:28:46",
+              "departure_time": "17:29:20",
+              "stop_id": "TE5_A",
+              "stop_sequence": "5",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125367,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "17:31:11",
+              "departure_time": "17:31:45",
+              "stop_id": "TE6_A",
+              "stop_sequence": "6",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125368,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "17:33:08",
+              "departure_time": "17:33:42",
+              "stop_id": "TE7_A",
+              "stop_sequence": "7",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125369,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "17:35:20",
+              "departure_time": "17:35:54",
+              "stop_id": "TE8_A",
+              "stop_sequence": "8",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125370,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "17:38:09",
+              "departure_time": "17:38:57",
+              "stop_id": "TE9_A",
+              "stop_sequence": "9",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125371,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "17:42:20",
+              "departure_time": "17:43:08",
+              "stop_id": "TE11_A",
+              "stop_sequence": "10",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125372,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "17:45:04",
+              "departure_time": "17:45:39",
+              "stop_id": "TE12_A",
+              "stop_sequence": "11",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125373,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "17:46:51",
+              "departure_time": "17:47:26",
+              "stop_id": "TE13_A",
+              "stop_sequence": "12",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125374,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "17:48:47",
+              "departure_time": "17:49:35",
+              "stop_id": "TE14_A",
+              "stop_sequence": "13",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125375,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "17:51:04",
+              "departure_time": "17:51:38",
+              "stop_id": "TE15_A",
+              "stop_sequence": "14",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125376,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "17:52:41",
+              "departure_time": "17:53:15",
+              "stop_id": "TE16_A",
+              "stop_sequence": "15",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125377,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "17:54:32",
+              "departure_time": "17:55:20",
+              "stop_id": "TE17_A",
+              "stop_sequence": "16",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125378,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "17:56:17",
+              "departure_time": "17:56:51",
+              "stop_id": "TE18_A",
+              "stop_sequence": "17",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125379,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "17:58:03",
+              "departure_time": "17:58:37",
+              "stop_id": "TE19_A",
+              "stop_sequence": "18",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125380,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "17:59:37",
+              "departure_time": "18:00:25",
+              "stop_id": "TE20_A",
+              "stop_sequence": "19",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125381,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "18:06:41",
+              "departure_time": "18:07:15",
+              "stop_id": "TE23_A",
+              "stop_sequence": "20",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125382,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "18:08:58",
+              "departure_time": "18:09:32",
+              "stop_id": "TE24_A",
+              "stop_sequence": "21",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125383,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "18:11:06",
+              "departure_time": "18:11:40",
+              "stop_id": "TE25_A",
+              "stop_sequence": "22",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125384,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "18:13:03",
+              "departure_time": "18:13:37",
+              "stop_id": "TE26_A",
+              "stop_sequence": "23",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125385,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "18:15:06",
+              "departure_time": "18:15:40",
+              "stop_id": "TE27_A",
+              "stop_sequence": "24",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125386,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "18:17:22",
+              "departure_time": "18:17:56",
+              "stop_id": "TE28_A",
+              "stop_sequence": "25",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125387,
+            "values": {
+              "trip_id": "TEL_CB_WE_103_0101",
+              "arrival_time": "18:19:30",
+              "departure_time": "18:20:58",
+              "stop_id": "TE29_A",
+              "stop_sequence": "26",
+              "stop_headsign": ""
+            }
+          }
+        ],
+        "reasons": [
+          "Marina Bay to Tanjong Rhu omits Gardens by the Bay; service intent unverified."
+        ],
+        "pairs": [
+          {
+            "from": "CC33",
+            "to": "TE23",
+            "fromRow": 125380,
+            "toRow": 125381
+          }
+        ]
+      },
+      {
+        "trip": {
+          "row": 9836,
+          "values": {
+            "route_id": "TEL_TE1_TE29",
+            "service_id": "SERVICE_WE",
+            "trip_id": "TEL_CB_WE_125_0874",
+            "trip_headsign": "Bayshore",
+            "direction_id": "0",
+            "block_id": ""
+          }
+        },
+        "stopTimes": [
+          {
+            "row": 125388,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "17:20:09",
+              "departure_time": "17:20:09",
+              "stop_id": "TE1_A",
+              "stop_sequence": "1",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125389,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "17:22:03",
+              "departure_time": "17:22:51",
+              "stop_id": "TE2_A",
+              "stop_sequence": "2",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125390,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "17:24:26",
+              "departure_time": "17:25:00",
+              "stop_id": "TE3_A",
+              "stop_sequence": "3",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125391,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "17:29:00",
+              "departure_time": "17:29:34",
+              "stop_id": "TE4_A",
+              "stop_sequence": "4",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125392,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "17:32:06",
+              "departure_time": "17:32:40",
+              "stop_id": "TE5_A",
+              "stop_sequence": "5",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125393,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "17:34:31",
+              "departure_time": "17:35:05",
+              "stop_id": "TE6_A",
+              "stop_sequence": "6",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125394,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "17:36:28",
+              "departure_time": "17:37:02",
+              "stop_id": "TE7_A",
+              "stop_sequence": "7",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125395,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "17:38:40",
+              "departure_time": "17:39:14",
+              "stop_id": "TE8_A",
+              "stop_sequence": "8",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125396,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "17:41:29",
+              "departure_time": "17:42:17",
+              "stop_id": "TE9_A",
+              "stop_sequence": "9",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125397,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "17:45:40",
+              "departure_time": "17:46:28",
+              "stop_id": "TE11_A",
+              "stop_sequence": "10",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125398,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "17:48:24",
+              "departure_time": "17:48:58",
+              "stop_id": "TE12_A",
+              "stop_sequence": "11",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125399,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "17:50:10",
+              "departure_time": "17:50:44",
+              "stop_id": "TE13_A",
+              "stop_sequence": "12",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125400,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "17:52:05",
+              "departure_time": "17:52:53",
+              "stop_id": "TE14_A",
+              "stop_sequence": "13",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125401,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "17:54:22",
+              "departure_time": "17:54:55",
+              "stop_id": "TE15_A",
+              "stop_sequence": "14",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125402,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "17:55:58",
+              "departure_time": "17:56:31",
+              "stop_id": "TE16_A",
+              "stop_sequence": "15",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125403,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "17:57:48",
+              "departure_time": "17:58:36",
+              "stop_id": "TE17_A",
+              "stop_sequence": "16",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125404,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "17:59:33",
+              "departure_time": "18:00:06",
+              "stop_id": "TE18_A",
+              "stop_sequence": "17",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125405,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "18:01:18",
+              "departure_time": "18:01:51",
+              "stop_id": "TE19_A",
+              "stop_sequence": "18",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125406,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "18:02:51",
+              "departure_time": "18:03:39",
+              "stop_id": "TE20_A",
+              "stop_sequence": "19",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125407,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "18:09:55",
+              "departure_time": "18:10:28",
+              "stop_id": "TE23_A",
+              "stop_sequence": "20",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125408,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "18:12:11",
+              "departure_time": "18:12:44",
+              "stop_id": "TE24_A",
+              "stop_sequence": "21",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125409,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "18:14:18",
+              "departure_time": "18:14:51",
+              "stop_id": "TE25_A",
+              "stop_sequence": "22",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125410,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "18:16:14",
+              "departure_time": "18:16:47",
+              "stop_id": "TE26_A",
+              "stop_sequence": "23",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125411,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "18:18:16",
+              "departure_time": "18:18:49",
+              "stop_id": "TE27_A",
+              "stop_sequence": "24",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125412,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "18:20:31",
+              "departure_time": "18:21:04",
+              "stop_id": "TE28_A",
+              "stop_sequence": "25",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125413,
+            "values": {
+              "trip_id": "TEL_CB_WE_125_0874",
+              "arrival_time": "18:22:38",
+              "departure_time": "18:23:58",
+              "stop_id": "TE29_A",
+              "stop_sequence": "26",
+              "stop_headsign": ""
+            }
+          }
+        ],
+        "reasons": [
+          "Marina Bay to Tanjong Rhu omits Gardens by the Bay; service intent unverified."
+        ],
+        "pairs": [
+          {
+            "from": "CC33",
+            "to": "TE23",
+            "fromRow": 125406,
+            "toRow": 125407
+          }
+        ]
+      },
+      {
+        "trip": {
+          "row": 9837,
+          "values": {
+            "route_id": "TEL_TE1_TE29",
+            "service_id": "SERVICE_WE",
+            "trip_id": "TEL_CB_WE_104_0139",
+            "trip_headsign": "Bayshore",
+            "direction_id": "0",
+            "block_id": ""
+          }
+        },
+        "stopTimes": [
+          {
+            "row": 125414,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "17:22:59",
+              "departure_time": "17:22:59",
+              "stop_id": "TE1_A",
+              "stop_sequence": "1",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125415,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "17:24:43",
+              "departure_time": "17:25:31",
+              "stop_id": "TE2_A",
+              "stop_sequence": "2",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125416,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "17:27:06",
+              "departure_time": "17:27:40",
+              "stop_id": "TE3_A",
+              "stop_sequence": "3",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125417,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "17:31:40",
+              "departure_time": "17:32:14",
+              "stop_id": "TE4_A",
+              "stop_sequence": "4",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125418,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "17:34:46",
+              "departure_time": "17:35:20",
+              "stop_id": "TE5_A",
+              "stop_sequence": "5",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125419,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "17:37:11",
+              "departure_time": "17:37:45",
+              "stop_id": "TE6_A",
+              "stop_sequence": "6",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125420,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "17:39:08",
+              "departure_time": "17:39:42",
+              "stop_id": "TE7_A",
+              "stop_sequence": "7",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125421,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "17:41:20",
+              "departure_time": "17:41:54",
+              "stop_id": "TE8_A",
+              "stop_sequence": "8",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125422,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "17:44:09",
+              "departure_time": "17:44:57",
+              "stop_id": "TE9_A",
+              "stop_sequence": "9",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125423,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "17:48:20",
+              "departure_time": "17:49:08",
+              "stop_id": "TE11_A",
+              "stop_sequence": "10",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125424,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "17:51:04",
+              "departure_time": "17:51:39",
+              "stop_id": "TE12_A",
+              "stop_sequence": "11",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125425,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "17:52:51",
+              "departure_time": "17:53:26",
+              "stop_id": "TE13_A",
+              "stop_sequence": "12",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125426,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "17:54:47",
+              "departure_time": "17:55:35",
+              "stop_id": "TE14_A",
+              "stop_sequence": "13",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125427,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "17:57:04",
+              "departure_time": "17:57:38",
+              "stop_id": "TE15_A",
+              "stop_sequence": "14",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125428,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "17:58:41",
+              "departure_time": "17:59:15",
+              "stop_id": "TE16_A",
+              "stop_sequence": "15",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125429,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "18:00:32",
+              "departure_time": "18:01:20",
+              "stop_id": "TE17_A",
+              "stop_sequence": "16",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125430,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "18:02:17",
+              "departure_time": "18:02:51",
+              "stop_id": "TE18_A",
+              "stop_sequence": "17",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125431,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "18:04:03",
+              "departure_time": "18:04:37",
+              "stop_id": "TE19_A",
+              "stop_sequence": "18",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125432,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "18:05:37",
+              "departure_time": "18:06:25",
+              "stop_id": "TE20_A",
+              "stop_sequence": "19",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125433,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "18:12:41",
+              "departure_time": "18:13:15",
+              "stop_id": "TE23_A",
+              "stop_sequence": "20",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125434,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "18:14:58",
+              "departure_time": "18:15:32",
+              "stop_id": "TE24_A",
+              "stop_sequence": "21",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125435,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "18:17:06",
+              "departure_time": "18:17:40",
+              "stop_id": "TE25_A",
+              "stop_sequence": "22",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125436,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "18:19:03",
+              "departure_time": "18:19:37",
+              "stop_id": "TE26_A",
+              "stop_sequence": "23",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125437,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "18:21:06",
+              "departure_time": "18:21:40",
+              "stop_id": "TE27_A",
+              "stop_sequence": "24",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125438,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "18:23:22",
+              "departure_time": "18:23:56",
+              "stop_id": "TE28_A",
+              "stop_sequence": "25",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125439,
+            "values": {
+              "trip_id": "TEL_CB_WE_104_0139",
+              "arrival_time": "18:25:30",
+              "departure_time": "18:26:58",
+              "stop_id": "TE29_A",
+              "stop_sequence": "26",
+              "stop_headsign": ""
+            }
+          }
+        ],
+        "reasons": [
+          "Marina Bay to Tanjong Rhu omits Gardens by the Bay; service intent unverified."
+        ],
+        "pairs": [
+          {
+            "from": "CC33",
+            "to": "TE23",
+            "fromRow": 125432,
+            "toRow": 125433
+          }
+        ]
+      },
+      {
+        "trip": {
+          "row": 9838,
+          "values": {
+            "route_id": "TEL_TE1_TE29",
+            "service_id": "SERVICE_WE",
+            "trip_id": "TEL_CB_WE_143_1101",
+            "trip_headsign": "Bayshore",
+            "direction_id": "0",
+            "block_id": ""
+          }
+        },
+        "stopTimes": [
+          {
+            "row": 125440,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "17:26:09",
+              "departure_time": "17:26:09",
+              "stop_id": "TE1_A",
+              "stop_sequence": "1",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125441,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "17:28:03",
+              "departure_time": "17:28:51",
+              "stop_id": "TE2_A",
+              "stop_sequence": "2",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125442,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "17:30:26",
+              "departure_time": "17:31:00",
+              "stop_id": "TE3_A",
+              "stop_sequence": "3",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125443,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "17:35:00",
+              "departure_time": "17:35:34",
+              "stop_id": "TE4_A",
+              "stop_sequence": "4",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125444,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "17:38:06",
+              "departure_time": "17:38:40",
+              "stop_id": "TE5_A",
+              "stop_sequence": "5",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125445,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "17:40:31",
+              "departure_time": "17:41:05",
+              "stop_id": "TE6_A",
+              "stop_sequence": "6",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125446,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "17:42:28",
+              "departure_time": "17:43:02",
+              "stop_id": "TE7_A",
+              "stop_sequence": "7",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125447,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "17:44:40",
+              "departure_time": "17:45:14",
+              "stop_id": "TE8_A",
+              "stop_sequence": "8",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125448,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "17:47:29",
+              "departure_time": "17:48:17",
+              "stop_id": "TE9_A",
+              "stop_sequence": "9",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125449,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "17:51:40",
+              "departure_time": "17:52:28",
+              "stop_id": "TE11_A",
+              "stop_sequence": "10",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125450,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "17:54:24",
+              "departure_time": "17:54:58",
+              "stop_id": "TE12_A",
+              "stop_sequence": "11",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125451,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "17:56:10",
+              "departure_time": "17:56:44",
+              "stop_id": "TE13_A",
+              "stop_sequence": "12",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125452,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "17:58:05",
+              "departure_time": "17:58:53",
+              "stop_id": "TE14_A",
+              "stop_sequence": "13",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125453,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "18:00:22",
+              "departure_time": "18:00:55",
+              "stop_id": "TE15_A",
+              "stop_sequence": "14",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125454,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "18:01:58",
+              "departure_time": "18:02:31",
+              "stop_id": "TE16_A",
+              "stop_sequence": "15",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125455,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "18:03:48",
+              "departure_time": "18:04:36",
+              "stop_id": "TE17_A",
+              "stop_sequence": "16",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125456,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "18:05:33",
+              "departure_time": "18:06:06",
+              "stop_id": "TE18_A",
+              "stop_sequence": "17",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125457,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "18:07:18",
+              "departure_time": "18:07:51",
+              "stop_id": "TE19_A",
+              "stop_sequence": "18",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125458,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "18:08:51",
+              "departure_time": "18:09:39",
+              "stop_id": "TE20_A",
+              "stop_sequence": "19",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125459,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "18:15:55",
+              "departure_time": "18:16:28",
+              "stop_id": "TE23_A",
+              "stop_sequence": "20",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125460,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "18:18:11",
+              "departure_time": "18:18:44",
+              "stop_id": "TE24_A",
+              "stop_sequence": "21",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125461,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "18:20:18",
+              "departure_time": "18:20:51",
+              "stop_id": "TE25_A",
+              "stop_sequence": "22",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125462,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "18:22:14",
+              "departure_time": "18:22:47",
+              "stop_id": "TE26_A",
+              "stop_sequence": "23",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125463,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "18:24:16",
+              "departure_time": "18:24:49",
+              "stop_id": "TE27_A",
+              "stop_sequence": "24",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125464,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "18:26:31",
+              "departure_time": "18:27:04",
+              "stop_id": "TE28_A",
+              "stop_sequence": "25",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125465,
+            "values": {
+              "trip_id": "TEL_CB_WE_143_1101",
+              "arrival_time": "18:28:38",
+              "departure_time": "18:29:58",
+              "stop_id": "TE29_A",
+              "stop_sequence": "26",
+              "stop_headsign": ""
+            }
+          }
+        ],
+        "reasons": [
+          "Marina Bay to Tanjong Rhu omits Gardens by the Bay; service intent unverified."
+        ],
+        "pairs": [
+          {
+            "from": "CC33",
+            "to": "TE23",
+            "fromRow": 125458,
+            "toRow": 125459
+          }
+        ]
+      },
+      {
+        "trip": {
+          "row": 9839,
+          "values": {
+            "route_id": "TEL_TE1_TE29",
+            "service_id": "SERVICE_WE",
+            "trip_id": "TEL_CB_WE_105_0177",
+            "trip_headsign": "Bayshore",
+            "direction_id": "0",
+            "block_id": ""
+          }
+        },
+        "stopTimes": [
+          {
+            "row": 125466,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "17:28:59",
+              "departure_time": "17:28:59",
+              "stop_id": "TE1_A",
+              "stop_sequence": "1",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125467,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "17:30:43",
+              "departure_time": "17:31:31",
+              "stop_id": "TE2_A",
+              "stop_sequence": "2",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125468,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "17:33:06",
+              "departure_time": "17:33:40",
+              "stop_id": "TE3_A",
+              "stop_sequence": "3",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125469,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "17:37:40",
+              "departure_time": "17:38:14",
+              "stop_id": "TE4_A",
+              "stop_sequence": "4",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125470,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "17:40:46",
+              "departure_time": "17:41:20",
+              "stop_id": "TE5_A",
+              "stop_sequence": "5",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125471,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "17:43:11",
+              "departure_time": "17:43:45",
+              "stop_id": "TE6_A",
+              "stop_sequence": "6",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125472,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "17:45:08",
+              "departure_time": "17:45:42",
+              "stop_id": "TE7_A",
+              "stop_sequence": "7",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125473,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "17:47:20",
+              "departure_time": "17:47:54",
+              "stop_id": "TE8_A",
+              "stop_sequence": "8",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125474,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "17:50:09",
+              "departure_time": "17:50:57",
+              "stop_id": "TE9_A",
+              "stop_sequence": "9",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125475,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "17:54:20",
+              "departure_time": "17:55:08",
+              "stop_id": "TE11_A",
+              "stop_sequence": "10",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125476,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "17:57:04",
+              "departure_time": "17:57:39",
+              "stop_id": "TE12_A",
+              "stop_sequence": "11",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125477,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "17:58:51",
+              "departure_time": "17:59:26",
+              "stop_id": "TE13_A",
+              "stop_sequence": "12",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125478,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "18:00:47",
+              "departure_time": "18:01:35",
+              "stop_id": "TE14_A",
+              "stop_sequence": "13",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125479,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "18:03:04",
+              "departure_time": "18:03:38",
+              "stop_id": "TE15_A",
+              "stop_sequence": "14",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125480,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "18:04:41",
+              "departure_time": "18:05:15",
+              "stop_id": "TE16_A",
+              "stop_sequence": "15",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125481,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "18:06:32",
+              "departure_time": "18:07:20",
+              "stop_id": "TE17_A",
+              "stop_sequence": "16",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125482,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "18:08:17",
+              "departure_time": "18:08:51",
+              "stop_id": "TE18_A",
+              "stop_sequence": "17",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125483,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "18:10:03",
+              "departure_time": "18:10:37",
+              "stop_id": "TE19_A",
+              "stop_sequence": "18",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125484,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "18:11:37",
+              "departure_time": "18:12:25",
+              "stop_id": "TE20_A",
+              "stop_sequence": "19",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125485,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "18:18:41",
+              "departure_time": "18:19:15",
+              "stop_id": "TE23_A",
+              "stop_sequence": "20",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125486,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "18:20:58",
+              "departure_time": "18:21:32",
+              "stop_id": "TE24_A",
+              "stop_sequence": "21",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125487,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "18:23:06",
+              "departure_time": "18:23:40",
+              "stop_id": "TE25_A",
+              "stop_sequence": "22",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125488,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "18:25:03",
+              "departure_time": "18:25:37",
+              "stop_id": "TE26_A",
+              "stop_sequence": "23",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125489,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "18:27:06",
+              "departure_time": "18:27:40",
+              "stop_id": "TE27_A",
+              "stop_sequence": "24",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125490,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "18:29:22",
+              "departure_time": "18:29:56",
+              "stop_id": "TE28_A",
+              "stop_sequence": "25",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125491,
+            "values": {
+              "trip_id": "TEL_CB_WE_105_0177",
+              "arrival_time": "18:31:30",
+              "departure_time": "18:32:58",
+              "stop_id": "TE29_A",
+              "stop_sequence": "26",
+              "stop_headsign": ""
+            }
+          }
+        ],
+        "reasons": [
+          "Marina Bay to Tanjong Rhu omits Gardens by the Bay; service intent unverified."
+        ],
+        "pairs": [
+          {
+            "from": "CC33",
+            "to": "TE23",
+            "fromRow": 125484,
+            "toRow": 125485
+          }
+        ]
+      },
+      {
+        "trip": {
+          "row": 9840,
+          "values": {
+            "route_id": "TEL_TE1_TE29",
+            "service_id": "SERVICE_WE",
+            "trip_id": "TEL_CB_WE_144_1117",
+            "trip_headsign": "Bayshore",
+            "direction_id": "0",
+            "block_id": ""
+          }
+        },
+        "stopTimes": [
+          {
+            "row": 125492,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "17:32:09",
+              "departure_time": "17:32:09",
+              "stop_id": "TE1_A",
+              "stop_sequence": "1",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125493,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "17:34:03",
+              "departure_time": "17:34:51",
+              "stop_id": "TE2_A",
+              "stop_sequence": "2",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125494,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "17:36:26",
+              "departure_time": "17:37:00",
+              "stop_id": "TE3_A",
+              "stop_sequence": "3",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125495,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "17:41:00",
+              "departure_time": "17:41:34",
+              "stop_id": "TE4_A",
+              "stop_sequence": "4",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125496,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "17:44:06",
+              "departure_time": "17:44:40",
+              "stop_id": "TE5_A",
+              "stop_sequence": "5",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125497,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "17:46:31",
+              "departure_time": "17:47:05",
+              "stop_id": "TE6_A",
+              "stop_sequence": "6",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125498,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "17:48:28",
+              "departure_time": "17:49:02",
+              "stop_id": "TE7_A",
+              "stop_sequence": "7",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125499,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "17:50:40",
+              "departure_time": "17:51:14",
+              "stop_id": "TE8_A",
+              "stop_sequence": "8",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125500,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "17:53:29",
+              "departure_time": "17:54:17",
+              "stop_id": "TE9_A",
+              "stop_sequence": "9",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125501,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "17:57:40",
+              "departure_time": "17:58:28",
+              "stop_id": "TE11_A",
+              "stop_sequence": "10",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125502,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "18:00:24",
+              "departure_time": "18:00:58",
+              "stop_id": "TE12_A",
+              "stop_sequence": "11",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125503,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "18:02:10",
+              "departure_time": "18:02:44",
+              "stop_id": "TE13_A",
+              "stop_sequence": "12",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125504,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "18:04:05",
+              "departure_time": "18:04:53",
+              "stop_id": "TE14_A",
+              "stop_sequence": "13",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125505,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "18:06:22",
+              "departure_time": "18:06:55",
+              "stop_id": "TE15_A",
+              "stop_sequence": "14",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125506,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "18:07:58",
+              "departure_time": "18:08:31",
+              "stop_id": "TE16_A",
+              "stop_sequence": "15",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125507,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "18:09:48",
+              "departure_time": "18:10:36",
+              "stop_id": "TE17_A",
+              "stop_sequence": "16",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125508,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "18:11:33",
+              "departure_time": "18:12:06",
+              "stop_id": "TE18_A",
+              "stop_sequence": "17",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125509,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "18:13:18",
+              "departure_time": "18:13:51",
+              "stop_id": "TE19_A",
+              "stop_sequence": "18",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125510,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "18:14:51",
+              "departure_time": "18:15:39",
+              "stop_id": "TE20_A",
+              "stop_sequence": "19",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125511,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "18:21:55",
+              "departure_time": "18:22:28",
+              "stop_id": "TE23_A",
+              "stop_sequence": "20",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125512,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "18:24:11",
+              "departure_time": "18:24:44",
+              "stop_id": "TE24_A",
+              "stop_sequence": "21",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125513,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "18:26:18",
+              "departure_time": "18:26:51",
+              "stop_id": "TE25_A",
+              "stop_sequence": "22",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125514,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "18:28:14",
+              "departure_time": "18:28:47",
+              "stop_id": "TE26_A",
+              "stop_sequence": "23",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125515,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "18:30:16",
+              "departure_time": "18:30:49",
+              "stop_id": "TE27_A",
+              "stop_sequence": "24",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125516,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "18:32:31",
+              "departure_time": "18:33:04",
+              "stop_id": "TE28_A",
+              "stop_sequence": "25",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 125517,
+            "values": {
+              "trip_id": "TEL_CB_WE_144_1117",
+              "arrival_time": "18:34:38",
+              "departure_time": "18:35:58",
+              "stop_id": "TE29_A",
+              "stop_sequence": "26",
+              "stop_headsign": ""
+            }
+          }
+        ],
+        "reasons": [
+          "Marina Bay to Tanjong Rhu omits Gardens by the Bay; service intent unverified."
+        ],
+        "pairs": [
+          {
+            "from": "CC33",
+            "to": "TE23",
+            "fromRow": 125510,
+            "toRow": 125511
+          }
+        ]
+      },
+      {
+        "trip": {
+          "row": 10373,
+          "values": {
+            "route_id": "TEL_TE1_TE29",
+            "service_id": "SERVICE_PH",
+            "trip_id": "TEL_CB_PH_142_0891",
+            "trip_headsign": "Bayshore",
+            "direction_id": "0",
+            "block_id": ""
+          }
+        },
+        "stopTimes": [
+          {
+            "row": 138919,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "17:14:09",
+              "departure_time": "17:14:09",
+              "stop_id": "TE1_A",
+              "stop_sequence": "1",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138920,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "17:16:03",
+              "departure_time": "17:16:51",
+              "stop_id": "TE2_A",
+              "stop_sequence": "2",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138921,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "17:18:26",
+              "departure_time": "17:19:00",
+              "stop_id": "TE3_A",
+              "stop_sequence": "3",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138922,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "17:23:00",
+              "departure_time": "17:23:34",
+              "stop_id": "TE4_A",
+              "stop_sequence": "4",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138923,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "17:26:06",
+              "departure_time": "17:26:40",
+              "stop_id": "TE5_A",
+              "stop_sequence": "5",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138924,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "17:28:31",
+              "departure_time": "17:29:05",
+              "stop_id": "TE6_A",
+              "stop_sequence": "6",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138925,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "17:30:28",
+              "departure_time": "17:31:02",
+              "stop_id": "TE7_A",
+              "stop_sequence": "7",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138926,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "17:32:40",
+              "departure_time": "17:33:14",
+              "stop_id": "TE8_A",
+              "stop_sequence": "8",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138927,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "17:35:29",
+              "departure_time": "17:36:17",
+              "stop_id": "TE9_A",
+              "stop_sequence": "9",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138928,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "17:39:40",
+              "departure_time": "17:40:28",
+              "stop_id": "TE11_A",
+              "stop_sequence": "10",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138929,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "17:42:24",
+              "departure_time": "17:42:58",
+              "stop_id": "TE12_A",
+              "stop_sequence": "11",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138930,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "17:44:10",
+              "departure_time": "17:44:44",
+              "stop_id": "TE13_A",
+              "stop_sequence": "12",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138931,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "17:46:05",
+              "departure_time": "17:46:53",
+              "stop_id": "TE14_A",
+              "stop_sequence": "13",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138932,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "17:48:22",
+              "departure_time": "17:48:55",
+              "stop_id": "TE15_A",
+              "stop_sequence": "14",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138933,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "17:49:58",
+              "departure_time": "17:50:31",
+              "stop_id": "TE16_A",
+              "stop_sequence": "15",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138934,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "17:51:48",
+              "departure_time": "17:52:36",
+              "stop_id": "TE17_A",
+              "stop_sequence": "16",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138935,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "17:53:33",
+              "departure_time": "17:54:06",
+              "stop_id": "TE18_A",
+              "stop_sequence": "17",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138936,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "17:55:18",
+              "departure_time": "17:55:51",
+              "stop_id": "TE19_A",
+              "stop_sequence": "18",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138937,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "17:56:51",
+              "departure_time": "17:57:39",
+              "stop_id": "TE20_A",
+              "stop_sequence": "19",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138938,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "18:03:55",
+              "departure_time": "18:04:28",
+              "stop_id": "TE23_A",
+              "stop_sequence": "20",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138939,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "18:06:11",
+              "departure_time": "18:06:44",
+              "stop_id": "TE24_A",
+              "stop_sequence": "21",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138940,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "18:08:18",
+              "departure_time": "18:08:51",
+              "stop_id": "TE25_A",
+              "stop_sequence": "22",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138941,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "18:10:14",
+              "departure_time": "18:10:47",
+              "stop_id": "TE26_A",
+              "stop_sequence": "23",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138942,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "18:12:16",
+              "departure_time": "18:12:49",
+              "stop_id": "TE27_A",
+              "stop_sequence": "24",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138943,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "18:14:31",
+              "departure_time": "18:15:04",
+              "stop_id": "TE28_A",
+              "stop_sequence": "25",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138944,
+            "values": {
+              "trip_id": "TEL_CB_PH_142_0891",
+              "arrival_time": "18:16:38",
+              "departure_time": "18:17:58",
+              "stop_id": "TE29_A",
+              "stop_sequence": "26",
+              "stop_headsign": ""
+            }
+          }
+        ],
+        "reasons": [
+          "Marina Bay to Tanjong Rhu omits Gardens by the Bay; service intent unverified."
+        ],
+        "pairs": [
+          {
+            "from": "CC33",
+            "to": "TE23",
+            "fromRow": 138937,
+            "toRow": 138938
+          }
+        ]
+      },
+      {
+        "trip": {
+          "row": 10374,
+          "values": {
+            "route_id": "TEL_TE1_TE29",
+            "service_id": "SERVICE_PH",
+            "trip_id": "TEL_CB_PH_103_0101",
+            "trip_headsign": "Bayshore",
+            "direction_id": "0",
+            "block_id": ""
+          }
+        },
+        "stopTimes": [
+          {
+            "row": 138945,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "17:16:59",
+              "departure_time": "17:16:59",
+              "stop_id": "TE1_A",
+              "stop_sequence": "1",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138946,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "17:18:43",
+              "departure_time": "17:19:31",
+              "stop_id": "TE2_A",
+              "stop_sequence": "2",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138947,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "17:21:06",
+              "departure_time": "17:21:40",
+              "stop_id": "TE3_A",
+              "stop_sequence": "3",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138948,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "17:25:40",
+              "departure_time": "17:26:14",
+              "stop_id": "TE4_A",
+              "stop_sequence": "4",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138949,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "17:28:46",
+              "departure_time": "17:29:20",
+              "stop_id": "TE5_A",
+              "stop_sequence": "5",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138950,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "17:31:11",
+              "departure_time": "17:31:45",
+              "stop_id": "TE6_A",
+              "stop_sequence": "6",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138951,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "17:33:08",
+              "departure_time": "17:33:42",
+              "stop_id": "TE7_A",
+              "stop_sequence": "7",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138952,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "17:35:20",
+              "departure_time": "17:35:54",
+              "stop_id": "TE8_A",
+              "stop_sequence": "8",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138953,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "17:38:09",
+              "departure_time": "17:38:57",
+              "stop_id": "TE9_A",
+              "stop_sequence": "9",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138954,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "17:42:20",
+              "departure_time": "17:43:08",
+              "stop_id": "TE11_A",
+              "stop_sequence": "10",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138955,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "17:45:04",
+              "departure_time": "17:45:39",
+              "stop_id": "TE12_A",
+              "stop_sequence": "11",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138956,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "17:46:51",
+              "departure_time": "17:47:26",
+              "stop_id": "TE13_A",
+              "stop_sequence": "12",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138957,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "17:48:47",
+              "departure_time": "17:49:35",
+              "stop_id": "TE14_A",
+              "stop_sequence": "13",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138958,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "17:51:04",
+              "departure_time": "17:51:38",
+              "stop_id": "TE15_A",
+              "stop_sequence": "14",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138959,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "17:52:41",
+              "departure_time": "17:53:15",
+              "stop_id": "TE16_A",
+              "stop_sequence": "15",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138960,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "17:54:32",
+              "departure_time": "17:55:20",
+              "stop_id": "TE17_A",
+              "stop_sequence": "16",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138961,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "17:56:17",
+              "departure_time": "17:56:51",
+              "stop_id": "TE18_A",
+              "stop_sequence": "17",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138962,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "17:58:03",
+              "departure_time": "17:58:37",
+              "stop_id": "TE19_A",
+              "stop_sequence": "18",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138963,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "17:59:37",
+              "departure_time": "18:00:25",
+              "stop_id": "TE20_A",
+              "stop_sequence": "19",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138964,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "18:06:41",
+              "departure_time": "18:07:15",
+              "stop_id": "TE23_A",
+              "stop_sequence": "20",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138965,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "18:08:58",
+              "departure_time": "18:09:32",
+              "stop_id": "TE24_A",
+              "stop_sequence": "21",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138966,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "18:11:06",
+              "departure_time": "18:11:40",
+              "stop_id": "TE25_A",
+              "stop_sequence": "22",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138967,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "18:13:03",
+              "departure_time": "18:13:37",
+              "stop_id": "TE26_A",
+              "stop_sequence": "23",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138968,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "18:15:06",
+              "departure_time": "18:15:40",
+              "stop_id": "TE27_A",
+              "stop_sequence": "24",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138969,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "18:17:22",
+              "departure_time": "18:17:56",
+              "stop_id": "TE28_A",
+              "stop_sequence": "25",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138970,
+            "values": {
+              "trip_id": "TEL_CB_PH_103_0101",
+              "arrival_time": "18:19:30",
+              "departure_time": "18:20:58",
+              "stop_id": "TE29_A",
+              "stop_sequence": "26",
+              "stop_headsign": ""
+            }
+          }
+        ],
+        "reasons": [
+          "Marina Bay to Tanjong Rhu omits Gardens by the Bay; service intent unverified."
+        ],
+        "pairs": [
+          {
+            "from": "CC33",
+            "to": "TE23",
+            "fromRow": 138963,
+            "toRow": 138964
+          }
+        ]
+      },
+      {
+        "trip": {
+          "row": 10375,
+          "values": {
+            "route_id": "TEL_TE1_TE29",
+            "service_id": "SERVICE_PH",
+            "trip_id": "TEL_CB_PH_125_0874",
+            "trip_headsign": "Bayshore",
+            "direction_id": "0",
+            "block_id": ""
+          }
+        },
+        "stopTimes": [
+          {
+            "row": 138971,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "17:20:09",
+              "departure_time": "17:20:09",
+              "stop_id": "TE1_A",
+              "stop_sequence": "1",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138972,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "17:22:03",
+              "departure_time": "17:22:51",
+              "stop_id": "TE2_A",
+              "stop_sequence": "2",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138973,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "17:24:26",
+              "departure_time": "17:25:00",
+              "stop_id": "TE3_A",
+              "stop_sequence": "3",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138974,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "17:29:00",
+              "departure_time": "17:29:34",
+              "stop_id": "TE4_A",
+              "stop_sequence": "4",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138975,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "17:32:06",
+              "departure_time": "17:32:40",
+              "stop_id": "TE5_A",
+              "stop_sequence": "5",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138976,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "17:34:31",
+              "departure_time": "17:35:05",
+              "stop_id": "TE6_A",
+              "stop_sequence": "6",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138977,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "17:36:28",
+              "departure_time": "17:37:02",
+              "stop_id": "TE7_A",
+              "stop_sequence": "7",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138978,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "17:38:40",
+              "departure_time": "17:39:14",
+              "stop_id": "TE8_A",
+              "stop_sequence": "8",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138979,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "17:41:29",
+              "departure_time": "17:42:17",
+              "stop_id": "TE9_A",
+              "stop_sequence": "9",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138980,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "17:45:40",
+              "departure_time": "17:46:28",
+              "stop_id": "TE11_A",
+              "stop_sequence": "10",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138981,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "17:48:24",
+              "departure_time": "17:48:58",
+              "stop_id": "TE12_A",
+              "stop_sequence": "11",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138982,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "17:50:10",
+              "departure_time": "17:50:44",
+              "stop_id": "TE13_A",
+              "stop_sequence": "12",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138983,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "17:52:05",
+              "departure_time": "17:52:53",
+              "stop_id": "TE14_A",
+              "stop_sequence": "13",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138984,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "17:54:22",
+              "departure_time": "17:54:55",
+              "stop_id": "TE15_A",
+              "stop_sequence": "14",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138985,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "17:55:58",
+              "departure_time": "17:56:31",
+              "stop_id": "TE16_A",
+              "stop_sequence": "15",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138986,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "17:57:48",
+              "departure_time": "17:58:36",
+              "stop_id": "TE17_A",
+              "stop_sequence": "16",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138987,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "17:59:33",
+              "departure_time": "18:00:06",
+              "stop_id": "TE18_A",
+              "stop_sequence": "17",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138988,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "18:01:18",
+              "departure_time": "18:01:51",
+              "stop_id": "TE19_A",
+              "stop_sequence": "18",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138989,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "18:02:51",
+              "departure_time": "18:03:39",
+              "stop_id": "TE20_A",
+              "stop_sequence": "19",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138990,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "18:09:55",
+              "departure_time": "18:10:28",
+              "stop_id": "TE23_A",
+              "stop_sequence": "20",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138991,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "18:12:11",
+              "departure_time": "18:12:44",
+              "stop_id": "TE24_A",
+              "stop_sequence": "21",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138992,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "18:14:18",
+              "departure_time": "18:14:51",
+              "stop_id": "TE25_A",
+              "stop_sequence": "22",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138993,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "18:16:14",
+              "departure_time": "18:16:47",
+              "stop_id": "TE26_A",
+              "stop_sequence": "23",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138994,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "18:18:16",
+              "departure_time": "18:18:49",
+              "stop_id": "TE27_A",
+              "stop_sequence": "24",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138995,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "18:20:31",
+              "departure_time": "18:21:04",
+              "stop_id": "TE28_A",
+              "stop_sequence": "25",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138996,
+            "values": {
+              "trip_id": "TEL_CB_PH_125_0874",
+              "arrival_time": "18:22:38",
+              "departure_time": "18:23:58",
+              "stop_id": "TE29_A",
+              "stop_sequence": "26",
+              "stop_headsign": ""
+            }
+          }
+        ],
+        "reasons": [
+          "Marina Bay to Tanjong Rhu omits Gardens by the Bay; service intent unverified."
+        ],
+        "pairs": [
+          {
+            "from": "CC33",
+            "to": "TE23",
+            "fromRow": 138989,
+            "toRow": 138990
+          }
+        ]
+      },
+      {
+        "trip": {
+          "row": 10376,
+          "values": {
+            "route_id": "TEL_TE1_TE29",
+            "service_id": "SERVICE_PH",
+            "trip_id": "TEL_CB_PH_104_0139",
+            "trip_headsign": "Bayshore",
+            "direction_id": "0",
+            "block_id": ""
+          }
+        },
+        "stopTimes": [
+          {
+            "row": 138997,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "17:22:59",
+              "departure_time": "17:22:59",
+              "stop_id": "TE1_A",
+              "stop_sequence": "1",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138998,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "17:24:43",
+              "departure_time": "17:25:31",
+              "stop_id": "TE2_A",
+              "stop_sequence": "2",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 138999,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "17:27:06",
+              "departure_time": "17:27:40",
+              "stop_id": "TE3_A",
+              "stop_sequence": "3",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139000,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "17:31:40",
+              "departure_time": "17:32:14",
+              "stop_id": "TE4_A",
+              "stop_sequence": "4",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139001,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "17:34:46",
+              "departure_time": "17:35:20",
+              "stop_id": "TE5_A",
+              "stop_sequence": "5",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139002,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "17:37:11",
+              "departure_time": "17:37:45",
+              "stop_id": "TE6_A",
+              "stop_sequence": "6",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139003,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "17:39:08",
+              "departure_time": "17:39:42",
+              "stop_id": "TE7_A",
+              "stop_sequence": "7",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139004,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "17:41:20",
+              "departure_time": "17:41:54",
+              "stop_id": "TE8_A",
+              "stop_sequence": "8",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139005,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "17:44:09",
+              "departure_time": "17:44:57",
+              "stop_id": "TE9_A",
+              "stop_sequence": "9",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139006,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "17:48:20",
+              "departure_time": "17:49:08",
+              "stop_id": "TE11_A",
+              "stop_sequence": "10",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139007,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "17:51:04",
+              "departure_time": "17:51:39",
+              "stop_id": "TE12_A",
+              "stop_sequence": "11",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139008,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "17:52:51",
+              "departure_time": "17:53:26",
+              "stop_id": "TE13_A",
+              "stop_sequence": "12",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139009,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "17:54:47",
+              "departure_time": "17:55:35",
+              "stop_id": "TE14_A",
+              "stop_sequence": "13",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139010,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "17:57:04",
+              "departure_time": "17:57:38",
+              "stop_id": "TE15_A",
+              "stop_sequence": "14",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139011,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "17:58:41",
+              "departure_time": "17:59:15",
+              "stop_id": "TE16_A",
+              "stop_sequence": "15",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139012,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "18:00:32",
+              "departure_time": "18:01:20",
+              "stop_id": "TE17_A",
+              "stop_sequence": "16",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139013,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "18:02:17",
+              "departure_time": "18:02:51",
+              "stop_id": "TE18_A",
+              "stop_sequence": "17",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139014,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "18:04:03",
+              "departure_time": "18:04:37",
+              "stop_id": "TE19_A",
+              "stop_sequence": "18",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139015,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "18:05:37",
+              "departure_time": "18:06:25",
+              "stop_id": "TE20_A",
+              "stop_sequence": "19",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139016,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "18:12:41",
+              "departure_time": "18:13:15",
+              "stop_id": "TE23_A",
+              "stop_sequence": "20",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139017,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "18:14:58",
+              "departure_time": "18:15:32",
+              "stop_id": "TE24_A",
+              "stop_sequence": "21",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139018,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "18:17:06",
+              "departure_time": "18:17:40",
+              "stop_id": "TE25_A",
+              "stop_sequence": "22",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139019,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "18:19:03",
+              "departure_time": "18:19:37",
+              "stop_id": "TE26_A",
+              "stop_sequence": "23",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139020,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "18:21:06",
+              "departure_time": "18:21:40",
+              "stop_id": "TE27_A",
+              "stop_sequence": "24",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139021,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "18:23:22",
+              "departure_time": "18:23:56",
+              "stop_id": "TE28_A",
+              "stop_sequence": "25",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139022,
+            "values": {
+              "trip_id": "TEL_CB_PH_104_0139",
+              "arrival_time": "18:25:30",
+              "departure_time": "18:26:58",
+              "stop_id": "TE29_A",
+              "stop_sequence": "26",
+              "stop_headsign": ""
+            }
+          }
+        ],
+        "reasons": [
+          "Marina Bay to Tanjong Rhu omits Gardens by the Bay; service intent unverified."
+        ],
+        "pairs": [
+          {
+            "from": "CC33",
+            "to": "TE23",
+            "fromRow": 139015,
+            "toRow": 139016
+          }
+        ]
+      },
+      {
+        "trip": {
+          "row": 10377,
+          "values": {
+            "route_id": "TEL_TE1_TE29",
+            "service_id": "SERVICE_PH",
+            "trip_id": "TEL_CB_PH_143_1101",
+            "trip_headsign": "Bayshore",
+            "direction_id": "0",
+            "block_id": ""
+          }
+        },
+        "stopTimes": [
+          {
+            "row": 139023,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "17:26:09",
+              "departure_time": "17:26:09",
+              "stop_id": "TE1_A",
+              "stop_sequence": "1",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139024,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "17:28:03",
+              "departure_time": "17:28:51",
+              "stop_id": "TE2_A",
+              "stop_sequence": "2",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139025,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "17:30:26",
+              "departure_time": "17:31:00",
+              "stop_id": "TE3_A",
+              "stop_sequence": "3",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139026,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "17:35:00",
+              "departure_time": "17:35:34",
+              "stop_id": "TE4_A",
+              "stop_sequence": "4",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139027,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "17:38:06",
+              "departure_time": "17:38:40",
+              "stop_id": "TE5_A",
+              "stop_sequence": "5",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139028,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "17:40:31",
+              "departure_time": "17:41:05",
+              "stop_id": "TE6_A",
+              "stop_sequence": "6",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139029,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "17:42:28",
+              "departure_time": "17:43:02",
+              "stop_id": "TE7_A",
+              "stop_sequence": "7",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139030,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "17:44:40",
+              "departure_time": "17:45:14",
+              "stop_id": "TE8_A",
+              "stop_sequence": "8",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139031,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "17:47:29",
+              "departure_time": "17:48:17",
+              "stop_id": "TE9_A",
+              "stop_sequence": "9",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139032,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "17:51:40",
+              "departure_time": "17:52:28",
+              "stop_id": "TE11_A",
+              "stop_sequence": "10",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139033,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "17:54:24",
+              "departure_time": "17:54:58",
+              "stop_id": "TE12_A",
+              "stop_sequence": "11",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139034,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "17:56:10",
+              "departure_time": "17:56:44",
+              "stop_id": "TE13_A",
+              "stop_sequence": "12",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139035,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "17:58:05",
+              "departure_time": "17:58:53",
+              "stop_id": "TE14_A",
+              "stop_sequence": "13",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139036,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "18:00:22",
+              "departure_time": "18:00:55",
+              "stop_id": "TE15_A",
+              "stop_sequence": "14",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139037,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "18:01:58",
+              "departure_time": "18:02:31",
+              "stop_id": "TE16_A",
+              "stop_sequence": "15",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139038,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "18:03:48",
+              "departure_time": "18:04:36",
+              "stop_id": "TE17_A",
+              "stop_sequence": "16",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139039,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "18:05:33",
+              "departure_time": "18:06:06",
+              "stop_id": "TE18_A",
+              "stop_sequence": "17",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139040,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "18:07:18",
+              "departure_time": "18:07:51",
+              "stop_id": "TE19_A",
+              "stop_sequence": "18",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139041,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "18:08:51",
+              "departure_time": "18:09:39",
+              "stop_id": "TE20_A",
+              "stop_sequence": "19",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139042,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "18:15:55",
+              "departure_time": "18:16:28",
+              "stop_id": "TE23_A",
+              "stop_sequence": "20",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139043,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "18:18:11",
+              "departure_time": "18:18:44",
+              "stop_id": "TE24_A",
+              "stop_sequence": "21",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139044,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "18:20:18",
+              "departure_time": "18:20:51",
+              "stop_id": "TE25_A",
+              "stop_sequence": "22",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139045,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "18:22:14",
+              "departure_time": "18:22:47",
+              "stop_id": "TE26_A",
+              "stop_sequence": "23",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139046,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "18:24:16",
+              "departure_time": "18:24:49",
+              "stop_id": "TE27_A",
+              "stop_sequence": "24",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139047,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "18:26:31",
+              "departure_time": "18:27:04",
+              "stop_id": "TE28_A",
+              "stop_sequence": "25",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139048,
+            "values": {
+              "trip_id": "TEL_CB_PH_143_1101",
+              "arrival_time": "18:28:38",
+              "departure_time": "18:29:58",
+              "stop_id": "TE29_A",
+              "stop_sequence": "26",
+              "stop_headsign": ""
+            }
+          }
+        ],
+        "reasons": [
+          "Marina Bay to Tanjong Rhu omits Gardens by the Bay; service intent unverified."
+        ],
+        "pairs": [
+          {
+            "from": "CC33",
+            "to": "TE23",
+            "fromRow": 139041,
+            "toRow": 139042
+          }
+        ]
+      },
+      {
+        "trip": {
+          "row": 10378,
+          "values": {
+            "route_id": "TEL_TE1_TE29",
+            "service_id": "SERVICE_PH",
+            "trip_id": "TEL_CB_PH_105_0177",
+            "trip_headsign": "Bayshore",
+            "direction_id": "0",
+            "block_id": ""
+          }
+        },
+        "stopTimes": [
+          {
+            "row": 139049,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "17:28:59",
+              "departure_time": "17:28:59",
+              "stop_id": "TE1_A",
+              "stop_sequence": "1",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139050,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "17:30:43",
+              "departure_time": "17:31:31",
+              "stop_id": "TE2_A",
+              "stop_sequence": "2",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139051,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "17:33:06",
+              "departure_time": "17:33:40",
+              "stop_id": "TE3_A",
+              "stop_sequence": "3",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139052,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "17:37:40",
+              "departure_time": "17:38:14",
+              "stop_id": "TE4_A",
+              "stop_sequence": "4",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139053,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "17:40:46",
+              "departure_time": "17:41:20",
+              "stop_id": "TE5_A",
+              "stop_sequence": "5",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139054,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "17:43:11",
+              "departure_time": "17:43:45",
+              "stop_id": "TE6_A",
+              "stop_sequence": "6",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139055,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "17:45:08",
+              "departure_time": "17:45:42",
+              "stop_id": "TE7_A",
+              "stop_sequence": "7",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139056,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "17:47:20",
+              "departure_time": "17:47:54",
+              "stop_id": "TE8_A",
+              "stop_sequence": "8",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139057,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "17:50:09",
+              "departure_time": "17:50:57",
+              "stop_id": "TE9_A",
+              "stop_sequence": "9",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139058,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "17:54:20",
+              "departure_time": "17:55:08",
+              "stop_id": "TE11_A",
+              "stop_sequence": "10",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139059,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "17:57:04",
+              "departure_time": "17:57:39",
+              "stop_id": "TE12_A",
+              "stop_sequence": "11",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139060,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "17:58:51",
+              "departure_time": "17:59:26",
+              "stop_id": "TE13_A",
+              "stop_sequence": "12",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139061,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "18:00:47",
+              "departure_time": "18:01:35",
+              "stop_id": "TE14_A",
+              "stop_sequence": "13",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139062,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "18:03:04",
+              "departure_time": "18:03:38",
+              "stop_id": "TE15_A",
+              "stop_sequence": "14",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139063,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "18:04:41",
+              "departure_time": "18:05:15",
+              "stop_id": "TE16_A",
+              "stop_sequence": "15",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139064,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "18:06:32",
+              "departure_time": "18:07:20",
+              "stop_id": "TE17_A",
+              "stop_sequence": "16",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139065,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "18:08:17",
+              "departure_time": "18:08:51",
+              "stop_id": "TE18_A",
+              "stop_sequence": "17",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139066,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "18:10:03",
+              "departure_time": "18:10:37",
+              "stop_id": "TE19_A",
+              "stop_sequence": "18",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139067,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "18:11:37",
+              "departure_time": "18:12:25",
+              "stop_id": "TE20_A",
+              "stop_sequence": "19",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139068,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "18:18:41",
+              "departure_time": "18:19:15",
+              "stop_id": "TE23_A",
+              "stop_sequence": "20",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139069,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "18:20:58",
+              "departure_time": "18:21:32",
+              "stop_id": "TE24_A",
+              "stop_sequence": "21",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139070,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "18:23:06",
+              "departure_time": "18:23:40",
+              "stop_id": "TE25_A",
+              "stop_sequence": "22",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139071,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "18:25:03",
+              "departure_time": "18:25:37",
+              "stop_id": "TE26_A",
+              "stop_sequence": "23",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139072,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "18:27:06",
+              "departure_time": "18:27:40",
+              "stop_id": "TE27_A",
+              "stop_sequence": "24",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139073,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "18:29:22",
+              "departure_time": "18:29:56",
+              "stop_id": "TE28_A",
+              "stop_sequence": "25",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139074,
+            "values": {
+              "trip_id": "TEL_CB_PH_105_0177",
+              "arrival_time": "18:31:30",
+              "departure_time": "18:32:58",
+              "stop_id": "TE29_A",
+              "stop_sequence": "26",
+              "stop_headsign": ""
+            }
+          }
+        ],
+        "reasons": [
+          "Marina Bay to Tanjong Rhu omits Gardens by the Bay; service intent unverified."
+        ],
+        "pairs": [
+          {
+            "from": "CC33",
+            "to": "TE23",
+            "fromRow": 139067,
+            "toRow": 139068
+          }
+        ]
+      },
+      {
+        "trip": {
+          "row": 10379,
+          "values": {
+            "route_id": "TEL_TE1_TE29",
+            "service_id": "SERVICE_PH",
+            "trip_id": "TEL_CB_PH_144_1117",
+            "trip_headsign": "Bayshore",
+            "direction_id": "0",
+            "block_id": ""
+          }
+        },
+        "stopTimes": [
+          {
+            "row": 139075,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "17:32:09",
+              "departure_time": "17:32:09",
+              "stop_id": "TE1_A",
+              "stop_sequence": "1",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139076,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "17:34:03",
+              "departure_time": "17:34:51",
+              "stop_id": "TE2_A",
+              "stop_sequence": "2",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139077,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "17:36:26",
+              "departure_time": "17:37:00",
+              "stop_id": "TE3_A",
+              "stop_sequence": "3",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139078,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "17:41:00",
+              "departure_time": "17:41:34",
+              "stop_id": "TE4_A",
+              "stop_sequence": "4",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139079,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "17:44:06",
+              "departure_time": "17:44:40",
+              "stop_id": "TE5_A",
+              "stop_sequence": "5",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139080,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "17:46:31",
+              "departure_time": "17:47:05",
+              "stop_id": "TE6_A",
+              "stop_sequence": "6",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139081,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "17:48:28",
+              "departure_time": "17:49:02",
+              "stop_id": "TE7_A",
+              "stop_sequence": "7",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139082,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "17:50:40",
+              "departure_time": "17:51:14",
+              "stop_id": "TE8_A",
+              "stop_sequence": "8",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139083,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "17:53:29",
+              "departure_time": "17:54:17",
+              "stop_id": "TE9_A",
+              "stop_sequence": "9",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139084,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "17:57:40",
+              "departure_time": "17:58:28",
+              "stop_id": "TE11_A",
+              "stop_sequence": "10",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139085,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "18:00:24",
+              "departure_time": "18:00:58",
+              "stop_id": "TE12_A",
+              "stop_sequence": "11",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139086,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "18:02:10",
+              "departure_time": "18:02:44",
+              "stop_id": "TE13_A",
+              "stop_sequence": "12",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139087,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "18:04:05",
+              "departure_time": "18:04:53",
+              "stop_id": "TE14_A",
+              "stop_sequence": "13",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139088,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "18:06:22",
+              "departure_time": "18:06:55",
+              "stop_id": "TE15_A",
+              "stop_sequence": "14",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139089,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "18:07:58",
+              "departure_time": "18:08:31",
+              "stop_id": "TE16_A",
+              "stop_sequence": "15",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139090,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "18:09:48",
+              "departure_time": "18:10:36",
+              "stop_id": "TE17_A",
+              "stop_sequence": "16",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139091,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "18:11:33",
+              "departure_time": "18:12:06",
+              "stop_id": "TE18_A",
+              "stop_sequence": "17",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139092,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "18:13:18",
+              "departure_time": "18:13:51",
+              "stop_id": "TE19_A",
+              "stop_sequence": "18",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139093,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "18:14:51",
+              "departure_time": "18:15:39",
+              "stop_id": "TE20_A",
+              "stop_sequence": "19",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139094,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "18:21:55",
+              "departure_time": "18:22:28",
+              "stop_id": "TE23_A",
+              "stop_sequence": "20",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139095,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "18:24:11",
+              "departure_time": "18:24:44",
+              "stop_id": "TE24_A",
+              "stop_sequence": "21",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139096,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "18:26:18",
+              "departure_time": "18:26:51",
+              "stop_id": "TE25_A",
+              "stop_sequence": "22",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139097,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "18:28:14",
+              "departure_time": "18:28:47",
+              "stop_id": "TE26_A",
+              "stop_sequence": "23",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139098,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "18:30:16",
+              "departure_time": "18:30:49",
+              "stop_id": "TE27_A",
+              "stop_sequence": "24",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139099,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "18:32:31",
+              "departure_time": "18:33:04",
+              "stop_id": "TE28_A",
+              "stop_sequence": "25",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 139100,
+            "values": {
+              "trip_id": "TEL_CB_PH_144_1117",
+              "arrival_time": "18:34:38",
+              "departure_time": "18:35:58",
+              "stop_id": "TE29_A",
+              "stop_sequence": "26",
+              "stop_headsign": ""
+            }
+          }
+        ],
+        "reasons": [
+          "Marina Bay to Tanjong Rhu omits Gardens by the Bay; service intent unverified."
+        ],
+        "pairs": [
+          {
+            "from": "CC33",
+            "to": "TE23",
+            "fromRow": 139093,
+            "toRow": 139094
+          }
+        ]
+      },
+      {
+        "trip": {
+          "row": 14843,
+          "values": {
+            "route_id": "NSL_NS13_NS28",
+            "service_id": "SERVICE_WD",
+            "trip_id": "NSL_SB_WD_203_3103",
+            "trip_headsign": "Marina South Pier",
+            "direction_id": "1",
+            "block_id": ""
+          }
+        },
+        "stopTimes": [
+          {
+            "row": 234489,
+            "values": {
+              "trip_id": "NSL_SB_WD_203_3103",
+              "arrival_time": "5:28:47",
+              "departure_time": "5:29:39",
+              "stop_id": "NS13_B",
+              "stop_sequence": "1",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 234490,
+            "values": {
+              "trip_id": "NSL_SB_WD_203_3103",
+              "arrival_time": "5:45:03",
+              "departure_time": "5:45:45",
+              "stop_id": "NS18_B",
+              "stop_sequence": "2",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 234491,
+            "values": {
+              "trip_id": "NSL_SB_WD_203_3103",
+              "arrival_time": "5:47:08",
+              "departure_time": "5:47:56",
+              "stop_id": "NS19_B",
+              "stop_sequence": "3",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 234492,
+            "values": {
+              "trip_id": "NSL_SB_WD_203_3103",
+              "arrival_time": "5:49:41",
+              "departure_time": "5:50:29",
+              "stop_id": "NS20_B",
+              "stop_sequence": "4",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 234493,
+            "values": {
+              "trip_id": "NSL_SB_WD_203_3103",
+              "arrival_time": "5:51:59",
+              "departure_time": "5:52:51",
+              "stop_id": "NS21_B",
+              "stop_sequence": "5",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 234494,
+            "values": {
+              "trip_id": "NSL_SB_WD_203_3103",
+              "arrival_time": "5:54:25",
+              "departure_time": "5:55:17",
+              "stop_id": "NS22_B",
+              "stop_sequence": "6",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 234495,
+            "values": {
+              "trip_id": "NSL_SB_WD_203_3103",
+              "arrival_time": "5:56:45",
+              "departure_time": "5:57:33",
+              "stop_id": "NS23_B",
+              "stop_sequence": "7",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 234496,
+            "values": {
+              "trip_id": "NSL_SB_WD_203_3103",
+              "arrival_time": "5:58:45",
+              "departure_time": "5:59:35",
+              "stop_id": "NS24_B",
+              "stop_sequence": "8",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 234497,
+            "values": {
+              "trip_id": "NSL_SB_WD_203_3103",
+              "arrival_time": "6:00:57",
+              "departure_time": "6:01:51",
+              "stop_id": "NS25_B",
+              "stop_sequence": "9",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 234498,
+            "values": {
+              "trip_id": "NSL_SB_WD_203_3103",
+              "arrival_time": "6:03:20",
+              "departure_time": "6:04:13",
+              "stop_id": "NS26_B",
+              "stop_sequence": "10",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 234499,
+            "values": {
+              "trip_id": "NSL_SB_WD_203_3103",
+              "arrival_time": "6:05:38",
+              "departure_time": "6:06:24",
+              "stop_id": "NS27_B",
+              "stop_sequence": "11",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 234500,
+            "values": {
+              "trip_id": "NSL_SB_WD_203_3103",
+              "arrival_time": "6:08:10",
+              "departure_time": "6:10:00",
+              "stop_id": "NS28_A",
+              "stop_sequence": "12",
+              "stop_headsign": ""
+            }
+          }
+        ],
+        "reasons": [
+          "Yishun to Braddell skips intervening calls; service intent unverified."
+        ],
+        "pairs": [
+          {
+            "from": "NS13",
+            "to": "NS18",
+            "fromRow": 234489,
+            "toRow": 234490
+          }
+        ]
+      },
+      {
+        "trip": {
+          "row": 15474,
+          "values": {
+            "route_id": "NSL_NS13_NS28",
+            "service_id": "SERVICE_WE",
+            "trip_id": "NSL_SB_WE_203_4559",
+            "trip_headsign": "Marina South Pier",
+            "direction_id": "1",
+            "block_id": ""
+          }
+        },
+        "stopTimes": [
+          {
+            "row": 253400,
+            "values": {
+              "trip_id": "NSL_SB_WE_203_4559",
+              "arrival_time": "5:33:24",
+              "departure_time": "5:34:18",
+              "stop_id": "NS13_B",
+              "stop_sequence": "1",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 253401,
+            "values": {
+              "trip_id": "NSL_SB_WE_203_4559",
+              "arrival_time": "5:49:47",
+              "departure_time": "5:50:20",
+              "stop_id": "NS18_B",
+              "stop_sequence": "2",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 253402,
+            "values": {
+              "trip_id": "NSL_SB_WE_203_4559",
+              "arrival_time": "5:51:46",
+              "departure_time": "5:52:32",
+              "stop_id": "NS19_B",
+              "stop_sequence": "3",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 253403,
+            "values": {
+              "trip_id": "NSL_SB_WE_203_4559",
+              "arrival_time": "5:54:22",
+              "departure_time": "5:55:08",
+              "stop_id": "NS20_B",
+              "stop_sequence": "4",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 253404,
+            "values": {
+              "trip_id": "NSL_SB_WE_203_4559",
+              "arrival_time": "5:56:43",
+              "departure_time": "5:57:27",
+              "stop_id": "NS21_B",
+              "stop_sequence": "5",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 253405,
+            "values": {
+              "trip_id": "NSL_SB_WE_203_4559",
+              "arrival_time": "5:59:06",
+              "departure_time": "5:59:59",
+              "stop_id": "NS22_B",
+              "stop_sequence": "6",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 253406,
+            "values": {
+              "trip_id": "NSL_SB_WE_203_4559",
+              "arrival_time": "6:01:29",
+              "departure_time": "6:02:13",
+              "stop_id": "NS23_B",
+              "stop_sequence": "7",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 253407,
+            "values": {
+              "trip_id": "NSL_SB_WE_203_4559",
+              "arrival_time": "6:03:26",
+              "departure_time": "6:04:09",
+              "stop_id": "NS24_B",
+              "stop_sequence": "8",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 253408,
+            "values": {
+              "trip_id": "NSL_SB_WE_203_4559",
+              "arrival_time": "6:05:36",
+              "departure_time": "6:06:28",
+              "stop_id": "NS25_B",
+              "stop_sequence": "9",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 253409,
+            "values": {
+              "trip_id": "NSL_SB_WE_203_4559",
+              "arrival_time": "6:07:58",
+              "departure_time": "6:08:49",
+              "stop_id": "NS26_B",
+              "stop_sequence": "10",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 253410,
+            "values": {
+              "trip_id": "NSL_SB_WE_203_4559",
+              "arrival_time": "6:10:18",
+              "departure_time": "6:11:18",
+              "stop_id": "NS27_B",
+              "stop_sequence": "11",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 253411,
+            "values": {
+              "trip_id": "NSL_SB_WE_203_4559",
+              "arrival_time": "6:13:04",
+              "departure_time": "6:16:04",
+              "stop_id": "NS28_A",
+              "stop_sequence": "12",
+              "stop_headsign": ""
+            }
+          }
+        ],
+        "reasons": [
+          "Yishun to Braddell skips intervening calls; service intent unverified."
+        ],
+        "pairs": [
+          {
+            "from": "NS13",
+            "to": "NS18",
+            "fromRow": 253400,
+            "toRow": 253401
+          }
+        ]
+      },
+      {
+        "trip": {
+          "row": 15987,
+          "values": {
+            "route_id": "NSL_NS16_NS1",
+            "service_id": "SERVICE_PH",
+            "trip_id": "NSL_NB_PH_210_5334",
+            "trip_headsign": "Jurong East",
+            "direction_id": "0",
+            "block_id": ""
+          }
+        },
+        "stopTimes": [
+          {
+            "row": 270628,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "6:09:24",
+              "departure_time": "6:13:09",
+              "stop_id": "NS16_A",
+              "stop_sequence": "1",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270629,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "6:22:47",
+              "departure_time": "6:23:33",
+              "stop_id": "NS20_A",
+              "stop_sequence": "2",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270630,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "6:27:26",
+              "departure_time": "6:30:56",
+              "stop_id": "NS21_A",
+              "stop_sequence": "3",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270631,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "6:32:32",
+              "departure_time": "6:33:24",
+              "stop_id": "NS20_A",
+              "stop_sequence": "4",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270632,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "6:35:17",
+              "departure_time": "6:36:01",
+              "stop_id": "NS19_A",
+              "stop_sequence": "5",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270633,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "6:37:29",
+              "departure_time": "6:38:13",
+              "stop_id": "NS18_A",
+              "stop_sequence": "6",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270634,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "6:39:51",
+              "departure_time": "6:40:38",
+              "stop_id": "NS17_A",
+              "stop_sequence": "7",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270635,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "6:43:22",
+              "departure_time": "6:44:06",
+              "stop_id": "NS16_A",
+              "stop_sequence": "8",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270636,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "6:45:59",
+              "departure_time": "6:46:33",
+              "stop_id": "NS15_A",
+              "stop_sequence": "9",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270637,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "6:51:19",
+              "departure_time": "6:52:01",
+              "stop_id": "NS14_A",
+              "stop_sequence": "10",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270638,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "6:53:51",
+              "departure_time": "6:54:41",
+              "stop_id": "NS13_A",
+              "stop_sequence": "11",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270639,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "6:56:42",
+              "departure_time": "6:57:18",
+              "stop_id": "NS12_A",
+              "stop_sequence": "12",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270640,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "6:59:13",
+              "departure_time": "6:59:53",
+              "stop_id": "NS11_A",
+              "stop_sequence": "13",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270641,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "7:02:28",
+              "departure_time": "7:03:12",
+              "stop_id": "NS10_A",
+              "stop_sequence": "14",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270642,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "7:05:18",
+              "departure_time": "7:06:00",
+              "stop_id": "NS9_A",
+              "stop_sequence": "15",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270643,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "7:07:55",
+              "departure_time": "7:08:32",
+              "stop_id": "NS8_A",
+              "stop_sequence": "16",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270644,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "7:10:33",
+              "departure_time": "7:11:15",
+              "stop_id": "NS7_A",
+              "stop_sequence": "17",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270645,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "7:15:28",
+              "departure_time": "7:16:06",
+              "stop_id": "NS5_A",
+              "stop_sequence": "18",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270646,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "7:17:57",
+              "departure_time": "7:18:37",
+              "stop_id": "NS4_A",
+              "stop_sequence": "19",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270647,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "7:22:04",
+              "departure_time": "7:22:50",
+              "stop_id": "NS3_A",
+              "stop_sequence": "20",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270648,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "7:24:31",
+              "departure_time": "7:25:31",
+              "stop_id": "NS2_A",
+              "stop_sequence": "21",
+              "stop_headsign": ""
+            }
+          },
+          {
+            "row": 270649,
+            "values": {
+              "trip_id": "NSL_NB_PH_210_5334",
+              "arrival_time": "7:27:48",
+              "departure_time": "7:29:55",
+              "stop_id": "NS1_A",
+              "stop_sequence": "22",
+              "stop_headsign": ""
+            }
+          }
+        ],
+        "reasons": [
+          "Ang Mo Kio to Novena occurs in a northbound-labelled trip; direction and calls conflict."
+        ],
+        "pairs": [
+          {
+            "from": "NS16",
+            "to": "NS20",
+            "fromRow": 270628,
+            "toRow": 270629
+          }
+        ]
+      }
+    ],
+    "invalid": []
+  }
+}
