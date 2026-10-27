@@ -1,0 +1,40 @@
+.impact-slot { min-height:0; flex:1; display:flex; }
+.impact-slot[hidden] { display:none; }
+.impact-panel { width:100%; min-width:0; overflow-y:auto; overflow-x:hidden; font-size:12px; }
+.impact-heading { padding:18px; border-bottom:1px solid var(--line); }
+.impact-heading p,.impact-caption { color:var(--muted); line-height:1.65; font-size:12px; }
+.impact-heading p { margin-top:5px; }
+.impact-body,.impact-report { display:flex; flex-direction:column; gap:16px; min-width:0; }
+.impact-body { padding:18px; }
+.impact-mode-note { color:var(--coral); line-height:1.65; padding-left:10px; border-left:2px solid var(--coral); }
+.impact-settings { border:1px solid var(--line); border-radius:6px; padding:12px; min-width:0; display:flex; flex-direction:column; gap:12px; }
+.impact-settings legend { padding:0 5px; color:var(--text); font-weight:600; }
+.impact-settings p { color:var(--muted); font-size:12px; line-height:1.7; }
+.impact-panel label { display:flex; flex-direction:column; gap:6px; color:var(--muted); font-size:12px; }
+.impact-panel input,.impact-panel select,.impact-panel button { min-height:44px; font-size:12px; }
+.impact-inputs { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.impact-context,.impact-result-label { font-size:12px; line-height:1.8; overflow-wrap:anywhere; }
+.impact-result-label { color:var(--teal); border-bottom:1px solid var(--line); padding-bottom:12px; }
+.impact-empty { color:var(--muted); padding:14px; border:1px dashed #3d535e; line-height:1.7; border-radius:6px; }
+.impact-error { border:1px solid #714e49; color:#ffbaac; padding:10px; line-height:1.7; border-radius:5px; }
+.impact-overall { margin:0; }
+.impact-overall>div { display:flex; justify-content:space-between; gap:16px; padding:9px 0; border-bottom:1px solid var(--line); }
+.impact-overall dt { color:var(--muted); }.impact-overall dd { margin:0; font-variant-numeric:tabular-nums; text-align:right; }
+.impact-overall .impact-highlight { font-size:14px; }.impact-highlight dd { color:var(--teal); }
+.impact-access { background:#172e35; padding:14px; border-radius:6px; display:flex; flex-direction:column; gap:10px; }
+.impact-access>div { display:flex; justify-content:space-between; gap:12px; }.impact-access strong { display:block; font-size:19px; font-weight:500; font-variant-numeric:tabular-nums; }
+.impact-groups,.impact-profiles { padding-top:16px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:12px; min-width:0; }
+.impact-table-scroll { width:100%; overflow-x:auto; border:1px solid var(--line); border-radius:5px; }
+.impact-table-scroll table { width:100%; border-collapse:collapse; font-size:12px; }
+.impact-table-scroll caption { color:var(--muted); text-align:left; padding:9px; font-size:11px; }
+.impact-table-scroll th,.impact-table-scroll td { padding:9px 6px; text-align:right; border-top:1px solid var(--line); font-variant-numeric:tabular-nums; }
+.impact-table-scroll th:first-child { text-align:left; }.impact-table-scroll th { font-weight:500; }.impact-table-scroll thead th { color:var(--muted); font-size:11px; }
+.impact-side { padding:10px; background:#172e35; color:var(--teal); border-radius:5px; }
+.impact-diagnostics,.impact-profiles details { overflow-wrap:anywhere; font-size:12px; }
+.impact-diagnostics summary,.impact-profiles summary { min-height:44px; display:flex; align-items:center; cursor:pointer; }
+.impact-diagnostics p { color:var(--muted); line-height:1.8; margin:10px 0; }.impact-diagnostics code { font-size:11px; overflow-wrap:anywhere; }.impact-diagnostics a { text-decoration:underline; color:var(--teal); }
+.inspector-tabs button { min-height:44px; font-size:11px; }
+@media(min-width:1101px) { .inspecting-impact .workspace-grid { grid-template-columns:280px minmax(310px,1fr) 390px; } }
+@media(min-width:1600px) { .inspecting-impact .workspace-grid { grid-template-columns:302px minmax(400px,1fr) 430px; } }
+@media(max-width:1100px) { .impact-slot { display:block; }.impact-panel { overflow:visible; }.impact-body { max-width:800px; margin:auto; } }
+@media(max-width:700px) { .inspecting-impact .results-panel { order:1; }.inspecting-impact .editor-panel { order:2; }.impact-body { padding:14px; } }

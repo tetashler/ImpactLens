@@ -23,6 +23,7 @@ export function parseCitizenViewPair(value:unknown):CitizenViewPair {
   const candidate=value as Record<CitizenView,unknown>;
   const baseline=parseCitizenSimulation(candidate.baseline), scenario=parseCitizenSimulation(candidate.scenario);
   if (!same(baseline.metadata.population,scenario.metadata.population)) throw new Error('Citizen view population mismatch');
+  if (!same(baseline.metadata,scenario.metadata)) throw new Error('Citizen view scenario context mismatch');
   const identities=new Map(baseline.citizens.map(c=>[c.agentId,c]));
   if (identities.size!==scenario.citizens.length || !scenario.citizens.every(c=>same(identities.get(c.agentId),c))) throw new Error('Citizen view identity mismatch');
   for (const citizen of baseline.citizens) {

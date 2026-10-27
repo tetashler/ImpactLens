@@ -15,7 +15,7 @@ let feed: Feed | undefined;
 function getFeed(): Feed {
   return feed ??= loadFeed(join(process.cwd(), 'data/transport/mrt-network'));
 }
-function getBaseline(date: unknown): Graph {
+export function getBaseline(date: unknown): Graph {
   if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new MapInputError('Service date must be YYYY-MM-DD');
   const parsed = new Date(`${date}T00:00:00Z`);
   if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) throw new MapInputError('Invalid service date');

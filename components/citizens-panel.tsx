@@ -35,7 +35,7 @@ function visualClock(seconds: number) {
   return [Math.floor(whole / 3600), Math.floor(whole / 60) % 60, whole % 60].map(n => String(n).padStart(2, '0')).join(':');
 }
 
-function Profile({ profile }: { profile: CitizenProfileResponse }) {
+export function CitizenProfile({ profile }: { profile: CitizenProfileResponse }) {
   const geminiNoteId = useId();
   const { citizen, metadata, journey, animation, activity, sources, assumptions } = profile;
   const source = sources.find(item => item.id === citizen.sourceId);
@@ -138,7 +138,7 @@ export default function CitizensPanel(props: CitizensPanelProps) {
       <dl className="citizens-stats"><div><dt>Sample drawn</dt><dd>{stats.visible}</dd></div><div><dt>FPS</dt><dd>{stats.fps === null ? '—' : number(stats.fps)}</dd></div><div><dt>Draw calls</dt><dd>{stats.drawCalls}</dd></div></dl>
       <p className="citizens-caption">{stats.status} · Visible sample is not weighted population.</p>
       <div className="citizens-selection"><label htmlFor={`${id}-search`}>Find a citizen</label><input id={`${id}-search`} type="search" placeholder="ID, age category or area" value={search} onChange={event => setSearch(event.target.value)} /><label htmlFor={`${id}-select`}>Sample citizens ({filtered.length})</label><select id={`${id}-select`} size={Math.min(4, Math.max(2, filtered.length))} value={filtered.some(citizen => citizen.agentId === selectedId) ? selectedId! : ''} onChange={event => onSelect(event.target.value)}><option disabled value="">{filtered.length ? 'Choose a synthetic citizen' : 'No matching citizens'}</option>{filtered.map(citizen => <option key={citizen.agentId} value={citizen.agentId} title={citizen.agentId}>#{shortId(citizen.agentId)} · {ageLabel(citizen.demographic.ageGroup)} · {citizen.demographic.subzoneName}</option>)}</select></div>
-      {selected ? <Profile profile={selected} /> : <p className="citizens-empty">Select a citizen in the sample or on the map to inspect their supplied profile.</p>}
+      {selected ? <CitizenProfile profile={selected} /> : <p className="citizens-empty">Select a citizen in the sample or on the map to inspect their supplied profile.</p>}
       <details className="citizens-details citizens-import"><summary>Load simulation data</summary><p>Import JSON containing a <code>{'{baseline, scenario}'}</code> pair of version 1 citizen simulation payloads. Phase 4C can supply these files; no endpoint is required.</p><label className="citizens-file">Choose payload pair<input type="file" accept="application/json,.json" onChange={importFile} /></label><button type="button" className="citizens-button" onClick={() => { props.onRestoreFixture(); setImportMessage('Invented illustrative fixture restored.'); setImportError(false); }}>Restore illustrative fixture</button>{importMessage && <p className={importError ? 'citizens-error' : 'citizens-caption'} role={importError ? 'alert' : 'status'}>{importMessage}</p>}</details>
     </div>
   </details>;
