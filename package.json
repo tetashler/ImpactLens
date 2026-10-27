@@ -2,11 +2,36 @@
   "name": "impactlens-pre-hackathon-research",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24.0.0" },
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1",
+    "prepare:map": "node scripts/prepare-map-data.ts",
+    "prepare:web": "node scripts/prepare-web-assets.ts",
+    "predev": "node scripts/prepare-web-assets.ts",
+    "prebuild": "node scripts/prepare-web-assets.ts",
+    "pretest": "node scripts/prepare-web-assets.ts",
     "test": "node --test prototype/mrt/tests/*.test.ts",
     "mrt:validate": "node prototype/mrt/cli.ts",
     "mrt:report": "node prototype/mrt/cli.ts --write",
     "mrt:simulate": "node prototype/mrt/simulate-cli.ts"
+  },
+  "dependencies": {
+    "maplibre-gl": "^6.16.0",
+    "next": "^16.4.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/geojson": "^7946.0.16",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2"
   }
 }

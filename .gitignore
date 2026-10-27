@@ -25,3 +25,8 @@ Desktop.ini
 
 # Reproducible MRT output; keep raw datasets and documentation visible
 /data/derived/mrt/
+/public/geography/
+/public/vendor/
+/.playwright-mcp/
+/test-results/
+/playwright-report/

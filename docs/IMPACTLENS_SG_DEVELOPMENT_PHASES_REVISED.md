@@ -1,10 +1,10 @@
 # ImpactLens SG — Development Phases & Hackathon Rebuild Roadmap
 
-**Status:** Pre-hackathon prototype; Phase 1 and Phase 2 engine acceptance verified; Phase 3 map adapter next  
+**Status:** Pre-hackathon prototype; Phases 1–3 local vertical slice validated; Phase 4 synthetic-population groundwork next  
 **Last updated:** 27 October 2026  
 **Team:** 3 (2 AI/data science, 1 mass communications)  
 **Hackathon build window:** 24 hours  
-**Development:** Current prototype: Node 24 TypeScript CLI; planned local Next.js application (`npm run dev`) in Phase 3; no Vercel required  
+**Development:** Local Next.js App Router application (`npm run dev`) plus Node 24 TypeScript CLI; no Vercel required  
 **AI:** Gemini API (budget approximately US$200)  
 **Main judging proposition:** Quantify how proposed interventions affect **different demographic groups**.
 
@@ -27,7 +27,7 @@ ImpactLens SG is an evidence-informed, interactive Singapore social-impact sandb
 
 1. **Baseline MRT graph** — verify routing through existing train stations (**prototype validated**).
 2. **New MRT-line intervention** — add proposed stations/links and compare journeys (**flagship; engine prototype validated**).
-3. **Miniature Singapore map** — draw the line and visualize the changed network.
+3. **Miniature Singapore map** — draw the line and visualize the changed network (**local prototype validated**).
 4. **Synthetic citizens** — demographic profiles, daily activity, and blocky movement.
 5. **Impact dashboard + Gemini** — show who benefits, and enable grounded citizen conversations.
 6. **New eldercare / active-ageing centre intervention** — place a facility, model travel-time coverage and capacity, and reuse the map, agents, and dashboard (**second committed demonstration scenario**, not merely future roadmap).
@@ -113,22 +113,34 @@ Each phase has a narrow deliverable and an exit check. Stop expanding scope when
 
 ### Phase 3 — Interactive Singapore Map and Intervention Editor
 
-**Status: Planned**
+**Status: Complete for the scoped local prototype; geography/model limitations documented**
 
 **Goal:** Make Phase 2 understandable and demonstrable in a local browser.
 
 **Tasks**
 
-- [ ] Prototype MapLibre GL JS with geographically grounded Singapore coordinates and suitable tile access.
-- [ ] Display existing MRT stations/lines from validated sources.
-- [ ] Add controls to place proposed stations and draw a connecting MRT line.
-- [ ] Validate geometry, provide edit/undo/reset, and distinguish existing vs hypothetical infrastructure.
-- [ ] Wire the editor to the Phase 2 simulation and display before/after routes.
-- [ ] Handle map loading failures and provide a clear local demo fallback.
+- [x] Prototype MapLibre GL JS with geographically grounded Singapore coordinates and suitable tile access.
+- [x] Display existing MRT stations and accepted logical connections from the baseline; label links schematic because verified rail alignment geometry is absent.
+- [x] Add controls to place proposed stations and draw a connecting MRT line.
+- [x] Validate geometry, provide edit/undo/reset, and distinguish existing vs hypothetical infrastructure.
+- [x] Wire the editor to the Phase 2 simulation and display before/after routes.
+- [x] Handle map loading failures and provide a clear local demo fallback.
 
 **Deliverable:** Local Next.js page (`npm run dev`) where a user draws a proposed MRT line and sees real calculated journey changes.
 
 **Exit check:** End-to-end demo works without editing source files or manually altering result numbers.
+
+**Completed functionality (27 October 2026):** Next.js 16 App Router, TypeScript, Tailwind and MapLibre 6 run locally. A responsive editor/map/results workspace supports station selection, hypothetical point placement, marker dragging/numeric coordinate edits, station ordering/removal, segment removal/restoration, undo/reset/example loading, explicit running/dwell/walk/wait assumptions, dated OD selection and compact before/after results. Node API routes reuse the existing quarantined baseline and `simulateIntervention`; no routing calculation was duplicated or changed. Stale results are cleared and outdated requests cannot replace newer drafts.
+
+**Geographic inputs:** All 332 supplied subzone polygons and 13,436 HDB footprint geometries are preserved in derived local assets (six-decimal rounding; no raw-data modification). Heights are uniformly illustrative 12 m because the source contains no measured heights. Country view loads local geography; the 23.53 MB building layer loads separately at neighbourhood zoom. Online OSM street tiles are optional, attributed and subject to OSM policy. Default core operation needs no tile account/API key or external map requests.
+
+**Acceptance evidence:** `npm.cmd run dev` starts at `http://127.0.0.1:3000`; actual Chromium/Playwright MCP interaction verified reset → existing anchor → two map-placed stations → existing anchor → configure assumptions → run → edit/drag → rerun. A custom NS4→NE16 proposal returned 20.50 minutes, then 22.50 after its explicit running time changed, against a 62.77-minute baseline. Undo/reorder/removal, disconnected-run blocking, negative-cost errors and baseline-unavailable new-station outcomes were exercised. Real HDB extrusions rendered; 390×844 layout had no horizontal overflow. Deliberate street-tile failure left map/simulation usable; deliberate worker failure produced a geographic fallback and successful 20.00-minute example.
+
+**Validation:** `npm.cmd run mrt:validate`, `npm.cmd run mrt:simulate`, `npm.cmd test` and `npm.cmd run build` pass. There are 43 passing automated tests (all original 37 plus five adapter/API tests and one full geodata integrity test); production build includes TypeScript checking. Independent read-only review reran 43 tests and type checking without important findings. Raw GTFS and geography hashes remain unchanged; core graph/routing/scenario/simulation files are unchanged in this phase. No commits or pushes were performed for Phase 3.
+
+**Remaining issues / incomplete refinements:** No verified rail alignment, measured building heights, street/terrain completeness, engineering assessment or real-time/departure-clock model. GTFS timing provenance and supplied geodata licensing provenance remain unresolved. Footprints are not spatially tiled, so first neighbourhood load is larger than ideal. SVG fallback retains geographic editing and numeric results but omits full 3D/pan/zoom, numbered proposed markers and calculated route overlays. Browser flow was genuinely tested through MCP; a committed automated browser regression suite is not yet present. These do not establish demographic or demand-weighted predictions.
+
+**Handoff:** See `docs/INTERACTIVE_MAP_IMPLEMENTATION.md`, `docs/MAP_GEODATA_NOTES.md` and root README for contracts, attribution/policy, rebuild commands and exact verification. Begin Phase 4 by validating dated demographic units/distributions and defining a seeded synthetic-population model. Animate schematic calculated paths honestly until reliable transport geometry is acquired. Preserve Phase 5 Gemini and Phase 6 eldercare commitments; neither is implemented here.
 
 ### Phase 4 — Synthetic Population and Animated Citizens
 
@@ -263,7 +275,7 @@ This is a **target schedule**, not a commitment; adjust based on prototype findi
 | 0 | `docs/DATA_VALIDATION_REPORT.md`, `docs/DATA_SOURCES.md` |
 | 1 | `docs/MRT_GRAPH_VALIDATION.md` |
 | 2 | `docs/MRT_HYPOTHETICAL_LINE_SIMULATION.md` (implemented prototype spec, results and tests); optional later split into `docs/MRT_INTERVENTION_SPEC.md` and `docs/MRT_SIMULATION_TESTS.md` |
-| 3 | `docs/MAP_UI_SPEC.md` |
+| 3 | `docs/INTERACTIVE_MAP_IMPLEMENTATION.md`, `docs/MAP_GEODATA_NOTES.md`; optional later `docs/MAP_UI_SPEC.md` |
 | 4 | `docs/SYNTHETIC_POPULATION.md`, `docs/AGENT_ANIMATION.md` |
 | 5 | `docs/IMPACT_METRICS.md`, `docs/GEMINI_STRUCTURED_OUTPUTS.md` |
 | 6 | `docs/ELDERCARE_SIMULATION.md` |
@@ -271,6 +283,6 @@ This is a **target schedule**, not a commitment; adjust based on prototype findi
 
 ## 8. Immediate Next Action
 
-**Connect the verified Phase 2 engine to a small Phase 3 interactive map/editor.** First implement a local Next.js/Node adapter and explicit station/segment editing with before/after routes. The current repository has no `npm run dev` command or frontend yet. Keep the baseline immutable, preserve quarantine, require declared travel/transfer/wait assumptions, and handle invalid proposals visibly. Do not present static travel-time changes as validated real-world savings.
+**Begin Phase 4 with demographic-data validation and a seeded population specification.** The local map-to-simulation workflow is verified and can display calculated route sequences. First reconcile source years, geographic units and demographic totals with the mapped subzones; define home/destination/weight assumptions before generating citizens. Start with a small representative visual population and keep totals consistent with the validated distributions.
 
-Continue provenance and timing calibration in parallel with the map handoff, and validate the downloaded OD/demographic/facility inputs before using them. Preserve the agreed MRT flagship and eldercare / active-ageing centre second simulation; do not begin LLM calculations or fabricate demographic impact metrics.
+Do not treat animated movement as observed passenger behaviour, claim real rail alignment for schematic links, or ask Gemini to calculate impacts. Continue provenance and timing calibration, consider spatial tiling of HDB geometry, and add repeatable browser regression coverage as the UI grows. Keep the planned Phase 5 dashboard/Gemini and Phase 6 eldercare / active-ageing centre simulation intact.
