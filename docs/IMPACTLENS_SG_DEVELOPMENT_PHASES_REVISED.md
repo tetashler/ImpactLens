@@ -1,6 +1,6 @@
 # ImpactLens SG — Development Phases & Hackathon Rebuild Roadmap
 
-**Status:** Pre-hackathon prototype; Phase 4B + 4C integrated; Phase 5 dashboard/provider-independent AI core validated. OpenRouter live smoke and wider sensitivity/amenity extensions pending. Full Phase 4 geographic-trajectory exit criterion remains partially met.
+**Status:** Pre-hackathon prototype; Phase 5 dashboard/AI and Phase 6A/6B eldercare backend integrated and validated (205 tests). Phase 6C placement/results UI is pending. OpenRouter live authentication and full Phase 4 geographic trajectories remain unresolved.
 **Last updated:** 27 October 2026  
 **Team:** 3 (2 AI/data science, 1 mass communications)  
 **Hackathon build window:** 24 hours  
@@ -224,25 +224,34 @@ Each phase has a narrow deliverable and an exit check. Stop expanding scope when
 
 **Final production integration check:** Both providers additionally passed the actual browser → Node AI routes → adapter → client-schema path using mocked upstream HTTP, switching server process configuration without application edits. Layout/explanation/chat succeeded on isolated local production servers with dummy keys; calculated chat retained 62.77→20/21-minute facts and acknowledged unsupported personal details. This caught and fixed request-only fields leaking into the strict chat identity envelope and Next production's internal localhost normalisation. Regression tests now cover server-to-client round trips for all operations and both providers, plus valid browser Host/Origin handling. Temporary fixture servers were cleaned up. This is not a live OpenRouter claim.
 
-**Review and limits:** Independent review found and fixed missing explanation units, a pending-layout reset race and oversized retained conversation history, with regression evidence. Bounded template answers are intentional, not a general-purpose free-form persona. Raw GTFS timing calibration, Census rounding and the 3,050 national discrepancy, source-byte identity sensitivity, assumed demand, absent access/egress/crowding and the Phase 4 geographic-trajectory limitation remain. No long-term causal benefits, amenity model, Gemini-generated calculations or eldercare engine were added. See `docs/PHASE5_DASHBOARD_AI_IMPLEMENTATION.md` for modules, protocols, exact constraints and rebuild steps. Ready for separately authorised Git integration of the implemented core; current branch remains master at a3b7d21 with no commit/push.
+**Review and limits:** Independent review found and fixed missing explanation units, a pending-layout reset race and oversized retained conversation history, with regression evidence. Bounded template answers are intentional, not a general-purpose free-form persona. Raw GTFS timing calibration, Census rounding and the 3,050 national discrepancy, source-byte identity sensitivity, assumed demand, absent access/egress/crowding and the Phase 4 geographic-trajectory limitation remain. No long-term causal benefits, amenity model, Gemini-generated calculations or eldercare engine were added. See `docs/PHASE5_DASHBOARD_AI_IMPLEMENTATION.md` for modules, protocols, exact constraints and rebuild steps. Integrated locally in Phase 5 checkpoint `5a5d56e` and merge `6d37175`. Combined validation: **205 tests passed, zero failed**, application/explicit module TypeScript and production build passed. Production Playwright checks retained MRT editing, dashboard/group/profile flows, no-key fallback, both mocked providers, guarded citizen chat and illustrative animation at desktop/narrow widths. No paid requests were repeated; OpenRouter live authentication remains pending. See `docs/PHASE5_PHASE6_BACKEND_INTEGRATION.md`. Nothing was pushed.
 
 ### Phase 6 — Second Intervention: New Eldercare / Active-Ageing Centre
 
-**Status: Planned — confirmed second simulation; implementation after the flagship MRT vertical slice**
+**Status: Phase 6A/6B backend complete for limited-area prototype scope; Phase 6C UI pending; full Phase 6 not complete**
 
 **Goal:** Deliver the second agreed simulation: users place a hypothetical eldercare or active-ageing centre, then evaluate how access to services changes for older residents. Reuse the map, population model and dashboard.
 
 **Tasks**
 
-- [ ] Import verified eldercare facility locations and relevant eligibility/capacity assumptions.
+- [x] Phase 6A: Validate 133 historical MOH locations, including four operator-corroborated AAC classifications and 129 unknown classifications; preserve unknown opening/capacity and age-only eligibility assumptions. Checkpoint `3b61efc`.
+- [x] Phase 6A: Deterministic WGS84 straight-line accessibility, threshold comparisons and weighted elderly age/sex/geographic metrics, with explicit unlocated/unavailable statuses. Two provenance-labelled Bukit Merah proxies provide limited-area illustration, not nationwide coverage.
+- [x] Phase 6B: `GET /api/eldercare/facilities` and `POST /api/eldercare/simulate`, browser-safe validators, bounded inputs, calculation-sensitive identity and local-input caching. Checkpoint `7c3dcde`.
+- [x] Validate actual HTTP/CLI parity, coordinate/threshold identity changes, weighted denominators and controlled 400/413/415 responses. Default preset: 44,520 represented older residents, 6,230 located/comparable, 38,290 unlocated (unknown, not unaffected); capacity and service allocation are unmodelled.
+- [x] Merge with Phase 5 without conflicts (`6d37175`); **205 combined tests passed, zero failed**, application/explicit module TypeScript and production build passed. All six MRT/population/eldercare CLI checks passed. Raw bytes and formulas unchanged.
+- [ ] Phase 6C: Add intervention selector restricted to the currently supported AAC type.
 - [ ] Let a user place a hypothetical centre and choose whether it is residential eldercare, day care, or an active-ageing/community programme; model only supported service types and relevant capacity assumptions.
-- [ ] Recompute time/distance to suitable facilities and access within a threshold.
-- [ ] Report improvement by elderly subgroups and note capacity constraints.
+- [x] Backend: Recompute straight-line distance to compatible facilities and access within a threshold.
+- [ ] Phase 6C: Place/drag a hypothetical AAC, render before/after distance/threshold results, elderly subgroup comparisons, unlocated coverage and unknown capacity.
+- [ ] Phase 6C: Invalidate pending/current results on every calculation input edit and validate response identity before display.
+- [ ] Phase 6C: Complete real desktop/mobile browser placement-to-results demonstration; HTTP checks are not frontend completion.
 - [ ] Reuse citizen inspection, animations, dashboard components and Gemini explanation pipeline.
 
 **Deliverable:** One functioning eldercare or active-ageing centre scenario with defensible accessibility metrics and a clear before/after comparison.
 
 **Exit check:** Results are calculated, not generated as arbitrary forecast percentages. Actual service uptake or loneliness reduction is not asserted without a supported model.
+
+**Integration assessment (28 October 2026):** Backend is ready for Phase 6C. Full Phase 6 is pending its UI and browser exit check. The four-AAC catalogue is limited, with historical/unknown opening and capacity data, two assumed geographic proxies and a large unlocated population. Do not count unknown residents as unaffected. Phase 4's missing individual geographic trajectories remain unresolved. See `docs/ELDERCARE_ACCESSIBILITY_ENGINE.md`, `docs/ELDERCARE_API_INTEGRATION.md` and `docs/PHASE5_PHASE6_BACKEND_INTEGRATION.md`.
 
 ### Phase 7 — Demo Reliability, Documentation and Pitch
 
@@ -322,13 +331,13 @@ This is a **target schedule**, not a commitment; adjust based on prototype findi
 | 3 | `docs/INTERACTIVE_MAP_IMPLEMENTATION.md`, `docs/MAP_GEODATA_NOTES.md`; optional later `docs/MAP_UI_SPEC.md` |
 | 4 | `docs/SYNTHETIC_POPULATION_IMPLEMENTATION.md` (4A); `docs/CITIZEN_SIMULATION_CONTRACT.md` (interface); `docs/ANIMATED_CITIZENS_IMPLEMENTATION.md` (4B); `docs/DEMOGRAPHIC_IMPACT_SIMULATION.md` (4C); `docs/PHASE4_FULL_INTEGRATION.md` (browser/API integration) |
 | 5 | `docs/PHASE5_DASHBOARD_AI_IMPLEMENTATION.md` (implemented dashboard/provider/schema/chat guide); optional future metric/sensitivity deep dives |
-| 6 | `docs/ELDERCARE_SIMULATION.md` |
+| 6 | `docs/ELDERCARE_ACCESSIBILITY_ENGINE.md` (6A), `docs/ELDERCARE_API_INTEGRATION.md` (6B), `docs/PHASE5_PHASE6_BACKEND_INTEGRATION.md` (integration); Phase 6C browser guide pending |
 | 7 | `docs/HACKATHON_REBUILD_GUIDE.md`, `docs/PITCH_SCRIPT.md` |
 
 ## 8. Immediate Next Action
 
-**Configure and review the optional AI handoff.** Terminal 1's Phase 5 core is implemented and ready for Git review; no Git mutation was performed. The owner can set AI_PROVIDER and the selected provider's explicit model/key privately, restart and reload. Reproduce a tightly bounded live conversation if desired; OpenRouter still needs its credential/live smoke. Preserve no-key operation, source bytes/weights and current run identity. The roadmap still does not claim full Phase 4 geographic visual/numeric agreement.
+**Next development cycle: Phase 6C - interactive AAC placement and accessibility visualisation.** The integrated backend checkpoint is ready; this integration task did not begin its UI. Preserve both intervention commitments: hypothetical MRT and hypothetical AAC. OpenRouter live authentication is optional follow-up, not a blocker for the deterministic application.
 
-**Parallel ownership:** Terminal 1 owns this dashboard/AI frontend and central roadmap. Terminal 2 independently owns Phase 6A facility-data provenance/eligibility/capacity and accessibility calculations; its worktree, files and status were not modified or asserted here. Terminal 3 coordinates the facility/result interface, shared configuration and separately authorised Git integration. Agree the facility-access contract before UI wiring. Preserve MRT and eldercare/active-ageing commitments; travel access alone does not establish uptake, health or loneliness outcomes. Phase 6 was not begun by Terminal 1.
+**Parallel ownership:** Terminal 1 can own the supported intervention selector, AAC placement/dragging and user-facing coverage/results using browser-safe validators and existing HTTP APIs. Terminal 2 can independently strengthen facility/proxy provenance and accessibility edge-case tests without editing the dashboard. Terminal 3 owns contract/lifecycle coordination, regression review and future Git integration. Agree interface changes before parallel edits to shared files; keep both worktrees available and synchronised at clean checkpoints.
 
-Do not treat animated movement as observed passenger behaviour, claim real rail alignment for schematic links, or ask either AI provider to calculate impacts. Continue provenance/timing calibration, consider spatial tiling of HDB geometry and add committed browser regression coverage. Preserve the planned Phase 6 eldercare / active-ageing centre simulation.
+Keep source-byte identity sensitivity, Census rounding/national discrepancy, assumed demand, unknown AAC classifications/opening/capacity and the large unlocated population visible. Do not treat animated movement as observed behaviour, schematic links as rail alignments, or straight-line proximity as service uptake. AI selects grounded evidence rather than calculating impacts. Full Phase 4 trajectories and full Phase 6 browser exit checks remain pending.
