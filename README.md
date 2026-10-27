@@ -2,7 +2,7 @@
 
 Pre-hackathon research prototype for a Singapore social-impact sandbox. The current repository contains a local **Next.js + TypeScript + MapLibre** workspace backed by the validated MRT/LRT routing and hypothetical-line engine. Requires **Node.js 24+**.
 
-Design a hypothetical line on Singapore's map, set explicit travel assumptions and compare calculated journeys. MRT is the flagship demonstration; eldercare / active-ageing centres remain the second committed scenario. Synthetic citizens, demographic comparisons and Gemini remain future phases.
+Design a hypothetical line on Singapore's map, set explicit travel assumptions and compare calculated journeys. Click **Citizens** on the map to explore 180 illustrative animated blocky citizens with profiles and baseline/scenario playback. The deterministic demographic foundation is implemented; population-weighted MRT integration and Gemini remain pending. Eldercare / active-ageing centres remain the second committed scenario.
 
 ## Run locally
 
@@ -57,6 +57,7 @@ This writes `docs/MRT_GRAPH_VALIDATION.md` and files under `data/derived/mrt/`. 
 - [`prototype/mrt/`](prototype/mrt/): GTFS parsing, graph construction, routing, validation and scenario engine.
 - [`components/`](components/), [`lib/`](lib/), [`app/`](app/): interactive map/editor, compact adapters and local Node API routes.
 - [Interactive map](docs/INTERACTIVE_MAP_IMPLEMENTATION.md): architecture, actual browser checks, limitations and rebuild steps.
+- [Animated citizens](docs/ANIMATED_CITIZENS_IMPLEMENTATION.md): shared-context Three.js rendering, illustrative versus calculated data, profiles, measured performance and Phase 4C handoff.
 - [`prototype/mrt/examples/illustrative-line.ts`](prototype/mrt/examples/illustrative-line.ts): editable hypothetical-line example.
 - [Baseline validation](docs/MRT_GRAPH_VALIDATION.md): graph evidence, quarantine policy and routing assumptions.
 - [Hypothetical-line simulation](docs/MRT_HYPOTHETICAL_LINE_SIMULATION.md): proposal format, comparison outputs and limitations.

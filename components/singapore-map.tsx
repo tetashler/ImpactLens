@@ -6,8 +6,10 @@ import type { GeoJSONSource, Map as LibreMap, StyleSpecification } from 'maplibr
 import type { FeatureCollection, Feature, Geometry } from 'geojson';
 import type { NetworkCatalog, CompactComparison } from '../lib/map-contract';
 import type { EditorDraft } from '../lib/editor';
+import { CitizenLayer, type CitizenLayerOptions } from '../lib/citizens/layer';
 
 interface Props {
+  citizens: CitizenLayerOptions & { focusKey:number; networkView:'editor'|'baseline'|'scenario'; onSelect:(id:string)=>void; onFocus:()=>void; onPlayPause:()=>void };
   catalog: NetworkCatalog; draft: EditorDraft; mode: 'anchor' | 'place';
   disabledSegments: number[]; comparison: CompactComparison | null;
   onStation: (id: string) => void; onPlace: (point: { lat: number; lon: number }) => void;
@@ -23,6 +25,7 @@ function position(stop: EditorDraft['stations'][number], catalog: NetworkCatalog
 
 export default function SingaporeMap(props: Props) {
   const container = useRef<HTMLDivElement>(null), mapRef = useRef<LibreMap | null>(null), latest = useRef(props);
+  const citizensRef = useRef<CitizenLayer | null>(null);
   latest.current = props;
   const [ready, setReady] = useState(false), [fatal, setFatal] = useState(false);
   const [streets, setStreets] = useState(false), [buildings, setBuildings] = useState(true), [notice, setNotice] = useState('Loading local geography…');
@@ -74,7 +77,12 @@ export default function SingaporeMap(props: Props) {
       map.on('load', () => {
         clearTimeout(loadTimer);
         map.fitBounds([[103.62, 1.235], [104.03, 1.465]], { padding: { top: 90, bottom: 125, left: 30, right: 30 }, duration: 0 });
-        setReady(true); setNotice('Local geography ready'); setNeighbourhood(map.getZoom() >= 11.5);
+        const citizens = new CitizenLayer(latest.current.citizens);
+        try { map.addLayer(citizens); citizensRef.current=citizens; }
+        catch { citizens.onRemove(); latest.current.citizens.onStats({visible:0,fps:null,drawCalls:0,elapsedSeconds:0,status:'3D citizens unavailable; profiles remain usable'}); }
+        map.addSource('citizen-path',{type:'geojson',data:empty});
+        map.addLayer({id:'citizen-path',type:'line',source:'citizen-path',paint:{'line-color':'#f9e4a4','line-width':2,'line-dasharray':[2,2]}});
+        setReady(true); setNotice(citizensRef.current?'Local geography ready':'Citizen rendering unavailable. MRT editing and profiles remain usable.'); setNeighbourhood(map.getZoom() >= 11.5);
       });
       map.on('zoomend', () => setNeighbourhood(map.getZoom() >= 11.5));
       map.on('sourcedata', e => { if (e.sourceId === 'hdb' && e.isSourceLoaded) setBuildingStatus('HDB footprints ready · illustrative 12 m height'); });
@@ -85,6 +93,8 @@ export default function SingaporeMap(props: Props) {
         else setNotice('Some map data could not load. Use station selectors if needed.');
       });
       map.on('click', e => {
+        const citizen = latest.current.mode==='anchor' ? citizensRef.current?.pick(e.point) : null;
+        if(citizen){latest.current.citizens.onSelect(citizen);return;}
         const hits = map.queryRenderedFeatures(e.point, { layers: ['station-circles'] });
         if (hits[0]?.properties?.id) latest.current.onStation(String(hits[0].properties.id));
         else if (latest.current.mode === 'place') latest.current.onPlace({ lat: Number(e.lngLat.lat.toFixed(6)), lon: Number(e.lngLat.lng.toFixed(6)) });
@@ -99,8 +109,19 @@ export default function SingaporeMap(props: Props) {
       });
       map.on('mouseleave', 'station-circles', () => { map.getCanvas().style.cursor = ''; popup.remove(); });
     } catch { setFatal(true); setNotice('WebGL unavailable. Use the geographic plan view and station editor.'); }
-    return () => { clearTimeout(loadTimer); observer?.disconnect(); mapRef.current = null; map?.remove(); };
+    return () => { clearTimeout(loadTimer); observer?.disconnect(); mapRef.current = null; map?.remove(); citizensRef.current=null; };
   }, []);
+
+  useEffect(()=>{
+    if(!ready)return;
+    citizensRef.current?.update(props.citizens);
+    const networkView=props.citizens.networkView, map=mapRef.current;
+    for(const id of ['proposal-lines','proposal-halo'])map?.setLayoutProperty(id,'visibility',networkView==='baseline'?'none':'visible');
+    for(const id of ['before-route','after-route'])map?.setLayoutProperty(id,'visibility',networkView==='editor'?'visible':'none');
+    const animation=props.citizens.pair[props.citizens.view].animations.find(a=>a.agentId===props.citizens.selectedId);
+    (mapRef.current?.getSource('citizen-path') as GeoJSONSource | undefined)?.setData({type:'FeatureCollection',features:props.citizens.enabled&&animation&&animation.waypoints.length>1?[line(animation.waypoints.map(p=>[p.lon,p.lat]))]:[]});
+  },[props.citizens,ready]);
+  useEffect(()=>{if(ready&&props.citizens.focusKey)citizensRef.current?.focus();},[props.citizens.focusKey,ready]);
 
   useEffect(() => {
     const map = mapRef.current; if (!ready || !map) return;
@@ -149,7 +170,7 @@ export default function SingaporeMap(props: Props) {
     if (map.getLayer('hdb-buildings')) map.setLayoutProperty('hdb-buildings', 'visibility', buildings ? 'visible' : 'none');
   }, [buildings, ready, neighbourhood]);
 
-  return <div className={`map-frame ${props.mode === 'place' ? 'placing' : ''}`}>
+  return <div className={`map-frame ${props.mode === 'place' ? 'placing' : ''} ${props.citizens.networkView==='baseline'?'citizen-baseline':''}`}>
     <div ref={container} className="map-canvas" role="region" aria-label="Interactive geographic Singapore map" />
     {fatal && <PlanFallback {...props} />}
     <div className="map-top-card"><span className="live-dot" /><div><strong>Singapore</strong><span>{props.mode === 'place' ? 'Click the map to place a hypothetical station' : 'Click an existing station to add an interchange'}</span></div></div>
@@ -157,6 +178,8 @@ export default function SingaporeMap(props: Props) {
       <button onClick={() => { mapRef.current?.easeTo({ pitch: pitch ? 0 : 48, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 500 }); setPitch(!pitch); }} aria-pressed={pitch}>▱ {pitch ? '3D view' : 'Plan view'}</button>
       <button onClick={() => mapRef.current?.fitBounds([[103.62, 1.235], [104.03, 1.465]], { padding: 35, duration: 500 })}>Fit Singapore</button>
       <button onClick={() => mapRef.current?.easeTo({ center: [103.85, 1.35], zoom: 14, pitch: 48, duration: 600 })}>Neighbourhood</button>
+      <button onClick={props.citizens.onFocus}>Citizens</button>
+      {props.citizens.enabled&&props.citizens.networkView!=='editor'&&<button onClick={props.citizens.onPlayPause} aria-label={props.citizens.playing?'Pause citizen animation':'Play citizen animation'}>{props.citizens.playing?'Pause':'Play'}</button>}
     </div>
     <div className="map-layers"><label><input type="checkbox" checked={buildings} onChange={e => setBuildings(e.target.checked)} /> Miniature HDB buildings</label><label><input type="checkbox" checked={streets} onChange={e => setStreets(e.target.checked)} /> Street detail <span>online</span></label><small role="status">{buildingStatus}</small></div>
     <div className="map-legend"><span><i className="legend-line existing" /> Existing connections</span><span><i className="legend-line proposed" /> Proposed line</span><strong>All links are schematic, not track alignments</strong></div>

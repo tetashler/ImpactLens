@@ -1,7 +1,11 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import CitizensPanel from './citizens-panel';
+import { citizenViewPairFixture } from '../lib/citizens/fixtures';
+import type { CitizenView, CitizenViewPair } from '../lib/citizens/data';
+import type { CitizenStats } from '../lib/citizens/layer';
 import type { NetworkCatalog, SimulationResponse, MapStation } from '../lib/map-contract';
 import { draftToIntervention, type EditorDraft, type DraftStop } from '../lib/editor';
 import { illustrativeLine } from '../prototype/mrt/examples/illustrative-line';
@@ -32,6 +36,16 @@ function NumberField({ label, value, onChange, step = 1, min = 0 }: { label: str
 }
 
 export default function Workspace() {
+  const [inspector,setInspector]=useState<'journey'|'citizens'>('journey');
+  const [pair,setPair]=useState<CitizenViewPair>(citizenViewPairFixture),[view,setView]=useState<CitizenView>('baseline');
+  const [selectedId,setSelectedId]=useState<string|null>(citizenViewPairFixture.baseline.citizens[0].agentId);
+  const [playing,setPlaying]=useState(false),[speed,setSpeed]=useState(1),[resetKey,setResetKey]=useState(0),[focusKey,setFocusKey]=useState(0),[citizensEnabled,setCitizensEnabled]=useState(true);
+  const [citizenStats,setCitizenStats]=useState<CitizenStats>({visible:0,fps:null,drawCalls:0,status:'Zoom in to see citizens',elapsedSeconds:0});
+  const focusCitizens=useCallback(()=>{setInspector('citizens');setCitizensEnabled(true);setFocusKey(k=>k+1);},[]);
+  const selectCitizen=useCallback((id:string)=>{setSelectedId(id);setInspector('citizens');},[]);
+  const togglePlayback=useCallback(()=>setPlaying(p=>!p),[]);
+  const citizenOptions=useMemo(()=>({pair,view,selectedId,playing,speed,resetKey,focusKey,networkView:inspector==='journey'?'editor' as const:view,enabled:citizensEnabled,onStats:setCitizenStats,onSelect:selectCitizen,onFocus:focusCitizens,onPlayPause:togglePlayback}),[pair,view,selectedId,playing,speed,resetKey,focusKey,inspector,citizensEnabled,selectCitizen,focusCitizens,togglePlayback]);
+  const loadCitizens=(next:CitizenViewPair)=>{setPair(next);setSelectedId(next.baseline.citizens[0]?.agentId??null);setPlaying(false);setResetKey(k=>k+1);};
   const [catalog, setCatalog] = useState<NetworkCatalog | null>(null), [networkError, setNetworkError] = useState('');
   const [date, setDate] = useState('2026-10-27'), [draft, setDraft] = useState<EditorDraft>(exampleDraft);
   const [mode, setMode] = useState<'anchor' | 'place'>('anchor'), [disabledSegments, setDisabledSegments] = useState<number[]>([]);
@@ -76,6 +90,9 @@ export default function Workspace() {
   };
   const allStations: MapStation[] = [...(catalog?.stations ?? []), ...draft.stations.flatMap(s => s.kind === 'new' ? [{ id: s.id, name: s.name, lat: s.lat, lon: s.lon, lines: [draft.id], kind: 'hypothetical' as const }] : [])];
   const comparison = result?.comparisons[0] ?? null;
+  const citizenNotice=pair[view].metadata.resultKind==='illustrative'
+    ? 'Illustrative citizens are independent of the current MRT proposal. Load matching Phase 4C payloads for calculated citizen responses. Toy sizes are exaggerated; paths are schematic.'
+    : `Loaded citizen results: ${pair[view].metadata.scenarioId}, service date ${pair[view].metadata.simulationDate}. Editing the MRT proposal does not regenerate this payload. Toy sizes are exaggerated; paths are schematic.`;
   const canRun = !!catalog && draft.stations.length >= 2 && draft.stations.some(s => s.kind === 'existing') && !disabledSegments.length;
   const simulate = async () => {
     if (!canRun) { setError('Add at least two stations, including an existing interchange, and restore missing segments.'); return; }
@@ -91,7 +108,7 @@ export default function Workspace() {
   };
   const min = (value: number | null | undefined) => value == null ? '—' : value.toFixed(2);
 
-  return <main className="workspace-shell">
+  return <main className={`workspace-shell ${inspector==='citizens'?'inspecting-citizens':''}`}>
     <header className="app-header"><a href="/" className="brand" aria-label="ImpactLens SG home"><span className="brand-symbol"><Icon name="layers" size={24} /></span><strong>ImpactLens<span>SG</span></strong></a><div className="workspace-tab"><Icon name="train" /> MRT planning workspace</div><div className="header-end"><span className="prototype-badge">Research prototype</span><span className="local-tag"><span className="live-dot" /> Local workspace</span></div></header>
     <div className="workspace-heading"><div><div className="breadcrumb">Interventions <Icon name="chevron" size={12} /> New MRT line</div><h1>Explore a better connection.</h1></div><div className="network-summary"><span><strong>{catalog?.stations.length ?? '—'}</strong> existing stations</span><span><strong>{catalog?.quarantinedTrips ?? '—'}</strong> trips quarantined</span><span className="model-tag">Static travel-time model</span></div></div>
     <div className="workspace-grid">
@@ -116,13 +133,15 @@ export default function Workspace() {
       </aside>
 
       <section className="map-panel" aria-label="Singapore network map">
-        {catalog ? <SingaporeMap catalog={catalog} draft={draft} disabledSegments={disabledSegments} mode={mode} comparison={comparison}
+        {catalog ? <SingaporeMap citizens={citizenOptions} catalog={catalog} draft={draft} disabledSegments={disabledSegments} mode={mode} comparison={comparison}
           onStation={id => { if (mode === 'anchor') addExisting(id); else setMessage('Use Interchange mode to add an existing station. Click an empty map location for a new station.'); }} onPlace={addPoint} onMove={(key, p) => { patchStop(key, p); setMessage('Hypothetical location updated. Review segment times before rerunning.'); }} />
           : <div className="map-loading">{networkError ? <div className="load-error"><strong>Network unavailable</strong><p>{networkError}</p><button onClick={() => location.reload()}>Retry loading</button></div> : <><span className="spinner" /> Loading validated station network</>}</div>}
         <div className="map-bottom-note"><Icon name="layers" size={14} /> Local geographic data · WGS84 coordinates<span>HDB footprints only · no measured building heights</span></div>
       </section>
 
       <aside className="results-panel" aria-label="Journey comparison">
+        <div className="inspector-tabs" role="group" aria-label="Inspector"><button aria-pressed={inspector==='journey'} onClick={()=>setInspector('journey')}>MRT journey</button><button aria-pressed={inspector==='citizens'} onClick={()=>setInspector('citizens')}>Synthetic citizens</button></div>
+        {inspector==='citizens'?<div className="results-scroll citizen-inspector"><p className="citizen-disclaimer">{citizenNotice}</p><CitizensPanel pair={pair} view={view} onView={setView} selectedId={selectedId} onSelect={selectCitizen} playing={playing} onPlayPause={togglePlayback} onReset={()=>{setPlaying(false);setResetKey(k=>k+1);setCitizenStats(s=>({...s,elapsedSeconds:0}));}} speed={speed} onSpeed={setSpeed} elapsedSeconds={citizenStats.elapsedSeconds} enabled={citizensEnabled} onEnabled={setCitizensEnabled} onFocus={focusCitizens} stats={citizenStats} onImport={loadCitizens} onRestoreFixture={()=>loadCitizens(citizenViewPairFixture)} /></div>:<>
         <div className="panel-heading"><div><h2>Journey comparison</h2><p>One journey. Two networks.</p></div><span className="small-icon teal"><Icon name="arrow" /></span></div>
         <div className="results-scroll">
           <label className="field-label">Service date<input type="date" min="2026-01-01" max="2026-12-31" value={date} onChange={e => { invalidate(); setDate(e.target.value); }} /></label>
@@ -142,8 +161,9 @@ export default function Workspace() {
           </div> : <div className="result-empty"><span className="empty-route"><Icon name="train" size={24} /><Icon name="arrow" size={20} /><Icon name="pin" size={24} /></span><h3>What changes with your line?</h3><p>Choose a journey and run the simulation to compare routes, travel time and transfers.</p></div>}
           <div className="assumption-note"><strong>Estimates, with context.</strong><p>Static median travel times. Existing boarding wait: 120 s. Existing line changes: 180 s walk + 120 s wait. Your line uses the assumptions in the editor.</p><p>No departure-time timetable, ridership forecast or demographic impact is calculated.</p><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">Street tiles: © OpenStreetMap contributors</a></div>
         </div>
+        </>}
       </aside>
     </div>
-    <footer className="app-footer"><span><span className="live-dot" /> Evidence-informed scenario modelling</span><span>Pre-hackathon prototype · Proposed infrastructure is hypothetical</span><span>ImpactLens SG / Phase 03</span></footer>
+    <footer className="app-footer"><span><span className="live-dot" /> Evidence-informed scenario modelling</span><span>Pre-hackathon prototype · Proposed infrastructure is hypothetical</span><span>ImpactLens SG / Phase 4B</span></footer>
   </main>;
 }
