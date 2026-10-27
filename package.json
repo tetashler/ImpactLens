@@ -17,6 +17,7 @@
     "test": "node --test prototype/mrt/tests/*.test.ts prototype/agents/tests/*.test.ts lib/contracts/tests/*.test.ts",
     "agents:generate": "node prototype/agents/cli.ts",
     "agents:prepare": "node prototype/agents/cli.ts --prepare",
+    "agents:impact": "node prototype/agents/impact-cli.ts",
     "mrt:validate": "node prototype/mrt/cli.ts",
     "mrt:report": "node prototype/mrt/cli.ts --write",
     "mrt:simulate": "node prototype/mrt/simulate-cli.ts"
