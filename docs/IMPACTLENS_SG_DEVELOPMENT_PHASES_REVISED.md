@@ -1,11 +1,11 @@
 # ImpactLens SG — Development Phases & Hackathon Rebuild Roadmap
 
-**Status:** Pre-hackathon prototype; Phase 4B + 4C integrated and browser-validated; full Phase 4 visual/quantitative exit criterion partially met because calculated residents remain profile-only
+**Status:** Pre-hackathon prototype; Phase 4B + 4C integrated; Phase 5 dashboard/provider-independent AI core validated. OpenRouter live smoke and wider sensitivity/amenity extensions pending. Full Phase 4 geographic-trajectory exit criterion remains partially met.
 **Last updated:** 27 October 2026  
 **Team:** 3 (2 AI/data science, 1 mass communications)  
 **Hackathon build window:** 24 hours  
 **Development:** Local Next.js App Router application (`npm run dev`) plus Node 24 TypeScript CLI; no Vercel required  
-**AI:** Gemini API (budget approximately US$200)  
+**AI:** Configurable Gemini API or OpenRouter through a shared server interface (planning budget approximately US$200)
 **Main judging proposition:** Quantify how proposed interventions affect **different demographic groups**.
 
 > **Competition constraint:** The prototype is for learning. Do not bring a completed implementation into the competition if rules prohibit it. Bring permitted documentation, architecture, findings, and reconstruction instructions; verify whether pre-downloaded datasets, generated code, or other materials are allowed.
@@ -29,7 +29,7 @@ ImpactLens SG is an evidence-informed, interactive Singapore social-impact sandb
 2. **New MRT-line intervention** — add proposed stations/links and compare journeys (**flagship; engine prototype validated**).
 3. **Miniature Singapore map** — draw the line and visualize the changed network (**local prototype validated**).
 4. **Synthetic citizens** — Phase 4A foundation, shared contract, Phase 4B illustrative movement and Phase 4C weighted MRT outcomes integrated. Current-proposal metrics/profiles work; calculated citizens still lack justified geographic movement paths.
-5. **Impact dashboard + Gemini** — show who benefits, and enable grounded citizen conversations.
+5. **Impact dashboard + AI** — weighted dashboard, finite layouts/evidence and synthetic conversations implemented for Gemini/OpenRouter; Gemini adapter live smoke passed, both providers tested with mocks, wider live verification pending.
 6. **New eldercare / active-ageing centre intervention** — place a facility, model travel-time coverage and capacity, and reuse the map, agents, and dashboard (**second committed demonstration scenario**, not merely future roadmap).
 7. **Reliability, documentation, and pitch** — demonstrate both interventions where feasible.
 
@@ -192,27 +192,39 @@ Each phase has a narrow deliverable and an exit check. Stop expanding scope when
 
 **Reproducibility finding:** The existing main Census CSV is LF (`9d1183c4…`), while agents is CRLF (`6ac3e693…`); parsed cells are identical. Raw provenance is part of synthetic IDs, so seeded assignments differ despite identical cell counts. Main's default 2,000-agent CCK example yields 192,150 represented, approximately 153,096.27 comparable, 50.8601% benefiting among comparables and 21.7512 mean minutes saved. The earlier Phase 4C 49.2877% / 21.0787 example uses the other raw hash. Both raw files are preserved; neither result is reused for another proposal. Record source bytes/hash as well as seed, size, date and assumptions when reproducing results. No silent encoding/identity policy change is made.
 
-**Full Phase 4 exit assessment — Partial:** Weighted totals and numerical/profile outputs reconcile and refer to the current intervention. The animated miniature city still uses invented fixture people/paths and does not depict that same calculated population. Calculated residents remain profile-only until defensible starting positions and geographic movement assumptions exist. Do not mark the original visual/numeric-agreement exit check fully met or infer social outcomes from animation. `docs/PHASE4_FULL_INTEGRATION.md` records architecture, HTTP bounds/cache, browser evidence, source-byte caveat, exact reproduction and rebuild order. Gemini and eldercare remain unimplemented.
+**Full Phase 4 exit assessment — Partial:** Weighted totals and numerical/profile outputs reconcile and refer to the current intervention. The animated miniature city still uses invented fixture people/paths and does not depict that same calculated population. Calculated residents remain profile-only until defensible starting positions and geographic movement assumptions exist. Do not mark the original visual/numeric-agreement exit check fully met or infer social outcomes from animation. `docs/PHASE4_FULL_INTEGRATION.md` records architecture, HTTP bounds/cache, browser evidence, source-byte caveat, exact reproduction and rebuild order. Optional AI presentation/conversations follow in Phase 5 below; eldercare integration remains pending.
 
-### Phase 5 — Societal Impact Dashboard and Gemini Layer
+### Phase 5 — Societal Impact Dashboard and Provider-Independent AI
 
-**Status: Planned**
+**Status: Core implemented and validated; wider live-provider verification and amenity/sensitivity extensions remain pending**
 
 **Goal:** Make demographic differences the centre of the judging story.
 
 **Tasks**
 
-- [ ] Show travel time improvement, access to relevant amenities, percentage benefiting, and changes broken down by age or other supported groups.
-- [ ] Separate directly calculated accessibility changes from speculative downstream business/housing effects.
-- [ ] Provide source year, assumptions, simple sensitivity ranges and model limitations.
-- [ ] Send only structured simulation outputs to Gemini for interpretation, not calculation.
-- [ ] Validate Gemini's dashboard layout JSON against a strict schema and render only predefined React components.
-- [ ] Add opt-in on-demand conversations with selected synthetic citizen personas, grounded in their recorded simulation state.
-- [ ] Prevent persona narratives from being presented as surveyed real residents.
+- [ ] Show travel time improvement, access to relevant amenities, percentage benefiting, and changes broken down by age or other supported groups (journey/threshold/age/sex/area/subzone dashboard implemented; amenity-specific inputs await the relevant facility/data model).
+- [x] Separate directly calculated accessibility changes from speculative downstream business/housing effects; no causal forecast is generated.
+- [ ] Provide source year, assumptions, simple sensitivity ranges and model limitations (source/assumption/limit labels implemented; no calibrated uncertainty interval or automatic sensitivity range is claimed).
+- [x] Send compact, server-resolved simulation summaries to either configured Gemini or OpenRouter; no AI routing or impact calculation.
+- [x] Validate a finite version-1 layout/evidence/topic schema on server and client; render approved React components and trusted factual templates only.
+- [x] Add opt-in on-demand conversations with selected calculated synthetic profiles, preserving bounded per-run/per-citizen history.
+- [x] Label personas synthetic and reject unsupported personal facts; invented fixture chat remains disabled.
 
 **Deliverable:** A visually polished, evidence-informed impact dashboard and one reliable citizen chat interaction.
 
-**Exit check:** Every numerical claim traces to a calculation, official input, or clearly labelled assumption; the experience works if Gemini is unavailable (core simulation remains usable).
+**Exit check:** Every numerical claim traces to a calculation, official input, or clearly labelled assumption; the experience works if either AI provider is unavailable. The implemented bounded core meets this check under automated/mock/browser validation; do not mark the entire wider phase complete while live OpenRouter and the unchecked extensions remain outstanding.
+
+**Implemented (Terminal 1, 27 October 2026):** Expanded dark-mode dashboard, weighted coverage/KPIs, fixed 0–100% benefit bars, shared absolute-count coverage bars, age/sex/area/subzone sorting, selected-group details, exact tables, threshold and transfer results. Existing MRT editor/map/illustrative animation and calculated profile workflow are preserved. The AI layer uses native fetch and fixed official hosts, independent provider/model configuration, metadata/capability checks, strict schemas, usage/deadline/body limits and process-wide duplicate/two-request protection. No new dependency or service. The only Phase 4 server adapter change is a read-only cached-run accessor; weights, v1 citizen contracts and calculation algorithms are unchanged.
+
+**Grounding/lifecycle:** Layouts contain approved metric IDs and chart choices, never arbitrary code/new values. Explanations select evidence references; conversational topic selections are rendered through trusted first-person templates. Actual run/request IDs and the existing engine `getProfile` resolve facts server-side. Edits invalidate explanations/chat; reset aborts pending AI layout changes. Unknown/unassigned remains unknown, including the zero-comparable case. No provider/key is needed for deterministic charts or profiles. `.env.example` has placeholders; `.env.local` is unchanged.
+
+**Validation:** **166 tests passed, 0 failed** (131 existing + 35 new); TypeScript, production build, MRT validation/simulation and population-impact CLI pass. Playwright MCP verified default/edited MRT journeys (20→21 scenario minutes), default demographic mean 21.75→21.24, full weighted coverage, 19/2/1/6 age/sex/area/subzone groups, sorting/details and profiles. Both provider UI paths use accepted mock responses through the same application schema. Grounded chat shows supplied 62.77→21.00 minutes; unsupported personal questions are acknowledged. Delayed reset/edited-scenario responses are ignored. Malformed/schema-invalid/504 responses retain the dashboard. At 0% participation, all 192,150 weight remains unassigned with Unknown mean/share and no fabricated trip. Desktop/narrow views have no horizontal overflow; illustrative animation still works and triggered zero AI generation calls during the check. Final fresh page has no console errors; deliberate 504 testing produced its expected resource error.
+
+**Provider verification:** Gemini `gemini-3.5-flash-lite` passed one capped live adapter/schema smoke: 48 input, 108 output, 156 total provider-reported tokens, with synthetic smoke context only. It does not establish every live explanation/chat workflow. OpenRouter docs/public catalogue and HTTP/service/browser mocks were validated; no OpenRouter key was available, so authenticated/live generation remains pending. Current model candidates are recommendations verified on this date, not hardcoded defaults. The private project configuration has a Gemini key but no selected provider/model; the application intentionally stays in deterministic mode until the owner configures them and reloads. No exact charge is asserted.
+
+**Final production integration check:** Both providers additionally passed the actual browser → Node AI routes → adapter → client-schema path using mocked upstream HTTP, switching server process configuration without application edits. Layout/explanation/chat succeeded on isolated local production servers with dummy keys; calculated chat retained 62.77→20/21-minute facts and acknowledged unsupported personal details. This caught and fixed request-only fields leaking into the strict chat identity envelope and Next production's internal localhost normalisation. Regression tests now cover server-to-client round trips for all operations and both providers, plus valid browser Host/Origin handling. Temporary fixture servers were cleaned up. This is not a live OpenRouter claim.
+
+**Review and limits:** Independent review found and fixed missing explanation units, a pending-layout reset race and oversized retained conversation history, with regression evidence. Bounded template answers are intentional, not a general-purpose free-form persona. Raw GTFS timing calibration, Census rounding and the 3,050 national discrepancy, source-byte identity sensitivity, assumed demand, absent access/egress/crowding and the Phase 4 geographic-trajectory limitation remain. No long-term causal benefits, amenity model, Gemini-generated calculations or eldercare engine were added. See `docs/PHASE5_DASHBOARD_AI_IMPLEMENTATION.md` for modules, protocols, exact constraints and rebuild steps. Ready for separately authorised Git integration of the implemented core; current branch remains master at a3b7d21 with no commit/push.
 
 ### Phase 6 — Second Intervention: New Eldercare / Active-Ageing Centre
 
@@ -296,7 +308,7 @@ This is a **target schedule**, not a commitment; adjust based on prototype findi
 - **Transport algorithms:** Deterministic graph/routing calculations; no Gemini involvement in shortest paths.
 - **Model separation:** Baseline graph, scenario graph, synthetic population, metrics, visualization, and AI explanation are separate modules.
 - **Data access:** API adapters with validation and local caching; live requests do not imply real-time data. The LTA monthly OD data cannot produce live rider locations.
-- **Generative UI:** Gemini returns **validated configuration**, not executable UI code; predefined charts/components render its choices.
+- **Generative UI:** Configured Gemini or OpenRouter returns **validated finite configuration/evidence references**, not executable UI or new numerical claims; predefined charts and factual templates render its choices.
 - **Security:** API keys remain server-side and out of source control.
 - **Integrity:** Every impact metric includes provenance and whether it is observed, calculated or scenario-assumed.
 
@@ -309,14 +321,14 @@ This is a **target schedule**, not a commitment; adjust based on prototype findi
 | 2 | `docs/MRT_HYPOTHETICAL_LINE_SIMULATION.md` (implemented prototype spec, results and tests); optional later split into `docs/MRT_INTERVENTION_SPEC.md` and `docs/MRT_SIMULATION_TESTS.md` |
 | 3 | `docs/INTERACTIVE_MAP_IMPLEMENTATION.md`, `docs/MAP_GEODATA_NOTES.md`; optional later `docs/MAP_UI_SPEC.md` |
 | 4 | `docs/SYNTHETIC_POPULATION_IMPLEMENTATION.md` (4A); `docs/CITIZEN_SIMULATION_CONTRACT.md` (interface); `docs/ANIMATED_CITIZENS_IMPLEMENTATION.md` (4B); `docs/DEMOGRAPHIC_IMPACT_SIMULATION.md` (4C); `docs/PHASE4_FULL_INTEGRATION.md` (browser/API integration) |
-| 5 | `docs/IMPACT_METRICS.md`, `docs/GEMINI_STRUCTURED_OUTPUTS.md` |
+| 5 | `docs/PHASE5_DASHBOARD_AI_IMPLEMENTATION.md` (implemented dashboard/provider/schema/chat guide); optional future metric/sensitivity deep dives |
 | 6 | `docs/ELDERCARE_SIMULATION.md` |
 | 7 | `docs/HACKATHON_REBUILD_GUIDE.md`, `docs/PITCH_SCRIPT.md` |
 
 ## 8. Immediate Next Action
 
-**Review the validated two-mode vertical slice before beginning the next cycle.** Current-proposal MRT journeys, weighted demographic reports and calculated profiles now work together; illustrative animation is intentionally independent because calculated geographic paths are unsupported. Reproduce the report/browser flows and match the raw-source fingerprint before expecting identical sampled numbers. The roadmap does not claim full Phase 4 visual/numeric agreement. Source values, weights and the shared citizen contract remain unchanged.
+**Configure and review the optional AI handoff.** Terminal 1's Phase 5 core is implemented and ready for Git review; no Git mutation was performed. The owner can set AI_PROVIDER and the selected provider's explicit model/key privately, restart and reload. Reproduce a tightly bounded live conversation if desired; OpenRouter still needs its credential/live smoke. Preserve no-key operation, source bytes/weights and current run identity. The roadmap still does not claim full Phase 4 geographic visual/numeric agreement.
 
-**Recommended parallel ownership (not started here):** Terminal 1 can own Phase 5's fuller societal-impact dashboard and grounded Gemini configuration/explanations, consuming the existing validated run/profile envelope and never asking Gemini to calculate effects. Terminal 2 can own Phase 6A facility-data provenance/eligibility/capacity validation and an independent eldercare/active-ageing accessibility engine with deterministic tests; avoid editing the current MRT frontend. Terminal 3 coordinates the future facility/result interface, shared package/roadmap changes, review and Git integration. Agree the facility-access contract before its UI wiring. Preserve both MRT and eldercare/active-ageing commitments; do not claim service uptake, health improvement or loneliness reduction from travel-access estimates alone. No next-phase implementation is included in this checkpoint.
+**Parallel ownership:** Terminal 1 owns this dashboard/AI frontend and central roadmap. Terminal 2 independently owns Phase 6A facility-data provenance/eligibility/capacity and accessibility calculations; its worktree, files and status were not modified or asserted here. Terminal 3 coordinates the facility/result interface, shared configuration and separately authorised Git integration. Agree the facility-access contract before UI wiring. Preserve MRT and eldercare/active-ageing commitments; travel access alone does not establish uptake, health or loneliness outcomes. Phase 6 was not begun by Terminal 1.
 
-Do not treat animated movement as observed passenger behaviour, claim real rail alignment for schematic links, or ask Gemini to calculate impacts. Continue provenance and timing calibration, consider spatial tiling of HDB geometry, and add repeatable browser regression coverage as the UI grows. Keep the planned Phase 5 dashboard/Gemini and Phase 6 eldercare / active-ageing centre simulation intact.
+Do not treat animated movement as observed passenger behaviour, claim real rail alignment for schematic links, or ask either AI provider to calculate impacts. Continue provenance/timing calibration, consider spatial tiling of HDB geometry and add committed browser regression coverage. Preserve the planned Phase 6 eldercare / active-ageing centre simulation.

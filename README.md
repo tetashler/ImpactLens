@@ -2,7 +2,7 @@
 
 Pre-hackathon research prototype for a Singapore social-impact sandbox. The current repository contains a local **Next.js + TypeScript + MapLibre** workspace backed by the validated MRT/LRT routing and hypothetical-line engine. Requires **Node.js 24+**.
 
-Design a hypothetical line on Singapore's map, set explicit travel assumptions and compare calculated journeys. Click **Citizens** on the map to explore 180 illustrative animated blocky citizens with profiles and baseline/scenario playback. The deterministic demographic foundation is implemented; population-weighted MRT integration and Gemini remain pending. Eldercare / active-ageing centres remain the second committed scenario.
+Design a hypothetical line on Singapore's map, set explicit travel assumptions and compare calculated journeys. **Calculated impact** shows full-weight demographic comparisons and run-bound synthetic profiles; **Illustrative city** separately animates 180 invented citizens. Optional Gemini or OpenRouter integration provides bounded dashboard layouts, grounded explanations and synthetic conversations. Eldercare / active-ageing centres remain the second committed scenario.
 
 ## Run locally
 
@@ -18,6 +18,8 @@ npm run dev
 ```
 
 Geography and the MapLibre worker are prepared automatically. No API key, hosting account or internet connection is needed for the core workflow after installation; optional OpenStreetMap street tiles need internet. See [map implementation notes](docs/INTERACTIVE_MAP_IMPLEMENTATION.md) for attribution, licensing and data limits.
+
+AI is optional. Set `AI_PROVIDER` to `gemini` or `openrouter`, plus that provider's key and independently selected model, in your private environment; restart the server and reload. See [.env.example](.env.example) for variable names and [Phase 5 notes](docs/PHASE5_DASHBOARD_AI_IMPLEMENTATION.md) for current model/capability checks, bounded answers and actual verification. Preserve existing `.env.local` entries. The calculated dashboard works when AI is unconfigured or unavailable.
 
 ```powershell
 npm test
@@ -58,6 +60,7 @@ This writes `docs/MRT_GRAPH_VALIDATION.md` and files under `data/derived/mrt/`. 
 - [`components/`](components/), [`lib/`](lib/), [`app/`](app/): interactive map/editor, compact adapters and local Node API routes.
 - [Interactive map](docs/INTERACTIVE_MAP_IMPLEMENTATION.md): architecture, actual browser checks, limitations and rebuild steps.
 - [Animated citizens](docs/ANIMATED_CITIZENS_IMPLEMENTATION.md): shared-context Three.js rendering, illustrative versus calculated data, profiles, measured performance and Phase 4C handoff.
+- [Dashboard and AI](docs/PHASE5_DASHBOARD_AI_IMPLEMENTATION.md): provider abstraction, finite presentation schema, authoritative grounding, conversations, tests and rebuild steps.
 - [`prototype/mrt/examples/illustrative-line.ts`](prototype/mrt/examples/illustrative-line.ts): editable hypothetical-line example.
 - [Baseline validation](docs/MRT_GRAPH_VALIDATION.md): graph evidence, quarantine policy and routing assumptions.
 - [Hypothetical-line simulation](docs/MRT_HYPOTHETICAL_LINE_SIMULATION.md): proposal format, comparison outputs and limitations.

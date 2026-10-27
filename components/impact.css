@@ -4,6 +4,7 @@
 .impact-heading { padding:18px; border-bottom:1px solid var(--line); }
 .impact-heading p,.impact-caption { color:var(--muted); line-height:1.65; font-size:12px; }
 .impact-heading p { margin-top:5px; }
+.impact-settings-wrap>summary { cursor:pointer; color:var(--muted); padding:8px 0; min-height:40px; font-size:12px; }
 .impact-body,.impact-report { display:flex; flex-direction:column; gap:16px; min-width:0; }
 .impact-body { padding:18px; }
 .impact-mode-note { color:var(--coral); line-height:1.65; padding-left:10px; border-left:2px solid var(--coral); }

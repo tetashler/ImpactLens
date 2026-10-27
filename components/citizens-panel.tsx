@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useMemo, useState, type ChangeEvent } from 'react';
+import { useId, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
 import { getCitizenProfile, parseCitizenViewPair, type CitizenViewPair, type CitizenView } from '../lib/citizens/data';
 import { parseCitizenProfile, type CitizenProfileResponse } from '../lib/contracts/citizen-simulation';
 import './citizens.css';
@@ -35,7 +35,7 @@ function visualClock(seconds: number) {
   return [Math.floor(whole / 3600), Math.floor(whole / 60) % 60, whole % 60].map(n => String(n).padStart(2, '0')).join(':');
 }
 
-export function CitizenProfile({ profile }: { profile: CitizenProfileResponse }) {
+export function CitizenProfile({ profile, conversation }: { profile: CitizenProfileResponse; conversation?:ReactNode }) {
   const geminiNoteId = useId();
   const { citizen, metadata, journey, animation, activity, sources, assumptions } = profile;
   const source = sources.find(item => item.id === citizen.sourceId);
@@ -90,8 +90,7 @@ export function CitizenProfile({ profile }: { profile: CitizenProfileResponse })
       {source && <div className="citizens-source"><strong>{source.agency}</strong><p>{source.datasetId} · {source.kind === 'synthetic-fixture' ? 'Invented fixture' : 'Aggregate government statistics'} · row {citizen.sourceRow}</p><p>Reference year {source.referenceYear} · updated {source.updated}</p><p><a href={source.sourceUrl} target="_blank" rel="noreferrer">Source reference</a> · <a href={source.licenceUrl} target="_blank" rel="noreferrer">Licence reference</a></p><p className="citizens-hash">SHA-256: {source.rawSha256}</p></div>}
       <ul className="citizens-assumptions">{assumptions.map(assumption => <li key={assumption.id}><strong>{assumption.kind}</strong><p>{assumption.description}</p></li>)}</ul>
     </details>
-    <button className="citizens-button" disabled type="button" aria-describedby={geminiNoteId}>Talk to citizen</button>
-    <p className="citizens-caption" id={geminiNoteId}>Gemini is not connected in this phase.</p>
+    {conversation??<><button className="citizens-button" disabled type="button" aria-describedby={geminiNoteId}>Talk to citizen</button><p className="citizens-caption" id={geminiNoteId}>Conversations require a fresh calculated profile. Invented fixture chat is unavailable.</p></>}
   </section>;
 }
 

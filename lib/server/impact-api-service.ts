@@ -69,6 +69,11 @@ export function getImpactProfile(runId:string,requestId:string,agentId:string):I
   if(!profile)throw new ImpactApiError('Synthetic citizen not found in this calculated population.',404);
   return parseImpactProfileResponse({requestId,runId,profile},entry.response);
 }
+/** Read-only authoritative handoff for optional AI; does not extend cache lifetime. */
+export function getImpactRun(runId:string,requestId:string):ImpactResponse {
+  if(!/^impact-[a-f0-9]{24}$/.test(runId)||!/^[a-f0-9]{64}$/.test(requestId))throw new ImpactApiError('Invalid calculated run identifier.');
+  return structuredClone(cache.get(runId,requestId).response);
+}
 export async function readImpactBody(request:Request):Promise<unknown> {
   if(!request.headers.get('content-type')?.toLowerCase().startsWith('application/json'))throw new ImpactApiError('Send JSON for the calculation request.',415);
   if(Number(request.headers.get('content-length'))>16384)throw new ImpactApiError('Request exceeds 16 KiB.',413);

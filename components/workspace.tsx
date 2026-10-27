@@ -38,6 +38,7 @@ function NumberField({ label, value, onChange, step = 1, min = 0 }: { label: str
 
 export default function Workspace() {
   const [inspector,setInspector]=useState<'journey'|'citizens'|'impact'>('journey');
+  const [impactWide,setImpactWide]=useState(false);
   const [impactView,setImpactView]=useState<'baseline'|'scenario'>('scenario'),[impactRevision,setImpactRevision]=useState(0);
   const [pair,setPair]=useState<CitizenViewPair>(citizenViewPairFixture),[view,setView]=useState<CitizenView>('baseline');
   const [selectedId,setSelectedId]=useState<string|null>(citizenViewPairFixture.baseline.citizens[0].agentId);
@@ -111,7 +112,7 @@ export default function Workspace() {
   };
   const min = (value: number | null | undefined) => value == null ? '—' : value.toFixed(2);
 
-  return <main className={`workspace-shell ${inspector==='citizens'?'inspecting-citizens':inspector==='impact'?'inspecting-impact':''}`}>
+  return <main className={`workspace-shell ${inspector==='citizens'?'inspecting-citizens':inspector==='impact'?'inspecting-impact':''} ${impactWide?'dashboard-wide':''}`}>
     <header className="app-header"><a href="/" className="brand" aria-label="ImpactLens SG home"><span className="brand-symbol"><Icon name="layers" size={24} /></span><strong>ImpactLens<span>SG</span></strong></a><div className="workspace-tab"><Icon name="train" /> MRT planning workspace</div><div className="header-end"><span className="prototype-badge">Research prototype</span><span className="local-tag"><span className="live-dot" /> Local workspace</span></div></header>
     <div className="workspace-heading"><div><div className="breadcrumb">Interventions <Icon name="chevron" size={12} /> New MRT line</div><h1>Explore a better connection.</h1></div><div className="network-summary"><span><strong>{catalog?.stations.length ?? '—'}</strong> existing stations</span><span><strong>{catalog?.quarantinedTrips ?? '—'}</strong> trips quarantined</span><span className="model-tag">Static travel-time model</span></div></div>
     <div className="workspace-grid">
@@ -144,7 +145,7 @@ export default function Workspace() {
 
       <aside className="results-panel" aria-label="Journey comparison">
         <div className="inspector-tabs" role="group" aria-label="Inspector"><button aria-pressed={inspector==='journey'} onClick={()=>setInspector('journey')}>MRT journey</button><button aria-pressed={inspector==='impact'} onClick={()=>setInspector('impact')}>Calculated impact</button><button aria-pressed={inspector==='citizens'} onClick={focusCitizens}>Illustrative city</button></div>
-        <div className="impact-slot" hidden={inspector!=='impact'}><ImpactPanel intervention={draftToIntervention(draft)} serviceDate={date} proposalRevision={impactRevision} canRun={canRun} view={impactView} onView={setImpactView}/></div>
+        <div className="impact-slot" hidden={inspector!=='impact'}><ImpactPanel intervention={draftToIntervention(draft)} serviceDate={date} proposalRevision={impactRevision} canRun={canRun} view={impactView} onView={setImpactView} expanded={impactWide} onExpand={()=>setImpactWide(v=>!v)}/></div>
         {inspector==='citizens'?<div className="results-scroll citizen-inspector"><p className="citizen-disclaimer">{citizenNotice}</p><CitizensPanel pair={pair} view={view} onView={setView} selectedId={selectedId} onSelect={selectCitizen} playing={playing} onPlayPause={togglePlayback} onReset={()=>{setPlaying(false);setResetKey(k=>k+1);setCitizenStats(s=>({...s,elapsedSeconds:0}));}} speed={speed} onSpeed={setSpeed} elapsedSeconds={citizenStats.elapsedSeconds} enabled={citizensEnabled} onEnabled={setCitizensEnabled} onFocus={focusCitizens} stats={citizenStats} onImport={loadCitizens} onRestoreFixture={()=>loadCitizens(citizenViewPairFixture)} /></div>:inspector==='journey'?<>
         <div className="panel-heading"><div><h2>Journey comparison</h2><p>One journey. Two networks.</p></div><span className="small-icon teal"><Icon name="arrow" /></span></div>
         <div className="results-scroll">
