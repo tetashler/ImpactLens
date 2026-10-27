@@ -1,6 +1,6 @@
 # ImpactLens SG — Development Phases & Hackathon Rebuild Roadmap
 
-**Status:** Pre-hackathon prototype; Phases 1–3 and Phase 4A integrated and validated locally; Phase 4B pending  
+**Status:** Pre-hackathon prototype; Phases 1–3, Phase 4A and shared citizen contract implemented; Phase 4B animation and Phase 4C calculations pending  
 **Last updated:** 27 October 2026  
 **Team:** 3 (2 AI/data science, 1 mass communications)  
 **Hackathon build window:** 24 hours  
@@ -28,7 +28,7 @@ ImpactLens SG is an evidence-informed, interactive Singapore social-impact sandb
 1. **Baseline MRT graph** — verify routing through existing train stations (**prototype validated**).
 2. **New MRT-line intervention** — add proposed stations/links and compare journeys (**flagship; engine prototype validated**).
 3. **Miniature Singapore map** — draw the line and visualize the changed network (**local prototype validated**).
-4. **Synthetic citizens** — Phase 4A demographic foundation integrated; Phase 4B daily activity, demographic impact integration, and blocky movement pending.
+4. **Synthetic citizens** — Phase 4A demographic foundation integrated and shared contract implemented; Phase 4B blocky movement/inspection and Phase 4C demographic impact calculations pending.
 5. **Impact dashboard + Gemini** — show who benefits, and enable grounded citizen conversations.
 6. **New eldercare / active-ageing centre intervention** — place a facility, model travel-time coverage and capacity, and reuse the map, agents, and dashboard (**second committed demonstration scenario**, not merely future roadmap).
 7. **Reliability, documentation, and pitch** — demonstrate both interventions where feasible.
@@ -148,7 +148,7 @@ Each phase has a narrow deliverable and an exit check. Stop expanding scope when
 
 ### Phase 4 — Synthetic Population and Animated Citizens
 
-**Status: Phase 4A foundation complete and integrated; Phase 4B and full Phase 4 exit check pending**
+**Status: Phase 4A foundation and shared contract complete; Phase 4B, Phase 4C and full Phase 4 exit check pending**
 
 **Goal:** Link transport changes to representative demographic experiences and visually animate them.
 
@@ -156,6 +156,7 @@ Each phase has a narrow deliverable and an exit check. Stop expanding scope when
 
 - [x] Select geographic units and obtain dated demographic distributions (Census 2020 joint age/sex cells across 55 planning areas and 332 subzones).
 - [x] Generate a seeded, weighted synthetic population; document missing joint distributions/assumptions.
+- [x] Define a shared, versioned citizen simulation contract with JSON validation, illustrative fixtures and profile/animation/aggregate boundaries for parallel work.
 - [ ] Assign modelled home/destination/travel preferences without claiming they are real individuals.
 - [ ] Route agents on baseline/scenario networks, computing differences by demographic group.
 - [ ] Visualize ~100–300 blocky citizens initially; thousands can remain simulation-only.
@@ -170,7 +171,13 @@ Each phase has a narrow deliverable and an exit check. Stop expanding scope when
 
 **Demographic limitations to preserve:** This is historical Census 2020 data, not live population or passenger demand. The represented rounded age/sex leaf-cell total **4,047,260** differs from the separately published national total **4,044,210** by **3,050**; neither total is silently normalised. Nil/negligible source markers are explicitly approximated as zero, not proof of absence; selections such as Boon Lay can have published residents but no positive detailed cells and therefore fail generation. Retain the discrepancy audit, source licence/attribution and reference year. Exact ages, home coordinates, destinations, daily routines, income/employment joint distributions, mobility, travel demand and behavioural responses remain unassigned or unsupported.
 
-**Phase 4B — Pending:** Agree explicit home/destination, eligibility and travel assumptions before assigning origins or destinations. Connect representative citizens to the existing MRT result contracts and compute weighted demographic differences with reproducibility and coverage tests. Then animate a small blocky visual sample on clearly schematic calculated paths, using LOD for performance and displaying synthetic status, provenance and model assumptions. No population-to-MRT assignments, demographic-impact metrics or citizens were added by this integration. Full Phase 4 is not complete.
+**Shared contract — Implemented (27 October 2026):** `lib/contracts/citizen-simulation.ts` exports version 1 browser-safe metadata, deduplicated provenance/assumption catalogues, synthetic citizen references, compact journey outcomes, separate visual-only schematic animation, demographic metric denominators and selected-profile responses. Reuses existing population category/provenance conventions and compact MRT fields through type-only imports; no dependencies or algorithm changes. Public `parseCitizenSimulation` / `assertCitizenSimulation` and `parseCitizenProfile` / `assertCitizenProfile` reject malformed JSON boundaries, contradictory null/status/denominator combinations and unsupported observation claims. Fixtures are explicitly invented, not Census observations. See `docs/CITIZEN_SIMULATION_CONTRACT.md` for exact terminal handoffs, units, sign conventions, sampling rules and source limitations.
+
+**Shared-contract validation:** **84 passed, 0 failed** (all existing 59 + 25 focused contract tests). Tests cover JSON round trips, invalid versions/IDs/weights/coordinates/provenance/references, status/null/sign consistency, full/partial population bounds, full-coverage and subgroup denominators, beneficiary/mean consistency, schematic movement and profiles. A real generated population preserves its IDs and weights; an actual compact MRT result retains 62.77→20.00 minutes and the existing longitude-first route coordinates. Importing the public contract with Node built-ins blocked succeeds. Application TypeScript, explicit population/contract/test TypeScript and Next.js production build all pass. Read-only design/code review completed; three denominator/mean consistency gaps were reproduced with failing tests and fixed before the checkpoint. Existing MRT/population algorithms, frontend, raw data and lockfile remain unchanged; both environment files remain unchanged and Git-ignored/untracked. No push or new development phase is included.
+
+**Phase 4B — Pending animation (Terminal 1):** Consume the shared visual/profile contract to animate a small blocky sample on explicitly schematic waypoints, add citizen selection/inspection and use LOD for performance. Keep quantitative results supplied by the calculation engine separate from frames/positions. Do not invent missing coordinates or movement, or treat synthetic profiles as observed residents.
+
+**Phase 4C — Pending demographic calculations (Terminal 2):** Agree explicit home/destination, eligibility and travel assumptions before assigning origins or destinations. Connect representative citizens to existing MRT results and produce weighted demographic differences over the full simulation population, with conservation, coverage and reproducibility tests. Keep unassigned, invalid, newly reachable and unreachable outcomes separate from finite comparable journeys. Preserve the 3,050 source-total discrepancy and expansion weights. This contract checkpoint implements no population-to-MRT assignment, impact engine, endpoint or animated frontend. Full Phase 4 remains incomplete.
 
 ### Phase 5 — Societal Impact Dashboard and Gemini Layer
 
@@ -286,15 +293,15 @@ This is a **target schedule**, not a commitment; adjust based on prototype findi
 | 1 | `docs/MRT_GRAPH_VALIDATION.md` |
 | 2 | `docs/MRT_HYPOTHETICAL_LINE_SIMULATION.md` (implemented prototype spec, results and tests); optional later split into `docs/MRT_INTERVENTION_SPEC.md` and `docs/MRT_SIMULATION_TESTS.md` |
 | 3 | `docs/INTERACTIVE_MAP_IMPLEMENTATION.md`, `docs/MAP_GEODATA_NOTES.md`; optional later `docs/MAP_UI_SPEC.md` |
-| 4 | `docs/SYNTHETIC_POPULATION_IMPLEMENTATION.md` (completed Phase 4A); `docs/AGENT_ANIMATION.md` (pending Phase 4B) |
+| 4 | `docs/SYNTHETIC_POPULATION_IMPLEMENTATION.md` (Phase 4A); `docs/CITIZEN_SIMULATION_CONTRACT.md` (shared interface); `docs/AGENT_ANIMATION.md` (pending Phase 4B); Phase 4C calculation documentation pending |
 | 5 | `docs/IMPACT_METRICS.md`, `docs/GEMINI_STRUCTURED_OUTPUTS.md` |
 | 6 | `docs/ELDERCARE_SIMULATION.md` |
 | 7 | `docs/HACKATHON_REBUILD_GUIDE.md`, `docs/PITCH_SCRIPT.md` |
 
 ## 8. Immediate Next Action
 
-**Agree the population-to-MRT assumptions and interfaces before beginning Phase 4B.** The map/MRT engine and deterministic population foundation now coexist in one tested local repository. The integration checkpoint is the merge commit after `9572cde` and `33f27ce`; obtain its exact hash from Git history. Both worktrees and the feature branch are retained, with no integration push or pull request. Demographic source values and weighting assumptions remain unchanged.
+**Use the shared citizen contract before resuming parallel development.** The map/MRT engine and deterministic population foundation coexist at integration checkpoint `e90d741`; this subsequent shared-contract checkpoint adds the typed/validated exchange boundary. Both worktrees and the feature branch are retained and synchronised locally after validation, with no push or pull request. Demographic source values and weighting assumptions remain unchanged. Agree population-to-MRT behaviour assumptions explicitly in Phase 4C; do not infer them from visual animation.
 
-**Recommended parallel ownership for the next phase (not started by this integration):** Terminal 1 owns Phase 4B map/rendering, blocky citizen animation, selection/inspection and performance; consume a small versioned render/result contract rather than inventing travel behaviour in the frontend. Terminal 2 owns the documented population-to-MRT assignment assumptions, weighted demographic comparison and deterministic tests, then Phase 6A facility-data validation and an independent eldercare/active-ageing accessibility engine. Define supported service type, eligibility, travel and capacity assumptions before calculating facility access; keep access estimates separate from uptake, health or loneliness outcomes. Terminal 1 can later add the Phase 6A placement/results UI once that contract is stable. Terminal 3 coordinates shared configuration, review and integration; avoid simultaneous edits to the roadmap or package files. Keep Phase 5 Gemini pending until grounded structured results are available.
+**Recommended parallel ownership (not started by this checkpoint):** Terminal 1 owns Phase 4B map/rendering, blocky citizen animation, selection/inspection and performance; validate `CitizenSimulationPayload` and `CitizenProfileResponse` at the frontend boundary. Terminal 2 owns Phase 4C population-to-MRT assignment assumptions, full-population weighted comparisons and deterministic tests; produce and validate those same contracts. Later, Terminal 2 can begin Phase 6A facility-data validation and an independent eldercare/active-ageing accessibility engine. Define service type, eligibility, travel and capacity assumptions before calculating facility access; keep access estimates separate from uptake, health or loneliness outcomes. Terminal 1 can later add Phase 6A placement/results UI once the access contract is stable. Terminal 3 coordinates shared configuration, review and integration; avoid simultaneous edits to the roadmap or package files. Phase 5 Gemini remains pending and may consume the existing profile/outcome contract only after grounded results are available. Preserve both MRT and eldercare/active-ageing intervention commitments.
 
 Do not treat animated movement as observed passenger behaviour, claim real rail alignment for schematic links, or ask Gemini to calculate impacts. Continue provenance and timing calibration, consider spatial tiling of HDB geometry, and add repeatable browser regression coverage as the UI grows. Keep the planned Phase 5 dashboard/Gemini and Phase 6 eldercare / active-ageing centre simulation intact.

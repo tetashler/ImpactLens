@@ -14,7 +14,7 @@
     "predev": "node scripts/prepare-web-assets.ts",
     "prebuild": "node scripts/prepare-web-assets.ts",
     "pretest": "node scripts/prepare-web-assets.ts",
-    "test": "node --test prototype/mrt/tests/*.test.ts prototype/agents/tests/*.test.ts",
+    "test": "node --test prototype/mrt/tests/*.test.ts prototype/agents/tests/*.test.ts lib/contracts/tests/*.test.ts",
     "agents:generate": "node prototype/agents/cli.ts",
     "agents:prepare": "node prototype/agents/cli.ts --prepare",
     "mrt:validate": "node prototype/mrt/cli.ts",
