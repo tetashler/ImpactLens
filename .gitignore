@@ -30,3 +30,4 @@ Desktop.ini
 /.playwright-mcp/
 /test-results/
 /playwright-report/
+/data/derived/agents/

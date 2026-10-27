@@ -1,6 +1,6 @@
 # ImpactLens SG — Development Phases & Hackathon Rebuild Roadmap
 
-**Status:** Pre-hackathon prototype; Phases 1–3 local vertical slice validated; Phase 4 synthetic-population groundwork next  
+**Status:** Pre-hackathon prototype; Phases 1–3 and Phase 4A integrated and validated locally; Phase 4B pending  
 **Last updated:** 27 October 2026  
 **Team:** 3 (2 AI/data science, 1 mass communications)  
 **Hackathon build window:** 24 hours  
@@ -28,7 +28,7 @@ ImpactLens SG is an evidence-informed, interactive Singapore social-impact sandb
 1. **Baseline MRT graph** — verify routing through existing train stations (**prototype validated**).
 2. **New MRT-line intervention** — add proposed stations/links and compare journeys (**flagship; engine prototype validated**).
 3. **Miniature Singapore map** — draw the line and visualize the changed network (**local prototype validated**).
-4. **Synthetic citizens** — demographic profiles, daily activity, and blocky movement.
+4. **Synthetic citizens** — Phase 4A demographic foundation integrated; Phase 4B daily activity, demographic impact integration, and blocky movement pending.
 5. **Impact dashboard + Gemini** — show who benefits, and enable grounded citizen conversations.
 6. **New eldercare / active-ageing centre intervention** — place a facility, model travel-time coverage and capacity, and reuse the map, agents, and dashboard (**second committed demonstration scenario**, not merely future roadmap).
 7. **Reliability, documentation, and pitch** — demonstrate both interventions where feasible.
@@ -82,7 +82,7 @@ Each phase has a narrow deliverable and an exit check. Stop expanding scope when
 
 ### Phase 2 — Hypothetical MRT Line Simulation
 
-**Status: Complete for the requested engine prototype; Phase 3 integration next**
+**Status: Complete for the requested engine prototype; Phase 3 map integration validated**
 
 **Goal:** Calculate a meaningful **before/after** comparison when a hypothetical rail line and stations are added.
 
@@ -136,22 +136,26 @@ Each phase has a narrow deliverable and an exit check. Stop expanding scope when
 
 **Acceptance evidence:** `npm.cmd run dev` starts at `http://127.0.0.1:3000`; actual Chromium/Playwright MCP interaction verified reset → existing anchor → two map-placed stations → existing anchor → configure assumptions → run → edit/drag → rerun. A custom NS4→NE16 proposal returned 20.50 minutes, then 22.50 after its explicit running time changed, against a 62.77-minute baseline. Undo/reorder/removal, disconnected-run blocking, negative-cost errors and baseline-unavailable new-station outcomes were exercised. Real HDB extrusions rendered; 390×844 layout had no horizontal overflow. Deliberate street-tile failure left map/simulation usable; deliberate worker failure produced a geographic fallback and successful 20.00-minute example.
 
-**Validation:** `npm.cmd run mrt:validate`, `npm.cmd run mrt:simulate`, `npm.cmd test` and `npm.cmd run build` pass. There are 43 passing automated tests (all original 37 plus five adapter/API tests and one full geodata integrity test); production build includes TypeScript checking. Independent read-only review reran 43 tests and type checking without important findings. Raw GTFS and geography hashes remain unchanged; core graph/routing/scenario/simulation files are unchanged in this phase. No commits or pushes were performed for Phase 3.
+**Validation:** Independent Phase 3 validation passes `npm.cmd run mrt:validate`, `npm.cmd run mrt:simulate`, `npm.cmd test` (43/43) and `npm.cmd run build`, including TypeScript checking. The 43 tests comprise the original 37 plus five adapter/API tests and one geodata integrity test. Phase 3 is checkpointed in `9572cde` (`feat: implement interactive Singapore MRT simulation map`). Raw GTFS and geography hashes remain unchanged; core graph/routing/scenario/simulation files are unchanged in this phase. No push was performed during integration.
+
+**Combined integration validation (27 October 2026):** Local `master` integrates `feature/synthetic-population` checkpoint `33f27ce` through an ordinary merge preserving both histories. Only `.gitignore` and `package.json` conflicted: retain all generated-output exclusions, frontend dependencies and preparation hooks, and add the population CLI scripts and test glob. The lockfile dependencies still match. The combined suite has **59 passed, 0 failed** (37 baseline MRT + 6 map/adapter + 16 population tests), not 43 + 53. MRT graph validation passes for Tuesday/Saturday/Sunday with 184 stations and zero unreachable ordered distinct pairs; the hypothetical-line CLI retains the NS4→NE16 62.77→20.00-minute example. Default/national population generation and preprocessing pass. Application TypeScript, explicit population TypeScript checking and the Next.js production build pass. For the standalone population check with the installed TypeScript 7 compiler, use `--ignoreConfig` with explicit source files; the application check uses the existing tsconfig.
+
+**Integrated browser smoke test:** Production server on a separate local port, exercised through Playwright MCP: 184 stations load, the MapLibre canvas is visible, the illustrative line returns 62.77→20.00 minutes, changing boarding wait to 180 s clears the previous result and reruns to 20.50 minutes, and the neighbourhood camera works. No browser console errors were observed during the initial smoke flow. This focused integration check supplements the broader Phase 3 browser verification above; it is not a committed browser regression suite. Both `.env.local` files remain unchanged, ignored, untracked and unstaged; `.env.example` has empty placeholders only. Pending/staged repository contents were scanned for known local credential values and common credential patterns without exposing values.
 
 **Remaining issues / incomplete refinements:** No verified rail alignment, measured building heights, street/terrain completeness, engineering assessment or real-time/departure-clock model. GTFS timing provenance and supplied geodata licensing provenance remain unresolved. Footprints are not spatially tiled, so first neighbourhood load is larger than ideal. SVG fallback retains geographic editing and numeric results but omits full 3D/pan/zoom, numbered proposed markers and calculated route overlays. Browser flow was genuinely tested through MCP; a committed automated browser regression suite is not yet present. These do not establish demographic or demand-weighted predictions.
 
-**Handoff:** See `docs/INTERACTIVE_MAP_IMPLEMENTATION.md`, `docs/MAP_GEODATA_NOTES.md` and root README for contracts, attribution/policy, rebuild commands and exact verification. Begin Phase 4 by validating dated demographic units/distributions and defining a seeded synthetic-population model. Animate schematic calculated paths honestly until reliable transport geometry is acquired. Preserve Phase 5 Gemini and Phase 6 eldercare commitments; neither is implemented here.
+**Handoff:** See `docs/INTERACTIVE_MAP_IMPLEMENTATION.md`, `docs/MAP_GEODATA_NOTES.md`, `docs/SYNTHETIC_POPULATION_IMPLEMENTATION.md` and root README for contracts, attribution/policy, rebuild commands and verification. The demographic engine now coexists with the map/MRT engine; population-to-MRT behaviour and visual integration remain pending. Animate schematic calculated paths honestly until reliable transport geometry is acquired. Preserve Phase 5 Gemini and Phase 6 eldercare commitments; neither is implemented here. Minor deferred UI issue from review: the displayed 40-station limit is enforced by the API, but station-add controls can exceed it.
 
 ### Phase 4 — Synthetic Population and Animated Citizens
 
-**Status: Planned**
+**Status: Phase 4A foundation complete and integrated; Phase 4B and full Phase 4 exit check pending**
 
 **Goal:** Link transport changes to representative demographic experiences and visually animate them.
 
 **Tasks**
 
-- [ ] Select geographic units and obtain dated demographic distributions (e.g., subzones by age group).
-- [ ] Generate a seeded, weighted synthetic population; document any missing joint distributions/assumptions.
+- [x] Select geographic units and obtain dated demographic distributions (Census 2020 joint age/sex cells across 55 planning areas and 332 subzones).
+- [x] Generate a seeded, weighted synthetic population; document missing joint distributions/assumptions.
 - [ ] Assign modelled home/destination/travel preferences without claiming they are real individuals.
 - [ ] Route agents on baseline/scenario networks, computing differences by demographic group.
 - [ ] Visualize ~100–300 blocky citizens initially; thousands can remain simulation-only.
@@ -161,6 +165,12 @@ Each phase has a narrow deliverable and an exit check. Stop expanding scope when
 **Deliverable:** Visually engaging miniature Singapore where citizen activity and summaries reflect the same simulation state.
 
 **Exit check:** Weighted population totals reconcile to input distributions; visual and numeric outputs agree; animation remains usable on the presentation laptop.
+
+**Phase 4A — Completed foundation:** `prototype/agents/` provides source validation, seeded stratified allocation, population expansion weights, provenance, and separate observation/assumption/render contracts. Checkpoint `33f27ce` (`feat: implement deterministic synthetic population generator`) passed 53 independent tests (37 baseline MRT + 16 population tests). It also passes an explicit compiler check using the main worktree's existing TypeScript installation without adding dependencies. The integrated suite passes 59 tests. `npm.cmd run agents:generate` produces 2,000 representatives of 162,520 Ang Mo Kio leaf counts; `npm.cmd run agents:generate -- --all --size 10000 --seed integration` represents 4,047,260 national leaf counts. `npm.cmd run agents:prepare` validates 55 planning areas, 332 subzones and 12,616 joint cells and writes ignored, reproducible derived data. Use weights for demographic totals; agent counts intentionally overrepresent small cells. National generation requires at least 8,359 representatives to retain every positive cell.
+
+**Demographic limitations to preserve:** This is historical Census 2020 data, not live population or passenger demand. The represented rounded age/sex leaf-cell total **4,047,260** differs from the separately published national total **4,044,210** by **3,050**; neither total is silently normalised. Nil/negligible source markers are explicitly approximated as zero, not proof of absence; selections such as Boon Lay can have published residents but no positive detailed cells and therefore fail generation. Retain the discrepancy audit, source licence/attribution and reference year. Exact ages, home coordinates, destinations, daily routines, income/employment joint distributions, mobility, travel demand and behavioural responses remain unassigned or unsupported.
+
+**Phase 4B — Pending:** Agree explicit home/destination, eligibility and travel assumptions before assigning origins or destinations. Connect representative citizens to the existing MRT result contracts and compute weighted demographic differences with reproducibility and coverage tests. Then animate a small blocky visual sample on clearly schematic calculated paths, using LOD for performance and displaying synthetic status, provenance and model assumptions. No population-to-MRT assignments, demographic-impact metrics or citizens were added by this integration. Full Phase 4 is not complete.
 
 ### Phase 5 — Societal Impact Dashboard and Gemini Layer
 
@@ -276,13 +286,15 @@ This is a **target schedule**, not a commitment; adjust based on prototype findi
 | 1 | `docs/MRT_GRAPH_VALIDATION.md` |
 | 2 | `docs/MRT_HYPOTHETICAL_LINE_SIMULATION.md` (implemented prototype spec, results and tests); optional later split into `docs/MRT_INTERVENTION_SPEC.md` and `docs/MRT_SIMULATION_TESTS.md` |
 | 3 | `docs/INTERACTIVE_MAP_IMPLEMENTATION.md`, `docs/MAP_GEODATA_NOTES.md`; optional later `docs/MAP_UI_SPEC.md` |
-| 4 | `docs/SYNTHETIC_POPULATION.md`, `docs/AGENT_ANIMATION.md` |
+| 4 | `docs/SYNTHETIC_POPULATION_IMPLEMENTATION.md` (completed Phase 4A); `docs/AGENT_ANIMATION.md` (pending Phase 4B) |
 | 5 | `docs/IMPACT_METRICS.md`, `docs/GEMINI_STRUCTURED_OUTPUTS.md` |
 | 6 | `docs/ELDERCARE_SIMULATION.md` |
 | 7 | `docs/HACKATHON_REBUILD_GUIDE.md`, `docs/PITCH_SCRIPT.md` |
 
 ## 8. Immediate Next Action
 
-**Begin Phase 4 with demographic-data validation and a seeded population specification.** The local map-to-simulation workflow is verified and can display calculated route sequences. First reconcile source years, geographic units and demographic totals with the mapped subzones; define home/destination/weight assumptions before generating citizens. Start with a small representative visual population and keep totals consistent with the validated distributions.
+**Agree the population-to-MRT assumptions and interfaces before beginning Phase 4B.** The map/MRT engine and deterministic population foundation now coexist in one tested local repository. The integration checkpoint is the merge commit after `9572cde` and `33f27ce`; obtain its exact hash from Git history. Both worktrees and the feature branch are retained, with no integration push or pull request. Demographic source values and weighting assumptions remain unchanged.
+
+**Recommended parallel ownership for the next phase (not started by this integration):** Terminal 1 owns Phase 4B map/rendering, blocky citizen animation, selection/inspection and performance; consume a small versioned render/result contract rather than inventing travel behaviour in the frontend. Terminal 2 owns the documented population-to-MRT assignment assumptions, weighted demographic comparison and deterministic tests, then Phase 6A facility-data validation and an independent eldercare/active-ageing accessibility engine. Define supported service type, eligibility, travel and capacity assumptions before calculating facility access; keep access estimates separate from uptake, health or loneliness outcomes. Terminal 1 can later add the Phase 6A placement/results UI once that contract is stable. Terminal 3 coordinates shared configuration, review and integration; avoid simultaneous edits to the roadmap or package files. Keep Phase 5 Gemini pending until grounded structured results are available.
 
 Do not treat animated movement as observed passenger behaviour, claim real rail alignment for schematic links, or ask Gemini to calculate impacts. Continue provenance and timing calibration, consider spatial tiling of HDB geometry, and add repeatable browser regression coverage as the UI grows. Keep the planned Phase 5 dashboard/Gemini and Phase 6 eldercare / active-ageing centre simulation intact.
