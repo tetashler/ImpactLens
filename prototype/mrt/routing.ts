@@ -6,6 +6,9 @@ export interface Route {
 }
 export function validateCosts(graph: Graph): void {
   if (!Number.isFinite(graph.costs.initialWaitSeconds) || graph.costs.initialWaitSeconds < 0) throw new Error('Invalid initial wait cost');
+  for (const state of graph.states.values()) for (const key of ['initialWaitSeconds', 'transferWaitSeconds'] as const) {
+    if (state[key] !== undefined && (!Number.isFinite(state[key]) || state[key]! < 0)) throw new Error(`Invalid state wait cost: ${state.id}`);
+  }
   for (const edge of graph.edges) {
     if (!Number.isFinite(edge.seconds) || edge.seconds < 0) throw new Error(`Invalid edge cost: ${edge.id}`);
     if (!graph.states.has(edge.from) || !graph.states.has(edge.to)) throw new Error(`Unknown edge endpoint: ${edge.id}`);
@@ -21,7 +24,7 @@ export function shortestPathsFrom(graph: Graph, origin: string) {
   origin = canonicalStation(graph, origin);
   const distances = new Map<string, number>(), previous = new Map<string, Edge>();
   const unsettled = new Set(graph.states.keys());
-  for (const state of graph.states.values()) distances.set(state.id, state.stationId === origin ? graph.costs.initialWaitSeconds : Infinity);
+  for (const state of graph.states.values()) distances.set(state.id, state.stationId === origin ? (state.initialWaitSeconds ?? graph.costs.initialWaitSeconds) : Infinity);
   // O(V² + E) is small and transparent for ~220 station/line states.
   while (unsettled.size) {
     let current: string | undefined, best = Infinity;
@@ -56,5 +59,6 @@ export function shortestPath(graph: Graph, origin: string, destination: string):
   }
   return { origin, destination, stationIds, edges, totalSeconds: distances.get(target.id)!,
     travelSeconds: edges.filter(e => e.kind === 'travel').reduce((s, e) => s + e.seconds, 0),
-    transferSeconds: edges.filter(e => e.kind === 'transfer').reduce((s, e) => s + e.seconds, 0), initialWaitSeconds: graph.costs.initialWaitSeconds };
+    transferSeconds: edges.filter(e => e.kind === 'transfer').reduce((s, e) => s + e.seconds, 0),
+    initialWaitSeconds: graph.states.get(current)!.initialWaitSeconds ?? graph.costs.initialWaitSeconds };
 }

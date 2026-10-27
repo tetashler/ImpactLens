@@ -6,8 +6,12 @@ import { INTERCHANGES, SUSPECT_PAIRS } from './policy.ts';
 export interface Station {
   id: string; name: string; lat: number; lon: number;
   parentIds: string[]; stopIds: string[]; sourceRows: number[]; evidence: string[]; lines: string[];
+  kind?: 'existing' | 'hypothetical'; hypotheticalLineId?: string; locationNote?: string;
 }
-export interface State { id: string; stationId: string; line: string }
+export interface State {
+  id: string; stationId: string; line: string;
+  initialWaitSeconds?: number; transferWaitSeconds?: number;
+}
 // Physical line numbers (header is line 1), not array indices.
 export type SourceRef = [tripId: string, tripsRow: number, fromStopTimesRow: number, toStopTimesRow: number];
 export interface Edge {

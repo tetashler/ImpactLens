@@ -6,6 +6,7 @@
   "scripts": {
     "test": "node --test prototype/mrt/tests/*.test.ts",
     "mrt:validate": "node prototype/mrt/cli.ts",
-    "mrt:report": "node prototype/mrt/cli.ts --write"
+    "mrt:report": "node prototype/mrt/cli.ts --write",
+    "mrt:simulate": "node prototype/mrt/simulate-cli.ts"
   }
 }
