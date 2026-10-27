@@ -25,3 +25,4 @@ Desktop.ini
 
 # Reproducible MRT output; keep raw datasets and documentation visible
 /data/derived/mrt/
+/data/derived/agents/
