@@ -7,8 +7,10 @@ import type { FeatureCollection, Feature, Geometry } from 'geojson';
 import type { NetworkCatalog, CompactComparison } from '../lib/map-contract';
 import type { EditorDraft } from '../lib/editor';
 import { CitizenLayer, type CitizenLayerOptions } from '../lib/citizens/layer';
+import { AacMapLayer,type AacMapOptions } from '../lib/eldercare/map-layer';
 
 interface Props {
+  aac:AacMapOptions;
   citizens: CitizenLayerOptions & { focusKey:number; networkView:'editor'|'baseline'|'scenario'; onSelect:(id:string)=>void; onFocus:()=>void; onPlayPause:()=>void };
   catalog: NetworkCatalog; draft: EditorDraft; mode: 'anchor' | 'place';
   disabledSegments: number[]; comparison: CompactComparison | null;
@@ -26,6 +28,7 @@ function position(stop: EditorDraft['stations'][number], catalog: NetworkCatalog
 export default function SingaporeMap(props: Props) {
   const container = useRef<HTMLDivElement>(null), mapRef = useRef<LibreMap | null>(null), latest = useRef(props);
   const citizensRef = useRef<CitizenLayer | null>(null);
+  const aacRef=useRef<AacMapLayer|null>(null),stationPopup=useRef<maplibregl.Popup|null>(null);
   latest.current = props;
   const [ready, setReady] = useState(false), [fatal, setFatal] = useState(false);
   const [streets, setStreets] = useState(false), [buildings, setBuildings] = useState(true), [notice, setNotice] = useState('Loading local geography…');
@@ -82,6 +85,7 @@ export default function SingaporeMap(props: Props) {
         catch { citizens.onRemove(); latest.current.citizens.onStats({visible:0,fps:null,drawCalls:0,elapsedSeconds:0,status:'3D citizens unavailable; profiles remain usable'}); }
         map.addSource('citizen-path',{type:'geojson',data:empty});
         map.addLayer({id:'citizen-path',type:'line',source:'citizen-path',paint:{'line-color':'#f9e4a4','line-width':2,'line-dasharray':[2,2]}});
+        aacRef.current=new AacMapLayer(map,latest.current.aac);
         setReady(true); setNotice(citizensRef.current?'Local geography ready':'Citizen rendering unavailable. MRT editing and profiles remain usable.'); setNeighbourhood(map.getZoom() >= 11.5);
       });
       map.on('zoomend', () => setNeighbourhood(map.getZoom() >= 11.5));
@@ -93,6 +97,8 @@ export default function SingaporeMap(props: Props) {
         else setNotice('Some map data could not load. Use station selectors if needed.');
       });
       map.on('click', e => {
+        if(e.originalEvent.target instanceof Element&&e.originalEvent.target.closest('.maplibregl-popup,.maplibregl-control-container'))return;
+        if(latest.current.aac.active){aacRef.current?.handleClick({lat:Number(e.lngLat.lat.toFixed(6)),lon:Number(e.lngLat.lng.toFixed(6))});return;}
         const citizen = latest.current.mode==='anchor' ? citizensRef.current?.pick(e.point) : null;
         if(citizen){latest.current.citizens.onSelect(citizen);return;}
         const hits = map.queryRenderedFeatures(e.point, { layers: ['station-circles'] });
@@ -100,7 +106,9 @@ export default function SingaporeMap(props: Props) {
         else if (latest.current.mode === 'place') latest.current.onPlace({ lat: Number(e.lngLat.lat.toFixed(6)), lon: Number(e.lngLat.lng.toFixed(6)) });
       });
       const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: true, offset: 14 });
+      stationPopup.current=popup;
       map.on('mouseenter', 'station-circles', e => {
+        if(latest.current.aac.active)return;
         map.getCanvas().style.cursor = 'pointer';
         const f = e.features?.[0]; if (!f || f.geometry.type !== 'Point') return;
         const content = document.createElement('div'), name = document.createElement('strong'), detail = document.createElement('span');
@@ -109,18 +117,19 @@ export default function SingaporeMap(props: Props) {
       });
       map.on('mouseleave', 'station-circles', () => { map.getCanvas().style.cursor = ''; popup.remove(); });
     } catch { setFatal(true); setNotice('WebGL unavailable. Use the geographic plan view and station editor.'); }
-    return () => { clearTimeout(loadTimer); observer?.disconnect(); mapRef.current = null; map?.remove(); citizensRef.current=null; };
+    return () => { clearTimeout(loadTimer); observer?.disconnect(); aacRef.current?.dispose();aacRef.current=null;stationPopup.current?.remove();stationPopup.current=null;mapRef.current = null; map?.remove(); citizensRef.current=null; };
   }, []);
 
   useEffect(()=>{
     if(!ready)return;
     citizensRef.current?.update(props.citizens);
     const networkView=props.citizens.networkView, map=mapRef.current;
-    for(const id of ['proposal-lines','proposal-halo'])map?.setLayoutProperty(id,'visibility',networkView==='baseline'?'none':'visible');
-    for(const id of ['before-route','after-route'])map?.setLayoutProperty(id,'visibility',networkView==='editor'?'visible':'none');
+    for(const id of ['proposal-lines','proposal-halo'])map?.setLayoutProperty(id,'visibility',props.aac.active||networkView==='baseline'?'none':'visible');
+    for(const id of ['before-route','after-route'])map?.setLayoutProperty(id,'visibility',!props.aac.active&&networkView==='editor'?'visible':'none');
     const animation=props.citizens.pair[props.citizens.view].animations.find(a=>a.agentId===props.citizens.selectedId);
     (mapRef.current?.getSource('citizen-path') as GeoJSONSource | undefined)?.setData({type:'FeatureCollection',features:props.citizens.enabled&&animation&&animation.waypoints.length>1?[line(animation.waypoints.map(p=>[p.lon,p.lat]))]:[]});
-  },[props.citizens,ready]);
+  },[props.citizens,props.aac.active,ready]);
+  useEffect(()=>{if(!ready)return;aacRef.current?.update(props.aac);const map=mapRef.current;for(const id of ['network-lines','station-circles'])map?.setLayoutProperty(id,'visibility',props.aac.active?'none':'visible');if(props.aac.active)stationPopup.current?.remove();},[props.aac,ready]);
   useEffect(()=>{if(ready&&props.citizens.focusKey)citizensRef.current?.focus();},[props.citizens.focusKey,ready]);
 
   useEffect(() => {
@@ -170,19 +179,18 @@ export default function SingaporeMap(props: Props) {
     if (map.getLayer('hdb-buildings')) map.setLayoutProperty('hdb-buildings', 'visibility', buildings ? 'visible' : 'none');
   }, [buildings, ready, neighbourhood]);
 
-  return <div className={`map-frame ${props.mode === 'place' ? 'placing' : ''} ${props.citizens.networkView==='baseline'?'citizen-baseline':''}`}>
+  return <div className={`map-frame ${(props.aac.active?props.aac.placing:props.mode==='place')?'placing':''} ${props.aac.active?'aac-mode':''} ${props.citizens.networkView==='baseline'?'citizen-baseline':''}`}>
     <div ref={container} className="map-canvas" role="region" aria-label="Interactive geographic Singapore map" />
     {fatal && <PlanFallback {...props} />}
-    <div className="map-top-card"><span className="live-dot" /><div><strong>Singapore</strong><span>{props.mode === 'place' ? 'Click the map to place a hypothetical station' : 'Click an existing station to add an interchange'}</span></div></div>
+    <div className="map-top-card"><span className="live-dot" /><div><strong>{props.aac.active?'AAC access · Bukit Merah':'Singapore'}</strong><span>{props.aac.active?(props.aac.placing?'Click to place a hypothetical centre · Escape cancels':'Limited corroborated AAC subset · select a marker'):props.mode === 'place' ? 'Click the map to place a hypothetical station' : 'Click an existing station to add an interchange'}</span></div></div>
     <div className="map-toolbar">
       <button onClick={() => { mapRef.current?.easeTo({ pitch: pitch ? 0 : 48, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 500 }); setPitch(!pitch); }} aria-pressed={pitch}>▱ {pitch ? '3D view' : 'Plan view'}</button>
       <button onClick={() => mapRef.current?.fitBounds([[103.62, 1.235], [104.03, 1.465]], { padding: 35, duration: 500 })}>Fit Singapore</button>
-      <button onClick={() => mapRef.current?.easeTo({ center: [103.85, 1.35], zoom: 14, pitch: 48, duration: 600 })}>Neighbourhood</button>
-      <button onClick={props.citizens.onFocus}>Citizens</button>
+      {props.aac.active?<><button onClick={props.aac.onFocus}>Focus AAC area</button><button onClick={props.aac.placing?props.aac.onCancel:props.aac.onStartPlacement}>{props.aac.placing?'Cancel placement':'Place centre'}</button></>:<><button onClick={() => mapRef.current?.easeTo({ center: [103.85, 1.35], zoom: 14, pitch: 48, duration: 600 })}>Neighbourhood</button><button onClick={props.citizens.onFocus}>Citizens</button></>}
       {props.citizens.enabled&&props.citizens.networkView!=='editor'&&<button onClick={props.citizens.onPlayPause} aria-label={props.citizens.playing?'Pause citizen animation':'Play citizen animation'}>{props.citizens.playing?'Pause':'Play'}</button>}
     </div>
     <div className="map-layers"><label><input type="checkbox" checked={buildings} onChange={e => setBuildings(e.target.checked)} /> Miniature HDB buildings</label><label><input type="checkbox" checked={streets} onChange={e => setStreets(e.target.checked)} /> Street detail <span>online</span></label><small role="status">{buildingStatus}</small></div>
-    <div className="map-legend"><span><i className="legend-line existing" /> Existing connections</span><span><i className="legend-line proposed" /> Proposed line</span><strong>All links are schematic, not track alignments</strong></div>
+    {props.aac.active?<div className="map-legend aac-map-legend"><span>AAC · historical, corroborated records</span><span>HYP · hypothetical centre · P · landmark proxy</span><strong>Assumed straight-line accessibility radius — not a walking-network catchment.</strong></div>:<div className="map-legend"><span><i className="legend-line existing" /> Existing connections</span><span><i className="legend-line proposed" /> Proposed line</span><strong>All links are schematic, not track alignments</strong></div>}
     {!ready && !fatal && <div className="map-loading"><span className="spinner" /> Loading geographic canvas</div>}
     <span className="sr-only" role="status">{notice}</span>
     {(notice.includes('unavailable') || notice.includes('could not')) && <div className="map-notice">{notice}</div>}
@@ -198,14 +206,16 @@ function PlanFallback(props: Props) {
     return polygons.flatMap(p => p.map(r => r.map((pos, i) => `${i ? 'L' : 'M'}${xy(pos).join(',')}`).join(' ') + 'Z')).join(' ');
   };
   return <svg className="fallback-map" viewBox="0 0 1000 650" aria-label="Singapore geographic fallback plan" onClick={e => {
-    if (props.mode !== 'place') return;
+    if (props.aac.active?!props.aac.placing:props.mode !== 'place') return;
     const svg = e.currentTarget, p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
     const at = p.matrixTransform(svg.getScreenCTM()!.inverse());
-    props.onPlace({ lon: Number((103.55 + at.x / 1000 * 0.6).toFixed(6)), lat: Number((1.5 - at.y / 650 * 0.32).toFixed(6)) });
+    const coordinate={lon:Number((103.55+at.x/1000*.6).toFixed(6)),lat:Number((1.5-at.y/650*.32).toFixed(6))};if(props.aac.active)props.aac.onPlace(coordinate);else props.onPlace(coordinate);
   }}>
     {features.map((f, i) => <path key={i} d={path(f.geometry)} fill="#243c45" stroke="#48656b" strokeWidth="0.6" />)}
-    {props.catalog.stations.map(s => { const [x, y] = xy([s.lon, s.lat]); return <circle key={s.id} cx={x} cy={y} r="4" fill="#71d6d0" onClick={e => { e.stopPropagation(); props.onStation(s.id); }}><title>{s.name} ({s.id})</title></circle>; })}
-    {props.draft.stations.slice(1).map((s, i) => { const a = position(props.draft.stations[i], props.catalog), b = position(s, props.catalog); if (!a || !b || props.disabledSegments.includes(i)) return null;
+    {!props.aac.active&&props.catalog.stations.map(s => { const [x, y] = xy([s.lon, s.lat]); return <circle key={s.id} cx={x} cy={y} r="4" fill="#71d6d0" onClick={e => { e.stopPropagation(); props.onStation(s.id); }}><title>{s.name} ({s.id})</title></circle>; })}
+    {props.aac.active&&props.aac.facilities?.facilities.map(f=>{const [x,y]=xy([f.position.lon,f.position.lat]);return <rect key={f.id} x={x-4} y={y-4} width="8" height="8" fill="#a1dfb8" onClick={e=>{e.stopPropagation();props.aac.onSelect(f.id);}}><title>{f.name} · historical AAC</title></rect>;})}
+    {props.aac.active&&props.aac.position&&Number.isFinite(props.aac.position.lat)&&Number.isFinite(props.aac.position.lon)&&(()=>{const [x,y]=xy([props.aac.position!.lon,props.aac.position!.lat]);return <circle cx={x} cy={y} r="6" fill="#ffac79"><title>Hypothetical AAC</title></circle>;})()}
+    {!props.aac.active&&props.draft.stations.slice(1).map((s, i) => { const a = position(props.draft.stations[i], props.catalog), b = position(s, props.catalog); if (!a || !b || props.disabledSegments.includes(i)) return null;
       const [x1, y1] = xy(a), [x2, y2] = xy(b); return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#ffac79" strokeWidth="4" />; })}
   </svg>;
 }

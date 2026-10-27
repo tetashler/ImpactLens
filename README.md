@@ -2,7 +2,7 @@
 
 Pre-hackathon research prototype for a Singapore social-impact sandbox. The current repository contains a local **Next.js + TypeScript + MapLibre** workspace backed by the validated MRT/LRT routing and hypothetical-line engine. Requires **Node.js 24+**.
 
-Design a hypothetical line on Singapore's map, set explicit travel assumptions and compare calculated journeys. **Calculated impact** shows full-weight demographic comparisons and run-bound synthetic profiles; **Illustrative city** separately animates 180 invented citizens. Optional Gemini or OpenRouter integration provides bounded dashboard layouts, grounded explanations and synthetic conversations. Eldercare / active-ageing centres remain the second committed scenario.
+Choose **MRT Line** to design a hypothetical rail line and compare calculated journeys. **Calculated impact** shows full-weight demographic comparisons and run-bound synthetic profiles; **Illustrative city** separately animates 180 invented citizens. Optional Gemini or OpenRouter integration provides bounded dashboard layouts, grounded explanations and synthetic conversations. Choose **Active Ageing Centre** to place a hypothetical AAC, calculate straight-line geographic accessibility and inspect weighted older-resident comparisons and unknown coverage.
 
 ## Run locally
 
@@ -20,6 +20,8 @@ npm run dev
 Geography and the MapLibre worker are prepared automatically. No API key, hosting account or internet connection is needed for the core workflow after installation; optional OpenStreetMap street tiles need internet. See [map implementation notes](docs/INTERACTIVE_MAP_IMPLEMENTATION.md) for attribution, licensing and data limits.
 
 AI is optional. Set `AI_PROVIDER` to `gemini` or `openrouter`, plus that provider's key and independently selected model, in your private environment; restart the server and reload. See [.env.example](.env.example) for variable names and [Phase 5 notes](docs/PHASE5_DASHBOARD_AI_IMPLEMENTATION.md) for current model/capability checks, bounded answers and actual verification. Preserve existing `.env.local` entries. The calculated dashboard works when AI is unconfigured or unavailable.
+
+For the AAC demonstration, choose **Load Bukit Merah demo**, then **Calculate AAC Impact**. You can also click to place, drag/reposition or enter coordinates. Editing invalidates previous results; calculations run only on request. Four corroborated historical AAC records and two public landmark origin proxies support this limited scenario, not nationwide coverage or actual walking routes. Unlocated residents remain unassessed. Capacity, attendance and health effects are not calculated. See [interactive AAC implementation](docs/PHASE6C_ELDERCARE_UI_IMPLEMENTATION.md).
 
 ```powershell
 npm test
@@ -51,7 +53,7 @@ This writes `docs/MRT_GRAPH_VALIDATION.md` and files under `data/derived/mrt/`. 
 - Proposed stations, segment running/dwell times, waiting times and interchange connections are scenario assumptions. The illustrative line is not an official proposal; the model does not assess construction feasibility or forecast demand, crowding or demographic benefits.
 - Map links are schematic station connections, not rail alignments. HDB extrusions use actual footprints with illustrative 12 m height; the source has no measured heights. Default geography is local; online street detail is optional.
 - Raw GTFS files under `data/transport/mrt-network/` are preserved. Two reviewed interchange aliases and **17 quarantined suspicious trips** are handled in the derived model with provenance retained.
-- Feed provenance and timetable accuracy remain unverified. Other downloaded datasets also need source, licence and suitability checks before use. Local data presence does not establish validation; the current simulation does not use passenger-volume or demographic weighting.
+- Feed provenance and timetable accuracy remain unverified. Local data presence does not establish suitability. Calculated impact uses synthetic Census 2020 expansion weights and explicit assumed trip assignments; passenger-volume data is not used. Calculated citizens still lack justified individual geographic trajectories.
 - This is preparation for learning and rebuilding during the hackathon. Check competition rules before bringing code, data or other materials into the event.
 
 ## Code and documentation

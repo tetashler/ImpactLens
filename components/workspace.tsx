@@ -10,6 +10,11 @@ import type { CitizenStats } from '../lib/citizens/layer';
 import type { NetworkCatalog, SimulationResponse, MapStation } from '../lib/map-contract';
 import { draftToIntervention, type EditorDraft, type DraftStop } from '../lib/editor';
 import { illustrativeLine } from '../prototype/mrt/examples/illustrative-line';
+import { useAacScenario } from './use-aac-scenario';
+import { AacEditor,AacResults } from './eldercare-panel';
+import type { AacMapOptions } from '../lib/eldercare/map-layer';
+import type { OriginReference } from '../prototype/eldercare/types';
+const NO_AAC_ORIGINS:OriginReference[]=[];
 const SingaporeMap = dynamic(() => import('./singapore-map'), { ssr: false, loading: () => <div className="map-loading"><span className="spinner" /> Preparing map</div> });
 
 function exampleDraft(): EditorDraft {
@@ -37,6 +42,10 @@ function NumberField({ label, value, onChange, step = 1, min = 0 }: { label: str
 }
 
 export default function Workspace() {
+  const [interventionMode,setInterventionMode]=useState<'mrt'|'aac'>('mrt');
+  const aac=useAacScenario(interventionMode==='aac');
+  const aacOrigins=aac.report?.result.provenance.originReferences??NO_AAC_ORIGINS;
+  const aacOptions=useMemo<AacMapOptions>(()=>({active:interventionMode==='aac',placing:aac.placing,position:aac.draft.position,radiusMetres:aac.draft.thresholdMetres,facilities:aac.facilities,selectedFacility:aac.selectedFacility,origins:aacOrigins,focusKey:aac.focusKey,onPlace:aac.place,onSelect:aac.setSelectedFacility,onDragStart:aac.invalidate,onCancel:aac.cancelPlacement,onStartPlacement:()=>aac.setPlacing(true),onFocus:aac.focus}),[interventionMode,aac.placing,aac.draft.position,aac.draft.thresholdMetres,aac.facilities,aac.selectedFacility,aacOrigins,aac.focusKey,aac.place,aac.setSelectedFacility,aac.invalidate,aac.cancelPlacement,aac.setPlacing,aac.focus]);
   const [inspector,setInspector]=useState<'journey'|'citizens'|'impact'>('journey');
   const [impactWide,setImpactWide]=useState(false);
   const [impactView,setImpactView]=useState<'baseline'|'scenario'>('scenario'),[impactRevision,setImpactRevision]=useState(0);
@@ -48,7 +57,7 @@ export default function Workspace() {
   const selectCitizen=useCallback((id:string)=>{setSelectedId(id);setInspector('citizens');},[]);
   const togglePlayback=useCallback(()=>setPlaying(p=>!p),[]);
   // Calculated mode has no geographic agents. Fixture mode never overlays the unrelated editable proposal.
-  const citizenOptions=useMemo(()=>({pair,view,selectedId,playing,speed,resetKey,focusKey,networkView:inspector==='journey'?'editor' as const:inspector==='impact'?impactView:'baseline' as const,enabled:inspector==='citizens'&&citizensEnabled,onStats:setCitizenStats,onSelect:selectCitizen,onFocus:focusCitizens,onPlayPause:togglePlayback}),[pair,view,selectedId,playing,speed,resetKey,focusKey,inspector,impactView,citizensEnabled,selectCitizen,focusCitizens,togglePlayback]);
+  const citizenOptions=useMemo(()=>({pair,view,selectedId,playing,speed,resetKey,focusKey,networkView:inspector==='journey'?'editor' as const:inspector==='impact'?impactView:'baseline' as const,enabled:interventionMode==='mrt'&&inspector==='citizens'&&citizensEnabled,onStats:setCitizenStats,onSelect:selectCitizen,onFocus:focusCitizens,onPlayPause:togglePlayback}),[interventionMode,pair,view,selectedId,playing,speed,resetKey,focusKey,inspector,impactView,citizensEnabled,selectCitizen,focusCitizens,togglePlayback]);
   const loadCitizens=(next:CitizenViewPair)=>{setPair(next);setSelectedId(next.baseline.citizens[0]?.agentId??null);setPlaying(false);setResetKey(k=>k+1);};
   const [catalog, setCatalog] = useState<NetworkCatalog | null>(null), [networkError, setNetworkError] = useState('');
   const [date, setDate] = useState('2026-10-27'), [draft, setDraft] = useState<EditorDraft>(exampleDraft);
@@ -112,11 +121,11 @@ export default function Workspace() {
   };
   const min = (value: number | null | undefined) => value == null ? '—' : value.toFixed(2);
 
-  return <main className={`workspace-shell ${inspector==='citizens'?'inspecting-citizens':inspector==='impact'?'inspecting-impact':''} ${impactWide?'dashboard-wide':''}`}>
-    <header className="app-header"><a href="/" className="brand" aria-label="ImpactLens SG home"><span className="brand-symbol"><Icon name="layers" size={24} /></span><strong>ImpactLens<span>SG</span></strong></a><div className="workspace-tab"><Icon name="train" /> MRT planning workspace</div><div className="header-end"><span className="prototype-badge">Research prototype</span><span className="local-tag"><span className="live-dot" /> Local workspace</span></div></header>
-    <div className="workspace-heading"><div><div className="breadcrumb">Interventions <Icon name="chevron" size={12} /> New MRT line</div><h1>Explore a better connection.</h1></div><div className="network-summary"><span><strong>{catalog?.stations.length ?? '—'}</strong> existing stations</span><span><strong>{catalog?.quarantinedTrips ?? '—'}</strong> trips quarantined</span><span className="model-tag">Static travel-time model</span></div></div>
+  return <main className={`workspace-shell ${interventionMode==='aac'?'inspecting-aac':inspector==='citizens'?'inspecting-citizens':inspector==='impact'?'inspecting-impact':''} ${interventionMode==='mrt'&&impactWide?'dashboard-wide':''}`}>
+    <header className="app-header"><a href="/" className="brand" aria-label="ImpactLens SG home"><span className="brand-symbol"><Icon name="layers" size={24} /></span><strong>ImpactLens<span>SG</span></strong></a><div className="intervention-selector" role="group" aria-label="Intervention type"><button aria-pressed={interventionMode==='mrt'} onClick={()=>setInterventionMode('mrt')}>MRT Line</button><button aria-pressed={interventionMode==='aac'} onClick={()=>setInterventionMode('aac')}>Active Ageing Centre</button></div><div className="header-end"><span className="prototype-badge">Research prototype</span><span className="local-tag"><span className="live-dot" /> Local workspace</span></div></header>
+    <div className="workspace-heading"><div><div className="breadcrumb">Interventions <Icon name="chevron" size={12} /> {interventionMode==='aac'?'New Active Ageing Centre':'New MRT line'}</div><h1>{interventionMode==='aac'?'Bring care closer.':'Explore a better connection.'}</h1></div><div className="network-summary">{interventionMode==='aac'?<><span><strong>{aac.facilities?.summary.corroboratedAac??'—'}</strong> corroborated AAC records</span><span><strong>{aac.facilities?.summary.unknownServicePoints??'—'}</strong> unclassified historical points</span></>:<><span><strong>{catalog?.stations.length ?? '—'}</strong> existing stations</span><span><strong>{catalog?.quarantinedTrips ?? '—'}</strong> trips quarantined</span><span className="model-tag">Static travel-time model</span></>}</div></div>
     <div className="workspace-grid">
-      <aside className="editor-panel" aria-label="MRT line editor">
+      <aside hidden={interventionMode!=='mrt'} className="editor-panel" aria-label="MRT line editor">
         <div className="panel-heading"><div className="panel-title"><span className="small-icon coral"><Icon name="train" /></span><div><h2>Line editor</h2><p>{draft.stations.length} stations · {Math.max(0, draft.stations.length - 1)} segments</p></div></div><div className="icon-actions"><button title="Undo edit" aria-label="Undo edit" disabled={!history.length} onClick={() => { const last = history.at(-1)!; setDraft(last.draft); setDisabledSegments(last.disabled); setHistory(h => h.slice(0, -1)); invalidate(); setMessage('Last edit undone.'); }}><Icon name="undo" size={16} /></button><button title="Reset proposal" aria-label="Reset proposal" onClick={() => { change({ id: 'HYP_USER_LINE', name: 'My proposed line', waitingTimeSeconds: 150, stations: [], segments: [] }, []); setMessage('Start with an existing interchange, then place stations on the map.'); }}><Icon name="reset" size={16} /></button></div></div>
         <div className="editor-scroll">
           <label className="field-label">Line name<input value={draft.name} onChange={e => change({ ...draft, name: e.target.value })} /></label>
@@ -136,14 +145,15 @@ export default function Workspace() {
         <div className="editor-footer" role="status">{message}</div>
       </aside>
 
+      <AacEditor state={aac} hidden={interventionMode!=='aac'}/>
       <section className="map-panel" aria-label="Singapore network map">
-        {catalog ? <SingaporeMap citizens={citizenOptions} catalog={catalog} draft={draft} disabledSegments={disabledSegments} mode={mode} comparison={comparison}
+        {catalog ? <SingaporeMap aac={aacOptions} citizens={citizenOptions} catalog={catalog} draft={draft} disabledSegments={disabledSegments} mode={mode} comparison={comparison}
           onStation={id => { if (mode === 'anchor') addExisting(id); else setMessage('Use Interchange mode to add an existing station. Click an empty map location for a new station.'); }} onPlace={addPoint} onMove={(key, p) => { patchStop(key, p); setMessage('Hypothetical location updated. Review segment times before rerunning.'); }} />
           : <div className="map-loading">{networkError ? <div className="load-error"><strong>Network unavailable</strong><p>{networkError}</p><button onClick={() => location.reload()}>Retry loading</button></div> : <><span className="spinner" /> Loading validated station network</>}</div>}
         <div className="map-bottom-note"><Icon name="layers" size={14} /> Local geographic data · WGS84 coordinates<span>HDB footprints only · no measured building heights</span></div>
       </section>
 
-      <aside className="results-panel" aria-label="Journey comparison">
+      <aside hidden={interventionMode!=='mrt'} className="results-panel" aria-label="Journey comparison">
         <div className="inspector-tabs" role="group" aria-label="Inspector"><button aria-pressed={inspector==='journey'} onClick={()=>setInspector('journey')}>MRT journey</button><button aria-pressed={inspector==='impact'} onClick={()=>setInspector('impact')}>Calculated impact</button><button aria-pressed={inspector==='citizens'} onClick={focusCitizens}>Illustrative city</button></div>
         <div className="impact-slot" hidden={inspector!=='impact'}><ImpactPanel intervention={draftToIntervention(draft)} serviceDate={date} proposalRevision={impactRevision} canRun={canRun} view={impactView} onView={setImpactView} expanded={impactWide} onExpand={()=>setImpactWide(v=>!v)}/></div>
         {inspector==='citizens'?<div className="results-scroll citizen-inspector"><p className="citizen-disclaimer">{citizenNotice}</p><CitizensPanel pair={pair} view={view} onView={setView} selectedId={selectedId} onSelect={selectCitizen} playing={playing} onPlayPause={togglePlayback} onReset={()=>{setPlaying(false);setResetKey(k=>k+1);setCitizenStats(s=>({...s,elapsedSeconds:0}));}} speed={speed} onSpeed={setSpeed} elapsedSeconds={citizenStats.elapsedSeconds} enabled={citizensEnabled} onEnabled={setCitizensEnabled} onFocus={focusCitizens} stats={citizenStats} onImport={loadCitizens} onRestoreFixture={()=>loadCitizens(citizenViewPairFixture)} /></div>:inspector==='journey'?<>
@@ -168,7 +178,8 @@ export default function Workspace() {
         </div>
         </>:null}
       </aside>
+      <AacResults state={aac} hidden={interventionMode!=='aac'}/>
     </div>
-    <footer className="app-footer"><span><span className="live-dot" /> Evidence-informed scenario modelling</span><span>Pre-hackathon prototype · Proposed infrastructure is hypothetical</span><span>ImpactLens SG / Phase 4 integration</span></footer>
+    <footer className="app-footer"><span><span className="live-dot" /> Evidence-informed scenario modelling</span><span>Pre-hackathon prototype · Proposed infrastructure is hypothetical</span><span>ImpactLens SG / MRT + AAC</span></footer>
   </main>;
 }
