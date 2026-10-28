@@ -35,7 +35,8 @@ test('fixture conserves the full population and profiles preserve missing activi
     }
     assert.equal(getCitizenProfile(payload,'missing'),null);
   }
-  assert.notDeepEqual(citizenViewPairFixture.baseline.animations[0].waypoints,citizenViewPairFixture.scenario.animations[0].waypoints);
+  // The visual pedestrians are independent of hypothetical intervention outcomes.
+  assert.deepEqual(citizenViewPairFixture.baseline.animations,citizenViewPairFixture.scenario.animations);
 });
 
 test('stable sample keeps IDs across reordered views and excludes absent positions only from rendering', () => {
@@ -67,7 +68,7 @@ test('animation uses supplied path with idle, movement, arrival and destination 
   assert.equal(sampleCitizenAnimation(animation,200).state,'idle');
   const paused=sampleCitizenAnimation(animation,30,{playing:false});
   assert.equal(paused.state,'paused');
-  assert.equal(paused.limbPhase,0);
+  assert.equal(paused.limbPhase,sampleCitizenAnimation(animation,30).limbPhase);
   assert.equal(sampleCitizenAnimation(animation,5,{offsetSeconds:10}).state,'idle');
   animation.waypoints=[]; animation.state='idle';
   assert.deepEqual(sampleCitizenAnimation(animation,40).position,animation.position);
@@ -75,7 +76,7 @@ test('animation uses supplied path with idle, movement, arrival and destination 
   assert.equal(sampleCitizenAnimation(animation,40).position,null);
 });
 
-test('clock preserves pause, speed, reset and disposal and clamps hidden-tab gaps', () => {
+test('clock preserves pause, speed, reset and disposal with explicit hidden ownership', () => {
   const clock=new PlaybackClock();
   assert.deepEqual(clock.tick(0),{elapsedSeconds:0,playing:false,speed:1});
   clock.play(0);
@@ -85,7 +86,7 @@ test('clock preserves pause, speed, reset and disposal and clamps hidden-tab gap
   clock.pause(200);
   assert.ok(Math.abs(clock.tick(5000).elapsedSeconds-.3)<1e-12);
   clock.play(5000);
-  assert.equal(clock.tick(10000).elapsedSeconds,.8);
+  assert.equal(clock.tick(10000).elapsedSeconds,10.3);
   clock.reset(10000);
   assert.equal(clock.tick(10100).elapsedSeconds,0);
   clock.play(10100); clock.dispose();

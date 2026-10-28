@@ -3,6 +3,8 @@
 import { useId, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
 import { getCitizenProfile, parseCitizenViewPair, type CitizenViewPair, type CitizenView } from '../lib/citizens/data';
 import { parseCitizenProfile, type CitizenProfileResponse } from '../lib/contracts/citizen-simulation';
+import {illustrativePedestrianPaths} from '../lib/citizens/pedestrians';
+import type {CitizenPosition} from '../lib/citizens/layer';
 import './citizens.css';
 
 interface CitizensPanelProps {
@@ -20,7 +22,9 @@ interface CitizensPanelProps {
   enabled: boolean;
   onEnabled: (v: boolean) => void;
   onFocus: () => void;
-  stats: { visible: number; fps: number | null; drawCalls: number; status: string };
+  stats: { visible: number; fps: number | null; drawCalls: number; status: string; selected?:CitizenPosition|null };
+  pedestrianArea?:{id:string;onChange:(id:string)=>void};
+  showPath?:{value:boolean;onChange:(enabled:boolean)=>void};
   onImport: (pair: CitizenViewPair) => void;
   onRestoreFixture: () => void;
 }
@@ -128,14 +132,17 @@ export default function CitizensPanel(props: CitizensPanelProps) {
   return <details className="citizens-panel" open>
     <summary className="citizens-panel-heading"><span>Synthetic citizens</span><span className="citizens-badge">{payload.metadata.resultKind}</span></summary>
     <div className="citizens-body">
-      <p className="citizens-caption">Inspect supplied synthetic profiles and visual-only journeys.</p>
+      <p className="citizens-caption">{props.pedestrianArea?'Illustrative pedestrians — visual movement is not a calculated journey forecast.':'Inspect supplied synthetic profiles and supplied visual geometry.'}</p>
       <div className="citizens-view" role="group" aria-label="Citizen network view">{(['baseline', 'scenario'] as const).map(option => <button type="button" key={option} aria-pressed={view === option} onClick={() => props.onView(option)}>{option === 'baseline' ? 'Baseline' : 'Scenario'}</button>)}</div>
       <div className="citizens-row"><label className="citizens-checkbox"><input type="checkbox" checked={enabled} onChange={event => props.onEnabled(event.target.checked)} />Show citizens</label><button className="citizens-button" type="button" onClick={props.onFocus} disabled={!enabled}>Focus citizens</button></div>
-      <div className="citizens-clock"><span>Illustrative day</span><output>{visualClock(props.elapsedSeconds)}</output></div>
+      {props.pedestrianArea&&<label className="citizens-area">Explore pedestrians in<select aria-label="Pedestrian neighbourhood" value={props.pedestrianArea.id} onChange={event=>props.pedestrianArea!.onChange(event.target.value)}>{illustrativePedestrianPaths.filter((p,index,all)=>all.findIndex(other=>other.areaId===p.areaId)===index).map(p=><option key={p.areaId} value={p.areaId}>{p.areaLabel}</option>)}</select></label>}
+      {props.showPath&&<label className="citizens-checkbox"><input type="checkbox" checked={props.showPath.value} onChange={event=>props.showPath!.onChange(event.target.checked)}/>Show selected illustrative path</label>}
+      <div className="citizens-clock"><span>Illustrative time</span><output>{visualClock(props.elapsedSeconds)}</output></div>
       <p className="citizens-caption">Visual time only; supplied journey durations stay unchanged.</p>
-      <div className="citizens-playback"><button className="citizens-button citizens-primary" type="button" disabled={!enabled} onClick={props.onPlayPause}>{props.playing ? 'Pause' : 'Play'}</button><button className="citizens-button" type="button" onClick={props.onReset}>Reset</button><label className="citizens-speed">Speed<select aria-label="Animation speed" value={props.speed} onChange={event => props.onSpeed(Number(event.target.value))}>{[1, 2, 4].map(speed => <option key={speed} value={speed}>{speed}×</option>)}</select></label></div>
+      <div className="citizens-playback"><button className="citizens-button citizens-primary" type="button" disabled={!enabled||stats.status.includes('unavailable')} onClick={props.onPlayPause}>{props.playing ? 'Pause' : 'Play'}</button><button className="citizens-button" type="button" onClick={props.onReset}>Reset</button><label className="citizens-speed">Speed<select aria-label="Animation speed" value={props.speed} onChange={event => props.onSpeed(Number(event.target.value))}>{[1, 2, 4].map(speed => <option key={speed} value={speed}>{speed}×</option>)}</select></label></div>
       <dl className="citizens-stats"><div><dt>Sample drawn</dt><dd>{stats.visible}</dd></div><div><dt>FPS</dt><dd>{stats.fps === null ? '—' : number(stats.fps)}</dd></div><div><dt>Draw calls</dt><dd>{stats.drawCalls}</dd></div></dl>
       <p className="citizens-caption">{stats.status} · Visible sample is not weighted population.</p>
+      {stats.selected?.agentId===selectedId&&<div className="citizens-motion-meta"><strong>{stats.selected.areaLabel??'Supplied visual position'}</strong><output aria-label="Selected pedestrian position" data-pedestrian-position={JSON.stringify(stats.selected)}>{stats.selected.position.lat.toFixed(6)}, {stats.selected.position.lon.toFixed(6)}</output><p>{stats.selected.rendered?'Selected actor is in the viewport.':'Selected actor is hidden or outside the viewport.'} {props.pedestrianArea?'This visual location is independent of the invented demographic and journey examples below. It is not a home or measured trip.':'Only supplied coordinates are shown.'}</p></div>}
       <div className="citizens-selection"><label htmlFor={`${id}-search`}>Find a citizen</label><input id={`${id}-search`} type="search" placeholder="ID, age category or area" value={search} onChange={event => setSearch(event.target.value)} /><label htmlFor={`${id}-select`}>Sample citizens ({filtered.length})</label><select id={`${id}-select`} size={Math.min(4, Math.max(2, filtered.length))} value={filtered.some(citizen => citizen.agentId === selectedId) ? selectedId! : ''} onChange={event => onSelect(event.target.value)}><option disabled value="">{filtered.length ? 'Choose a synthetic citizen' : 'No matching citizens'}</option>{filtered.map(citizen => <option key={citizen.agentId} value={citizen.agentId} title={citizen.agentId}>#{shortId(citizen.agentId)} · {ageLabel(citizen.demographic.ageGroup)} · {citizen.demographic.subzoneName}</option>)}</select></div>
       {selected ? <CitizenProfile profile={selected} /> : <p className="citizens-empty">Select a citizen in the sample or on the map to inspect their supplied profile.</p>}
       <details className="citizens-details citizens-import"><summary>Load simulation data</summary><p>Import JSON containing a <code>{'{baseline, scenario}'}</code> pair of version 1 citizen simulation payloads. Phase 4C can supply these files; no endpoint is required.</p><label className="citizens-file">Choose payload pair<input type="file" accept="application/json,.json" onChange={importFile} /></label><button type="button" className="citizens-button" onClick={() => { props.onRestoreFixture(); setImportMessage('Invented illustrative fixture restored.'); setImportError(false); }}>Restore illustrative fixture</button>{importMessage && <p className={importError ? 'citizens-error' : 'citizens-caption'} role={importError ? 'alert' : 'status'}>{importMessage}</p>}</details>

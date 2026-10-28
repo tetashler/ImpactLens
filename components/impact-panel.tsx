@@ -12,7 +12,7 @@ import { AiDashboardTools,CitizenChat,useAiAvailability } from './ai-insights';
 import { fallbackLayout,type DashboardLayout } from '../lib/ai/contracts';
 import './impact.css';
 
-interface Props { intervention:MrtIntervention; serviceDate:string; proposalRevision:number; canRun:boolean; view:'baseline'|'scenario'; onView:(view:'baseline'|'scenario')=>void; expanded:boolean; onExpand:()=>void }
+interface Props { intervention:MrtIntervention; serviceDate:string; proposalRevision:number; canRun:boolean; view:'baseline'|'scenario'; onView:(view:'baseline'|'scenario')=>void; expanded:boolean; onExpand:()=>void; resultContext?:string; onResult?:(result:ImpactResponse|null,context:string|null)=>void }
 const number=(n:number|null|undefined,digits=2)=>n==null?'Unknown':n.toLocaleString('en-SG',{maximumFractionDigits:digits});
 const percent=(n:number|null)=>n===null?'Unknown':`${number(n*100)}%`;
 const age=(s:string)=>s==='90andOver'?'90+':s.replaceAll('_','–');
@@ -23,7 +23,7 @@ export default function ImpactPanel(props:Props) {
   const overview=useRef<HTMLDivElement|null>(null);
   const [aiLayout,setAiLayout]=useState<{requestId:string;layout:DashboardLayout}|null>(null);
   const [size,setSize]=useState(2000),[seed,setSeed]=useState('phase4c-demo'),[participation,setParticipation]=useState(80),[threshold,setThreshold]=useState(30),[sample,setSample]=useState(150);
-  const [loaded,setLoaded]=useState<{key:string;data:ImpactResponse}|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
+  const [loaded,setLoaded]=useState<{key:string;context:string|null;data:ImpactResponse}|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const [selected,setSelected]=useState(''),[lookup,setLookup]=useState(''),[profile,setProfile]=useState<CitizenProfileResponse|null>(null),[profileError,setProfileError]=useState(''),[profileBusy,setProfileBusy]=useState(false);
   const gate=useRef(new ImpactRevisionGate()),profileAbort=useRef<AbortController|null>(null);
   const request:ImpactRequest={serviceDate:props.serviceDate,intervention:props.intervention,assumptionSetId:'illustrative-cck-demand',participationRate:participation/100,population:{size,seed},thresholdMinutes:threshold,renderLimit:sample};
@@ -31,6 +31,7 @@ export default function ImpactPanel(props:Props) {
   try{key=`${props.proposalRevision}:${canonicalImpactRequest(request)}`;}catch{key=`${props.proposalRevision}:invalid-settings`;}
   const latest=useRef(key);latest.current=key;
   const active=loaded?.key===key?loaded.data:null;
+  useEffect(()=>{props.onResult?.(active,active?loaded?.context??null:null);},[active,loaded?.context,props.onResult]);
   useEffect(()=>{if(active)overview.current?.scrollIntoView({block:'start',behavior:'instant'});},[active?.identity.requestId]);
   const activeProfile=active&&profile?.metadata.scenarioId===active.identity.runId&&profile.citizen.agentId===selected?profile:null;
   useEffect(()=>{
@@ -43,12 +44,13 @@ export default function ImpactPanel(props:Props) {
     let submitted:ImpactRequest;
     try{submitted=parseImpactRequest(structuredClone(request));}
     catch{setError('Use a valid proposal, 500–5,000 representatives, a nonempty seed, participation 0–100%, and threshold 0–180 minutes.');return;}
+    const context=props.resultContext??null;
     const ticket=gate.current.begin(key);profileAbort.current?.abort();setBusy(true);setLoaded(null);setProfile(null);setError('');setProfileError('');
     try{
       const response=await fetch('/api/impact',{method:'POST',signal:ticket.controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify(submitted)});
       const body=await response.json();if(!response.ok)throw new Error(typeof body.error==='string'?body.error:'Demographic calculation failed.');
       const data=await parseImpactResponse(body,submitted);
-      if(gate.current.accepts(ticket,latest.current)){setLoaded({key:ticket.key,data});setSelected(data.payload.citizens[0]?.agentId??'');setLookup('');}
+      if(gate.current.accepts(ticket,latest.current)){setLoaded({key:ticket.key,context,data});setSelected(data.payload.citizens[0]?.agentId??'');setLookup('');}
     }catch(e){if((e as Error).name!=='AbortError'&&gate.current.accepts(ticket,latest.current))setError((e as Error).message);}
     finally{if(gate.current.accepts(ticket,latest.current))setBusy(false);}
   }

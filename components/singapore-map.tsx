@@ -7,6 +7,7 @@ import type { FeatureCollection, Feature, Geometry } from 'geojson';
 import type { NetworkCatalog, CompactComparison } from '../lib/map-contract';
 import type { EditorDraft } from '../lib/editor';
 import { CitizenLayer, type CitizenLayerOptions } from '../lib/citizens/layer';
+import {syncCitizenPath} from '../lib/citizens/path-overlay';
 import { AacMapLayer,type AacMapOptions } from '../lib/eldercare/map-layer';
 import { PlotMapLayer,type PlotMapOptions } from '../lib/plots/map-layer';
 import {CameraCoordinator,fitSingapore,LANDING_CAMERA,type CameraCommand} from '../lib/map-camera';
@@ -92,7 +93,8 @@ export default function SingaporeMap(props: Props) {
       };
       // Supplied HDB footprints form a dense Tiong Bahru cluster here. Heights remain illustrative.
       map = new maplibregl.Map({ container: container.current, style,...LANDING_CAMERA,
-        minZoom: 9, maxZoom: 18, maxBounds: [[103.50, 1.12], [104.25, 1.62]], attributionControl: false });
+        // Close inspection of metre-scale illustrative pedestrians; opening camera is unchanged.
+        minZoom: 9, maxZoom: 20, maxBounds: [[103.50, 1.12], [104.25, 1.62]], attributionControl: false });
       mapRef.current = map;
       observer = new ResizeObserver(() => {map.resize();container.current?.parentElement?.style.setProperty('--geographic-canvas-height',`${container.current.clientHeight}px`);});
       observer.observe(container.current);
@@ -112,13 +114,20 @@ export default function SingaporeMap(props: Props) {
         const citizens = new CitizenLayer(latest.current.citizens);
         try { map.addLayer(citizens); citizensRef.current=citizens; }
         catch { citizens.onRemove(); latest.current.citizens.onStats({visible:0,fps:null,drawCalls:0,elapsedSeconds:0,status:'3D citizens unavailable; profiles remain usable'}); }
-        map.addSource('citizen-path',{type:'geojson',data:empty});
-        map.addLayer({id:'citizen-path',type:'line',source:'citizen-path',paint:{'line-color':'#f9e4a4','line-width':2,'line-dasharray':[2,2]}});
+        syncCitizenPath(map,latest.current.citizens);
         aacRef.current=new AacMapLayer(map,latest.current.aac);
         if(latest.current.plotting)plotRef.current=new PlotMapLayer(map,latest.current.plotting);
         setReady(true); setNotice(citizensRef.current?'Local geography ready':'Citizen rendering unavailable. MRT editing and profiles remain usable.'); setNeighbourhood(map.getZoom() >= 11.5);
       });
       map.on('zoomend', () => setNeighbourhood(map.getZoom() >= 11.5));
+      map.on('style.load',()=>{
+        // Reattach the same citizen owner after style replacement; its paused
+        // clock survives, while onRemove/onAdd dispose/rebuild GPU resources.
+        if(loadedMap.current!==map)return;
+        const citizens=citizensRef.current;
+        if(citizens&&!map.getLayer(citizens.id)){try{map.addLayer(citizens);}catch{latest.current.citizens.onStats({visible:0,fps:null,drawCalls:0,elapsedSeconds:0,status:'3D citizens unavailable; profiles remain usable'});}}
+        syncCitizenPath(map,latest.current.citizens);
+      });
       map.on('idle',()=>{
         // Geographic diagnostics for acceptance checks; not population or impact estimates.
         const target=container.current;if(!target)return;
@@ -162,7 +171,7 @@ export default function SingaporeMap(props: Props) {
         content.append(name, detail); popup.setLngLat(f.geometry.coordinates as [number, number]).setDOMContent(content).addTo(map);
       });
       map.on('mouseleave', 'station-circles', () => { map.getCanvas().style.cursor = ''; popup.remove(); });
-    } catch { setFatal(true); setNotice('WebGL unavailable. Use the geographic plan view and station editor.'); }
+    } catch { setFatal(true); setNotice('WebGL unavailable. Use the geographic plan view and station editor.');latest.current.citizens.onStats({visible:0,fps:null,drawCalls:0,elapsedSeconds:0,status:'3D citizens unavailable; profiles remain usable'}); }
     return () => { clearTimeout(loadTimer); observer?.disconnect();loadedMap.current=null;mapRef.current=null;buildingSession.current?.dispose();buildingSession.current=null;plotRef.current?.dispose();plotRef.current=null; aacRef.current?.dispose();aacRef.current=null;stationPopup.current?.remove();stationPopup.current=null;map?.remove(); citizensRef.current=null; };
   }, []);
 
@@ -172,8 +181,7 @@ export default function SingaporeMap(props: Props) {
     const networkView=props.citizens.networkView, map=mapRef.current;
     for(const id of ['proposal-lines','proposal-halo'])map?.setLayoutProperty(id,'visibility',props.exploring||props.plotting?.active||props.aac.active||networkView==='baseline'?'none':'visible');
     for(const id of ['before-route','after-route'])map?.setLayoutProperty(id,'visibility',!props.exploring&&!props.aac.active&&networkView==='editor'?'visible':'none');
-    const animation=props.citizens.pair[props.citizens.view].animations.find(a=>a.agentId===props.citizens.selectedId);
-    (mapRef.current?.getSource('citizen-path') as GeoJSONSource | undefined)?.setData({type:'FeatureCollection',features:props.citizens.enabled&&animation&&animation.waypoints.length>1?[line(animation.waypoints.map(p=>[p.lon,p.lat]))]:[]});
+    syncCitizenPath(map,props.citizens);
   },[props.citizens,props.aac.active,props.exploring,props.plotting?.active,ready]);
   useEffect(()=>{if(!props.cameraCommand&&ready&&mapRef.current&&loadedMap.current===mapRef.current&&props.focusKey)fitSingapore(mapRef.current,matchMedia('(prefers-reduced-motion: reduce)').matches);},[props.focusKey,props.cameraCommand,ready]);
   useEffect(()=>{camera.current.apply(mapRef.current,ready&&loadedMap.current===mapRef.current,matchMedia('(prefers-reduced-motion: reduce)').matches);},[props.cameraCommand,ready]);
@@ -249,12 +257,12 @@ export default function SingaporeMap(props: Props) {
   return <><div data-building-view={buildingView} data-building-state={buildingView==='unified'?unifiedStatus.state:buildings?'legacy':'hidden'} className={`map-frame ${!props.exploring&&(props.plotting?.active?['point','station','line','anchor'].includes(props.plotting.mode):props.aac.active?props.aac.placing:props.editing&&props.mode==='place')?'placing':''} ${props.plotting?.active?'universal-plotting':''} ${props.exploring?'map-exploring':''} ${props.aac.active?'aac-mode':''} ${props.citizens.networkView==='baseline'?'citizen-baseline':''}`}>
     <div ref={container} className="map-canvas" role="region" aria-label="Interactive geographic Singapore map" />
     {fatal && <PlanFallback {...props} />}
-    <div className="map-top-card"><span className="live-dot" /><div><strong>{props.exploring?'Explore Singapore':props.plotting?.active?'General · user drawing':props.aac.active?'AAC access · Bukit Merah':'Singapore'}</strong><span>{props.exploring?'Pan, zoom and discover the city':props.plotting?.active?'Draw geography, then confirm its meaning before calculating':props.aac.active?(props.aac.placing?'Click to place a hypothetical centre · Escape cancels':'Limited corroborated AAC subset · select a marker'):props.mode === 'place' ? 'Click the map to place a hypothetical station' : 'Click an existing station to add an interchange'}</span></div></div>
+    <div className="map-top-card"><span className="live-dot" /><div><strong>{props.exploring?'Explore Singapore':props.plotting?.active?'General · user drawing':props.aac.active?'AAC access · Bukit Merah':props.citizens.enabled?'Illustrative pedestrians':'Singapore'}</strong><span>{props.exploring?'Pan, zoom and discover the city':props.plotting?.active?'Draw geography, then confirm its meaning before calculating':props.aac.active?(props.aac.placing?'Click to place a hypothetical centre · Escape cancels':'Limited corroborated AAC subset · select a marker'):props.citizens.enabled?'Select a pedestrian · motion is visual only':props.mode === 'place' ? 'Click the map to place a hypothetical station' : 'Click an existing station to add an interchange'}</span></div></div>
     <div className="map-toolbar">
       <button onClick={() => { mapRef.current?.easeTo({ pitch: pitch ? 0 : 48, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 500 }); setPitch(!pitch); }} aria-pressed={pitch}>▱ {pitch ? '3D view' : 'Plan view'}</button>
       <button onClick={() => {if(mapRef.current)fitSingapore(mapRef.current,matchMedia('(prefers-reduced-motion: reduce)').matches);}}>Fit Singapore</button>
-      {props.exploring?<button onClick={()=>mapRef.current?.easeTo({...LANDING_CAMERA,duration:matchMedia('(prefers-reduced-motion: reduce)').matches?0:650})}>Reset view</button>:props.plotting?.active?(props.aac.active?<button onClick={props.aac.onFocus}>Focus AAC area</button>:<button onClick={props.citizens.onFocus}>Illustrative citizens</button>):props.aac.active?<><button onClick={props.aac.onFocus}>Focus AAC area</button><button onClick={props.aac.placing?props.aac.onCancel:props.aac.onStartPlacement}>{props.aac.placing?'Cancel placement':'Place centre'}</button></>:<><button onClick={() => mapRef.current?.easeTo({ center: [103.85, 1.35], zoom: 14, pitch: 48, duration: 600 })}>Neighbourhood</button><button onClick={props.citizens.onFocus}>Citizens</button></>}
-      {props.citizens.enabled&&props.citizens.networkView!=='editor'&&<button onClick={props.citizens.onPlayPause} aria-label={props.citizens.playing?'Pause citizen animation':'Play citizen animation'}>{props.citizens.playing?'Pause':'Play'}</button>}
+      {props.exploring?<button onClick={()=>mapRef.current?.easeTo({...LANDING_CAMERA,duration:matchMedia('(prefers-reduced-motion: reduce)').matches?0:650})}>Reset view</button>:props.plotting?.active?(props.aac.active?<button onClick={props.aac.onFocus}>Focus AAC area</button>:<button onClick={props.citizens.onFocus}>Illustrative citizens</button>):props.aac.active?<><button onClick={props.aac.onFocus}>Focus AAC area</button><button onClick={props.aac.placing?props.aac.onCancel:props.aac.onStartPlacement}>{props.aac.placing?'Cancel placement':'Place centre'}</button></>:props.citizens.enabled?<button onClick={props.citizens.onFocus}>Focus pedestrians</button>:<><button onClick={() => mapRef.current?.easeTo({ center: [103.85, 1.35], zoom: 14, pitch: 48, duration: 600 })}>Neighbourhood</button><button onClick={props.citizens.onFocus}>Citizens</button></>}
+      {ready&&citizensRef.current&&props.citizens.enabled&&props.citizens.networkView!=='editor'&&<button onClick={props.citizens.onPlayPause} aria-label={props.citizens.playing?'Pause citizen animation':'Play citizen animation'}>{props.citizens.playing?'Pause':'Play'}</button>}
     </div>
     <details className="map-layers"><summary>Map layers</summary><div><label><input type="checkbox" checked={buildings} disabled={fatal} onChange={e=>setBuildings(e.target.checked)}/> 3D Buildings</label><label className="building-source-select">Building source<select aria-label="Building source" disabled={fatal} value={buildingView} onChange={e=>changeBuildingView(e.target.value as BuildingView)}><option value="unified">Unified Singapore — internal review only</option><option value="hdb">Existing HDB — limited footprint coverage</option></select></label><label><input type="checkbox" checked={streets} onChange={e => setStreets(e.target.checked)} /> Street detail <span>online</span></label><small className="building-status" role="status">{buildingStatus}</small>{buildingView==='unified'&&buildings&&unifiedStatus.state==='error'&&<button type="button" className="building-retry" onClick={()=>void buildingSession.current?.retry()}>Retry unified buildings</button>}<small>{buildingView==='unified'?'Mixed source heights, assumed 3 m per floor or illustrative 12 m. Internal review only.':'Limited HDB footprints; all heights illustrative 12 m.'}</small></div></details>
     {buildings&&buildingView==='unified'&&unifiedStatus.state==='loading'&&<p className="building-load-status" role="status"><span className="spinner"/> Loading sourced building footprints…</p>}

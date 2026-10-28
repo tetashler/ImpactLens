@@ -30,7 +30,7 @@ export function sampleCitizenAnimation(animation:CitizenAnimation,elapsedSeconds
   const active=elapsed>=2 && elapsed<duration;
   return {position,headingRadians:Math.atan2(to.lat-from.lat,(to.lon-from.lon)*Math.cos((from.lat+to.lat)*Math.PI/360)),progress,
     state:!active?'idle':options.playing===false?'paused':elapsed>=duration-3?'arriving':animation.state,
-    limbPhase:active && options.playing!==false?(elapsed*2*Math.PI*1.5)%(2*Math.PI):0};
+    limbPhase:active?(elapsed*2*Math.PI*1.5)%(2*Math.PI):0};
 }
 
 export class PlaybackClock {
@@ -39,11 +39,11 @@ export class PlaybackClock {
   private speed=1;
   private last:number|null=null;
   private disposed=false;
-  /** Gaps over 250ms are clamped, preventing hidden-tab jumps. Backwards timestamps cannot rewind time. */
+  /** Wall-time sampling is frame-rate independent. The layer explicitly pauses on hide/disable. */
   tick(nowMs:number):{elapsedSeconds:number;playing:boolean;speed:number} {
     if (!Number.isFinite(nowMs)) throw new Error('Invalid playback timestamp');
     if (!this.disposed) {
-      if (this.last!==null && this.playing) this.elapsed+=Math.max(0,Math.min(250,nowMs-this.last))/1000*this.speed;
+      if (this.last!==null && this.playing) this.elapsed=Math.min(Number.MAX_SAFE_INTEGER,this.elapsed+Math.max(0,nowMs/1000-this.last/1000)*this.speed);
       this.last=Math.max(this.last??nowMs,nowMs);
     }
     return {elapsedSeconds:this.elapsed,playing:this.playing,speed:this.speed};

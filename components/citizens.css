@@ -61,6 +61,14 @@
 .citizens-empty { padding: 12px; border: 1px dashed #3d535e; border-radius: 5px; color: var(--muted); line-height: 1.6; }
 .citizens-error { color: #ffbaac; padding: 8px; border: 1px solid #714e49; border-radius: 4px; }
 .citizens-panel :is(button, input, select, summary, a):focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+.citizens-area { display:grid; gap:7px; color:var(--muted); font-size:12px; }
+.citizens-area select { min-height:44px; width:100%; padding:9px; background:#10232b; color:var(--text); border:1px solid #425e68; border-radius:5px; }
+.citizens-motion-meta { padding:12px; border-left:2px solid #7da99a; background:#142b32; font-size:12px; }
+.citizens-motion-meta strong,.citizens-motion-meta output { display:block; margin-bottom:7px; }
+.citizens-motion-meta output { color:#adcec4; font-variant-numeric:tabular-nums; }
+.citizens-motion-meta p { color:var(--muted); line-height:1.6; }
+.citizens-playback .citizens-button,.citizens-row .citizens-button { min-height:44px; }
 @media (max-width: 480px) { .citizens-body { padding-inline: 12px; } .citizens-panel-heading { padding-inline: 12px; } }
 @media (max-width: 700px) { .inspecting-citizens .results-panel { order:1; } .inspecting-citizens .editor-panel { order:2; } }
+@media (max-width: 700px) { .inspecting-citizens .map-toolbar button { min-height:44px; } }
 @media (prefers-reduced-motion: reduce) { .citizens-panel * { transition: none; } }

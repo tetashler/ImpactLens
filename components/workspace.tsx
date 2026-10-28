@@ -7,6 +7,7 @@ import ImpactPanel from './impact-panel';
 import { citizenViewPairFixture } from '../lib/citizens/fixtures';
 import type { CitizenView, CitizenViewPair } from '../lib/citizens/data';
 import type { CitizenStats } from '../lib/citizens/layer';
+import {illustrativePedestrianActors,illustrativePedestrianPaths} from '../lib/citizens/pedestrians';
 import type { NetworkCatalog, SimulationResponse, MapStation } from '../lib/map-contract';
 import { draftToIntervention, type EditorDraft, type DraftStop } from '../lib/editor';
 import { illustrativeLine } from '../prototype/mrt/examples/illustrative-line';
@@ -25,6 +26,10 @@ import {acceptsMrtBinding,type MrtExecutionBinding} from '../lib/plots/execution
 import type {CameraCommand} from '../lib/map-camera';
 import PlotToolbar from './plot-toolbar';
 import KnowledgeWorkspace from './knowledge-workspace';
+import {buildKnowledgeGraph,knowledgeIdentity,type BoundGraphResult} from '../lib/knowledge-graph/adapters';
+import type {EldercareApiResponse} from '../lib/eldercare/api-contract';
+import type {ImpactResponse} from '../lib/impact/api-contract';
+import type {CitizenSimulationPayload} from '../lib/contracts/citizen-simulation';
 import GeneralPlotPanel from './general-plot-panel';
 import './scenario-experience.css';
 import './general-workspace.css';
@@ -79,23 +84,30 @@ export default function Workspace() {
   const [impactView,setImpactView]=useState<'baseline'|'scenario'>('scenario'),[impactRevision,setImpactRevision]=useState(0);
   const [pair,setPair]=useState<CitizenViewPair>(citizenViewPairFixture),[view,setView]=useState<CitizenView>('baseline');
   const [selectedId,setSelectedId]=useState<string|null>(citizenViewPairFixture.baseline.citizens[0].agentId);
+  const [pedestrianArea,setPedestrianArea]=useState(illustrativePedestrianPaths[0].areaId);
+  const [showPedestrianPath,setShowPedestrianPath]=useState(false);
   const [playing,setPlaying]=useState(false),[speed,setSpeed]=useState(1),[resetKey,setResetKey]=useState(0),[focusKey,setFocusKey]=useState(0),[citizensEnabled,setCitizensEnabled]=useState(true);
   const [citizenStats,setCitizenStats]=useState<CitizenStats>({visible:0,fps:null,drawCalls:0,status:'Zoom in to see citizens',elapsedSeconds:0});
   const focusCitizens=useCallback(()=>{setStage(current=>current==='configure'||current==='general'?'results':current);setInspector('citizens');setMode('anchor');setCitizensEnabled(true);setFocusKey(k=>k+1);},[]);
-  const selectCitizen=useCallback((id:string)=>{setSelectedId(id);setInspector('citizens');},[]);
+  const selectCitizen=useCallback((id:string)=>{setSelectedId(id);setInspector('citizens');if(pair===citizenViewPairFixture){const actor=illustrativePedestrianActors.find(a=>a.agentId===id),path=actor&&illustrativePedestrianPaths.find(p=>p.id===actor.pathId);if(path&&path.areaId!==pedestrianArea){setPedestrianArea(path.areaId);setFocusKey(k=>k+1);}}},[pair,pedestrianArea]);
   const togglePlayback=useCallback(()=>setPlaying(p=>!p),[]);
   // Calculated mode has no geographic agents. Fixture mode never overlays the unrelated editable proposal.
-  const citizenOptions=useMemo(()=>({pair,view,selectedId,playing,speed,resetKey,focusKey,networkView:inspector==='journey'?'editor' as const:inspector==='impact'?impactView:'baseline' as const,enabled:tab==='general'&&!exploring&&interventionMode==='mrt'&&inspector==='citizens'&&citizensEnabled,onStats:setCitizenStats,onSelect:selectCitizen,onFocus:focusCitizens,onPlayPause:togglePlayback}),[tab,exploring,interventionMode,pair,view,selectedId,playing,speed,resetKey,focusKey,inspector,impactView,citizensEnabled,selectCitizen,focusCitizens,togglePlayback]);
-  const loadCitizens=(next:CitizenViewPair)=>{setPair(next);setSelectedId(next.baseline.citizens[0]?.agentId??null);setPlaying(false);setResetKey(k=>k+1);};
+  const citizenOptions=useMemo(()=>({pair,view,selectedId,playing,speed,resetKey,focusKey,illustrativePedestrians:pair===citizenViewPairFixture,areaId:pedestrianArea,showPath:pair===citizenViewPairFixture?showPedestrianPath:true,networkView:inspector==='journey'?'editor' as const:inspector==='impact'?impactView:'baseline' as const,enabled:tab==='general'&&!exploring&&interventionMode==='mrt'&&inspector==='citizens'&&citizensEnabled,onStats:setCitizenStats,onSelect:selectCitizen,onFocus:focusCitizens,onPlayPause:togglePlayback}),[tab,exploring,interventionMode,pair,view,selectedId,playing,speed,resetKey,focusKey,pedestrianArea,showPedestrianPath,inspector,impactView,citizensEnabled,selectCitizen,focusCitizens,togglePlayback]);
+  const changePedestrianArea=(areaId:string)=>{const path=illustrativePedestrianPaths.find(p=>p.areaId===areaId),actor=path&&illustrativePedestrianActors.find(a=>a.pathId===path.id);if(!path||!actor)return;setPedestrianArea(areaId);setSelectedId(actor.agentId);setFocusKey(k=>k+1);};
+  const loadCitizens=(next:CitizenViewPair)=>{setPair(next);setSelectedId(next.baseline.citizens[0]?.agentId??null);if(next===citizenViewPairFixture)setPedestrianArea(illustrativePedestrianPaths[0].areaId);setPlaying(false);setResetKey(k=>k+1);};
   const [catalog, setCatalog] = useState<NetworkCatalog | null>(null), [networkError, setNetworkError] = useState('');
   const [date, setDate] = useState('2026-10-27'), [draft, setDraft] = useState<EditorDraft>(emptyDraft);
   const [mode, setMode] = useState<'anchor' | 'place'>('anchor'), [disabledSegments, setDisabledSegments] = useState<number[]>([]);
   const [history, setHistory] = useState<{ draft: EditorDraft; disabled: number[] }[]>([]), [addId, setAddId] = useState('');
   const [origin, setOrigin] = useState('NS4'), [destination, setDestination] = useState('NE16');
   const [result, setResult] = useState<SimulationResponse | null>(null), [running, setRunning] = useState(false), [error, setError] = useState('');
+  const [graphMrt,setGraphMrt]=useState<BoundGraphResult<SimulationResponse>|null>(null);
+  const [graphAac,setGraphAac]=useState<BoundGraphResult<EldercareApiResponse>|null>(null);
+  const [graphPopulation,setGraphPopulation]=useState<BoundGraphResult<CitizenSimulationPayload>|null>(null);
+  const pendingGraphAac=useRef<string|null>(null);
   const [message, setMessage] = useState('Draw and confirm a proposal, or explicitly load the labelled illustrative example.');
   const revision = useRef(0), request = useRef<AbortController | null>(null), nextId = useRef(1);
-  const invalidate = () => { revision.current++; request.current?.abort(); setImpactRevision(n=>n+1); setResult(null); setRunning(false); setError(''); };
+  const invalidate = () => { revision.current++; request.current?.abort(); setImpactRevision(n=>n+1); setResult(null); setGraphMrt(null);setGraphAac(null);setGraphPopulation(null);pendingGraphAac.current=null; setRunning(false); setError(''); };
   const primary=stage!=='configure'&&stage!=='workspace';
   const points=plot.geometry.features.filter((f):f is PlotPoint=>f.kind==='point');
   const validAnchors=useMemo(()=>Object.fromEntries(Object.entries(anchors).filter(([id,stationId])=>{const point=points.find(p=>p.id===id),station=catalog?.stations.find(s=>s.id===stationId);return !!point&&!!station&&point.coordinate.lat===station.lat&&point.coordinate.lon===station.lon;})),[anchors,plot.geometry,catalog]);
@@ -165,9 +177,15 @@ export default function Workspace() {
   useEffect(()=>{if(result&&guided)journeySummary.current?.scrollIntoView({block:'start',behavior:'instant'});},[result,guided]);
   useEffect(()=>{if(guided&&interventionMode==='aac'&&stage==='calculate'&&aac.report)setStage('results');},[guided,interventionMode,stage,aac.report]);
   const citizenNotice=pair[view].metadata.resultKind==='illustrative'
-    ? 'Illustrative miniature-city animation — not observed individual travel. These fixture citizens are independent of the calculated demographic report. The editable MRT proposal is hidden in this demo. Toy sizes are exaggerated; paths are schematic.'
+    ? 'Illustrative pedestrians — not a calculated journey forecast. Profiles and example outcomes are invented and independent of these hypothetical paths, which are not verified pavements or homes. Baseline/Scenario share the same motion; plotted interventions do not reroute them.'
     : `Imported visualisation: ${pair[view].metadata.scenarioId}, service date ${pair[view].metadata.simulationDate}. This is independent of the calculated impact report and editable MRT proposal, which is hidden here. Positions and paths are supplied visual assumptions.`;
   const boundMrt=acceptsMrtBinding(execution.current,planner.response?.plan,plot);
+  // Exact local input equality, not a provider claim or server execution ID.
+  const graphKeyFor=(proposal:EditorDraft)=>knowledgeIdentity({question:planner.question,planId:planner.response?.plan.planId??null,geometry:plot.geometry,geometryRevision:plot.revision,draft:proposal,date,origin,destination,aacDraft:aac.draft});
+  const graphIdentity=graphKeyFor(draft);
+  const onGraphPopulation=useCallback((data:ImpactResponse|null,context:string|null)=>{setGraphPopulation(data&&context?{scenarioIdentity:context,executionIdentity:data.identity.runId,result:data.payload}:null);},[]);
+  useEffect(()=>{setGraphAac(aac.report&&pendingGraphAac.current===graphIdentity?{scenarioIdentity:graphIdentity,executionIdentity:aac.report.identity.scenarioId,result:aac.report}:null);},[aac.report,graphIdentity]);
+  const knowledgeGraph=useMemo(()=>{try{if(!planner.question.trim()&&!plot.geometry.features.length)return null;return buildKnowledgeGraph({question:planner.question,plan:planner.response?.plan??null,geometry:plot.geometry,catalog,anchors:validAnchors,scenarioIdentity:graphIdentity,draft:boundMrt?draft:null,mrt:graphMrt,aac:graphAac,facilities:aac.facilities,demographic:graphPopulation});}catch{return null;}},[planner.question,planner.response,plot.geometry,catalog,validAnchors,graphIdentity,boundMrt,draft,graphMrt,graphAac,aac.facilities,graphPopulation]);
   const canRun = boundMrt&&!!catalog && draft.stations.length >= 2 && draft.stations.some(s => s.kind === 'existing') && !disabledSegments.length;
   const simulate = async (proposal:EditorDraft=draft,plotContext?:{revision:number;key:string;routeId:string;pointIds:string[];planId:string}) => {
     const binding=execution.current;
@@ -175,7 +193,8 @@ export default function Workspace() {
     if(!acceptsMrtBinding(binding,planner.response?.plan,plot.getSnapshot())){setError('Confirm the current plot or an explicitly reviewed advanced MRT proposal before running.');return;}
     if (!catalog||proposal.stations.length<2||!proposal.stations.some(s=>s.kind==='existing')||(!plotContext&&disabledSegments.length)) { setError('Add at least two stations, including an existing interchange, and restore missing segments.'); return; }
     const controller = new AbortController(); request.current?.abort(); request.current = controller;
-    const atRevision = revision.current; setRunning(true); setError(''); setResult(null);
+    const submittedGraphIdentity=graphKeyFor(proposal),graphRunId=`mrt-request-${crypto.randomUUID()}`;
+    const atRevision = revision.current; setRunning(true); setError(''); setResult(null);setGraphMrt(null);
     const accepts=()=>revision.current===atRevision&&request.current===controller&&!controller.signal.aborted&&(!plotContext||plot.getSnapshot().revision===plotContext.revision&&plot.getSnapshot().key===plotContext.key);
     const intervention=draftToIntervention(proposal);
     if(plotContext)intervention.assumptions.rationale+=` User-confirmed plot ${plot.geometry.scenarioId}; route ${plotContext.routeId}; ordered point references ${plotContext.pointIds.join(', ')}; plan ${plotContext.planId}. Route geometry is visual only and never establishes operating times.`;
@@ -184,7 +203,7 @@ export default function Workspace() {
         body: JSON.stringify({ serviceDate: date, intervention, journeys: [{ origin, destination }] }) });
       const body = await response.json(); if (!response.ok) throw new Error(body.error ?? 'Simulation could not run');
       if(body?.serviceDate!==date||body?.model!=='static-median-travel-time'||!Array.isArray(body.comparisons)||body.comparisons.length!==1||body.comparisons[0]?.origin!==origin||body.comparisons[0]?.destination!==destination)throw new Error('The MRT response did not match the requested journey. Recalculate.');
-      if (accepts()) { setResult(body); setMessage('Comparison updated using the same service date and existing-line costs.'); if(guided)setStage('results'); }
+      if (accepts()) { setResult(body);setGraphMrt({scenarioIdentity:submittedGraphIdentity,executionIdentity:graphRunId,result:body}); setMessage('Comparison updated using the same service date and existing-line costs.'); if(guided)setStage('results'); }
     } catch (e) { if ((e as Error).name !== 'AbortError' && accepts()) setError((e as Error).message); }
     finally { if (accepts()) setRunning(false); }
   };
@@ -199,7 +218,7 @@ export default function Workspace() {
     if(planner.response?.plan.capabilityId!=='aac-accessibility-v1')throw new Error('Interpret an AAC scenario before confirming this point.');
     const submitted=buildPlottedAac(plot.geometry,pointId,aac.draft,'plot-aac-confirmation',true);invalidateResults();aac.update({position:submitted.intervention.position,name:submitted.intervention.name});setAacBinding({revision:plot.revision,pointId,planId:planner.response.plan.planId});
   }catch(error){setPlotError((error as Error).message);}}
-  function runPlottedAac(){try{const current=plot.getSnapshot();if(!aacBound||!aacBinding||current.revision!==aacBinding.revision||current.activeLineId||planner.response?.plan.capabilityId!=='aac-accessibility-v1')throw new Error('Confirm the current point as an AAC location first.');const request=buildPlottedAac(current.geometry,aacBinding.pointId,aac.draft,`plot-aac-${crypto.randomUUID()}`,true);plot.setMode('explore');setInterventionMode('aac');setStage('calculate');void aac.calculate(request);}catch(error){setPlotError((error as Error).message);}}
+  function runPlottedAac(){try{const current=plot.getSnapshot();if(!aacBound||!aacBinding||current.revision!==aacBinding.revision||current.activeLineId||planner.response?.plan.capabilityId!=='aac-accessibility-v1')throw new Error('Confirm the current point as an AAC location first.');const request=buildPlottedAac(current.geometry,aacBinding.pointId,aac.draft,`plot-aac-${crypto.randomUUID()}`,true);plot.setMode('explore');setInterventionMode('aac');setStage('calculate');pendingGraphAac.current=graphIdentity;void aac.calculate(request);}catch(error){setPlotError((error as Error).message);}}
   const primaryPlanner={...planner,setQuestion:(question:string)=>{invalidatePlot();planner.setQuestion(question);},setCategory:(category:Parameters<typeof planner.setCategory>[0])=>{invalidatePlot();planner.setCategory(category);},setMapPoints:(values:Parameters<typeof planner.setMapPoints>[0])=>{invalidatePlot();planner.setMapPoints(values);},submit:()=>{invalidateResults();enterGeneral();return planner.submit();}};
   const min = (value: number | null | undefined) => value == null ? '—' : value.toFixed(2);
 
@@ -232,7 +251,7 @@ export default function Workspace() {
         <div className="editor-footer"><p role="status">{message}</p>{guided&&<button className="run-button" disabled={!canRun} onClick={()=>{setStage('calculate');setInspector('journey');}}>Review journey & calculate</button>}</div>
       </aside>
 
-      <AacEditor state={aac} hidden={exploring||stage==='general'||interventionMode!=='aac'||(guided&&stage!=='configure')} onCalculate={()=>{if(guided)setStage('calculate');void aac.calculate();}}/>
+      <AacEditor state={aac} hidden={exploring||stage==='general'||interventionMode!=='aac'||(guided&&stage!=='configure')} onCalculate={()=>{if(guided)setStage('calculate');pendingGraphAac.current=graphIdentity;void aac.calculate();}}/>
       <section className="map-panel" aria-label="Singapore network map">
         <SingaporeMap exploring={exploring} editing={!!catalog&&(stage==='configure'||stage==='workspace')} visible={tab==='general'} cameraCommand={cameraCommand} plotting={plotting} focusKey={mapFocus} aac={aacOptions} citizens={citizenOptions} catalog={catalog??LOADING_NETWORK} draft={draft} disabledSegments={disabledSegments} mode={mode} comparison={comparison}
           onStation={id => { if (mode === 'anchor') addExisting(id); else setMessage('Use Interchange mode to add an existing station. Click an empty map location for a new station.'); }} onPlace={addPoint} onMove={(key, p) => { patchStop(key, p); setMessage('Hypothetical location updated. Review segment times before rerunning.'); }} />
@@ -242,8 +261,8 @@ export default function Workspace() {
 
       <aside hidden={exploring||stage==='general'||interventionMode!=='mrt'||(guided&&stage==='configure')} className="results-panel" aria-label="Journey comparison">
         <div className="inspector-tabs" role="group" aria-label="Inspector"><button aria-pressed={inspector==='journey'} onClick={()=>setInspector('journey')}>MRT journey</button><button aria-pressed={inspector==='impact'} onClick={()=>setInspector('impact')}>Calculated impact</button><button aria-pressed={inspector==='citizens'} onClick={focusCitizens}>Illustrative city</button></div>
-        <div className="impact-slot" hidden={inspector!=='impact'}><ImpactPanel intervention={draftToIntervention(draft)} serviceDate={date} proposalRevision={impactRevision} canRun={canRun} view={impactView} onView={setImpactView} expanded={impactWide} onExpand={()=>setImpactWide(v=>!v)}/></div>
-        {inspector==='citizens'?<div className="results-scroll citizen-inspector"><p className="citizen-disclaimer">{citizenNotice}</p><CitizensPanel pair={pair} view={view} onView={setView} selectedId={selectedId} onSelect={selectCitizen} playing={playing} onPlayPause={togglePlayback} onReset={()=>{setPlaying(false);setResetKey(k=>k+1);setCitizenStats(s=>({...s,elapsedSeconds:0}));}} speed={speed} onSpeed={setSpeed} elapsedSeconds={citizenStats.elapsedSeconds} enabled={citizensEnabled} onEnabled={setCitizensEnabled} onFocus={focusCitizens} stats={citizenStats} onImport={loadCitizens} onRestoreFixture={()=>loadCitizens(citizenViewPairFixture)} /></div>:inspector==='journey'?<>
+        <div className="impact-slot" hidden={inspector!=='impact'}><ImpactPanel intervention={draftToIntervention(draft)} serviceDate={date} proposalRevision={impactRevision} canRun={canRun} view={impactView} onView={setImpactView} expanded={impactWide} onExpand={()=>setImpactWide(v=>!v)} resultContext={graphIdentity} onResult={onGraphPopulation}/></div>
+        {inspector==='citizens'?<div className="results-scroll citizen-inspector"><p className="citizen-disclaimer">{citizenNotice}</p><CitizensPanel pair={pair} view={view} onView={setView} selectedId={selectedId} onSelect={selectCitizen} playing={playing} onPlayPause={togglePlayback} onReset={()=>{setPlaying(false);setResetKey(k=>k+1);setCitizenStats(s=>({...s,elapsedSeconds:0}));}} speed={speed} onSpeed={setSpeed} elapsedSeconds={citizenStats.elapsedSeconds} enabled={citizensEnabled} onEnabled={setCitizensEnabled} onFocus={focusCitizens} stats={citizenStats} pedestrianArea={pair===citizenViewPairFixture?{id:pedestrianArea,onChange:changePedestrianArea}:undefined} showPath={pair===citizenViewPairFixture?{value:showPedestrianPath,onChange:setShowPedestrianPath}:undefined} onImport={loadCitizens} onRestoreFixture={()=>loadCitizens(citizenViewPairFixture)} /></div>:inspector==='journey'?<>
         <div className="panel-heading"><div><h2>Journey comparison</h2><p>One journey. Two networks.</p></div><span className="small-icon teal"><Icon name="arrow" /></span></div>
         <div className="results-scroll">
           <label className="field-label">Service date<input type="date" min="2026-01-01" max="2026-12-31" value={date} onChange={e => { invalidate(); setDate(e.target.value); }} /></label>
@@ -270,7 +289,7 @@ export default function Workspace() {
       <GeneralPlotPanel hidden={stage!=='general'} planner={primaryPlanner} plot={plot} catalog={catalog} anchors={validAnchors} pendingAnchor={pendingAnchor} onEdit={editPlot} onInvalidate={invalidateResults} onRequestAnchor={requestAnchor} onConfirmAnchor={confirmAnchor} onDisconnect={id=>{invalidateResults();setAnchors(old=>Object.fromEntries(Object.entries(old).filter(([key])=>key!==id)));}} onRunMrt={runPlottedMrt} onAdvancedMrt={()=>{const keep=boundMrt;invalidateResults();if(!keep){setDraft(emptyDraft());setHistory([]);setDisabledSegments([]);}if(planner.response?.plan.capabilityId==='mrt-accessibility-v1')execution.current={kind:'advanced',planId:planner.response.plan.planId};setStage('workspace');setInterventionMode('mrt');setInspector('journey');setAdvanced(true);}} aac={aac} aacBound={aacBound} onConfirmAac={confirmPlottedAac} onRunAac={runPlottedAac} onAdvancedAac={()=>{const keep=aacBound;invalidateResults();if(!keep)aac.reset();setStage('configure');setInterventionMode('aac');}} onShowResults={()=>{setStage('results');setInspector('journey');}} hasResults={!!result||!!aac.report} error={plotError} onResetSimulation={invalidateResults} onUsePlan={configureScenario}/>
       {exploring&&<ScenarioComposer planner={primaryPlanner} onConfigure={configureScenario}/>}
     </div>
-    {tab==='knowledge'&&<KnowledgeWorkspace question={planner.question} pointCount={points.length} lineCount={plot.geometry.features.filter(f=>f.kind==='line').length} onReturn={()=>setTab('general')}/>}
+    <KnowledgeWorkspace graph={knowledgeGraph} visible={tab==='knowledge'} onReturn={()=>setTab('general')}/>
     <footer className="app-footer"><span><span className="live-dot" /> Evidence-informed scenario modelling</span><span>Pre-hackathon prototype · Proposed infrastructure is hypothetical</span><span>ImpactLens SG / MRT + AAC</span></footer>
   </main>;
 }

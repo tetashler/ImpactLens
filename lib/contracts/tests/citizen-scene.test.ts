@@ -27,14 +27,14 @@ test('picking tolerates an infinite far plane and updated instance positions',()
   const camera=new THREE.PerspectiveCamera(45,1,.1,1000);
   // Analytic OpenGL infinite-far limit; Three's camera constructor needs a finite far.
   camera.projectionMatrix.elements[10]=-1;camera.projectionMatrix.elements[14]=-.2;
-  camera.position.set(0,-20,8);camera.up.set(0,0,1);camera.lookAt(0,0,8);camera.updateMatrixWorld(true);
+  camera.position.set(0,-8,2.4);camera.up.set(0,0,1);camera.lookAt(0,0,2.4);camera.updateMatrixWorld(true);
   const projection=new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
   const ray=rayFromProjection(0,0,projection.clone().invert());
   assert.ok(Number.isFinite(ray.ray.direction.x));
   assert.equal(ray.intersectObject(rig.parts[0].mesh)[0]?.instanceId,0);
   const moved={...sample,position:{lon:103.851,lat:1.37}};
   rig.setCitizen(0,'agent-one',moved,origin,0,false,false);rig.finish(1,true);rig.scene.updateMatrixWorld(true);
-  const x=localMetres(moved.position,origin).x;camera.position.x=x;camera.lookAt(x,0,8);camera.updateMatrixWorld(true);
+  const x=localMetres(moved.position,origin).x;camera.position.x=x;camera.lookAt(x,0,2.4);camera.updateMatrixWorld(true);
   projection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
   assert.equal(rayFromProjection(0,0,projection.clone().invert()).intersectObject(rig.parts[0].mesh)[0]?.instanceId,0);
   rig.dispose();
@@ -46,14 +46,25 @@ test('appearance is deterministic per ID with variation and has no demographic i
 });
 test('scene batches procedural body parts using shared geometry and idempotently disposes owned resources', () => {
   const rig = createCitizenScene(180);
-  assert.equal(rig.parts.length, 12);
-  assert.equal(new Set(rig.parts.map((p: any) => p.mesh.geometry)).size, 1);
+  assert.ok(rig.parts.length >= 14 && rig.parts.length <= 18);
+  const geometries = new Set(rig.parts.map(p => p.mesh.geometry));
+  assert.ok(geometries.size > 1 && geometries.size <= 5);
+  assert.ok(rig.parts.every(p => p.mesh.geometry.type !== 'BoxGeometry'));
+  assert.equal(new Set(rig.parts.map(p => p.mesh.material)).size, 1);
   assert.equal(rig.parts[0].mesh.instanceMatrix.count, 180);
-  let geometryDisposals = 0, materialDisposals = 0;
-  rig.geometry.addEventListener('dispose', () => geometryDisposals++);
+  const geometryDisposals = new Map<THREE.BufferGeometry, number>();
+  for (const geometry of geometries) {
+    geometryDisposals.set(geometry, 0);
+    geometry.addEventListener('dispose', () => geometryDisposals.set(geometry, geometryDisposals.get(geometry)! + 1));
+  }
+  let materialDisposals = 0, meshDisposals = 0, ringDisposals = 0;
+  for (const part of rig.parts) part.mesh.addEventListener('dispose', () => meshDisposals++);
+  rig.ring.geometry.addEventListener('dispose', () => ringDisposals++);
+  rig.ring.material.addEventListener('dispose', () => ringDisposals++);
   rig.material.addEventListener('dispose', () => materialDisposals++);
   rig.dispose(); rig.dispose();
-  assert.equal(geometryDisposals, 1); assert.equal(materialDisposals, 1);
+  assert.ok([...geometryDisposals.values()].every(count => count === 1));
+  assert.equal(materialDisposals, 1); assert.equal(meshDisposals, rig.parts.length); assert.equal(ringDisposals, 2);
   assert.equal(rig.scene.children.length, 0);
   assert.throws(() => createCitizenScene(301));
 });
