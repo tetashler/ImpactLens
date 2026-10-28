@@ -3,7 +3,7 @@ import {inputFingerprints,freezeSnapshot} from './identities.ts';
 export {parseStakeholderTurnOutput} from './contract.ts';
 export type {TurnContext,StakeholderTurnOutput} from './contract.ts';
 export interface EngineOptions {attemptId:string;signal?:AbortSignal;generateTurn?:(context:TurnContext,signal?:AbortSignal)=>Promise<StakeholderTurnOutput>;provider?:string;model?:string}
-const SAFE_TURN_ERRORS:Record<string,string>={AI_TIMEOUT:'The participant model call timed out.',AI_CONFIG:'The selected participant model is not configured.',AI_UNSUPPORTED_MODEL:'The selected model does not support the required structured output.',AI_RATE_LIMIT:'The participant model provider rate limit was reached.',AI_INVALID_RESPONSE:'The participant model returned an invalid structured response.',AI_UPSTREAM:'The participant model provider could not complete the call.',STAKEHOLDER_CALL_BUDGET:'The bounded participant-call budget was exhausted.'};
+const SAFE_TURN_ERRORS:Record<string,string>={AI_PROVIDER_IDENTITY:'The required serving model/provider identity could not be verified.',AI_TIMEOUT:'The participant model call timed out.',AI_CONFIG:'The selected participant model is not configured.',AI_UNSUPPORTED_MODEL:'The selected model does not support the required structured output.',AI_RATE_LIMIT:'The participant model provider rate limit was reached.',AI_INVALID_RESPONSE:'The participant model returned an invalid structured response.',AI_UPSTREAM:'The participant model provider could not complete the call.',STAKEHOLDER_CALL_BUDGET:'The bounded participant-call budget was exhausted.'};
 function modelIdentifier(value:unknown):string|null {return typeof value==='string'&&!!value.trim()&&value.length<=200&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value)?value:null;}
 function choice(seed:string,role:string,turn:number):number {let h=2166136261;for(const c of `${seed}:${role}:${turn}`)h=Math.imul(h^c.charCodeAt(0),16777619);return (h>>>0)%3;}
 /** Scripted rules operate on current state, never on a prewritten whole transcript. */
@@ -61,6 +61,7 @@ export async function runStakeholderSimulation(value:StakeholderSimulationInputV
       const event:StakeholderEvent={...output,id:`event-${turnIndex}-${runId}`,runId,turnIndex,round,checkpointYear:context.checkpointYear,roleId:role.id,sourceIds,provenance:'synthetic-stakeholder-statement',grounding:sourceIds.length?'evidence-informed-interpretation':'no-evidence',positionChange:positionChange(memory.position,output.position)};
       run.events.push(event);run.memories=run.memories.map(m=>m.roleId===role.id?updateMemory(m,event,input.simulationOptions.memoryEvents):m);
     }catch(error){
+      if(options.signal?.aborted){run.status='cancelled';run.error={code:'CANCELLED',message:'The execution attempt was cancelled; accepted earlier turns remain inspectable.'};break;}
       run.status=run.events.length?'partial':'failed';
       const code=error!==null&&typeof error==='object'&&'code'in error&&typeof error.code==='string'&&Object.hasOwn(SAFE_TURN_ERRORS,error.code)?error.code:'TURN_FAILED';
       run.error={code,message:SAFE_TURN_ERRORS[code]??'A participant turn could not be generated or accepted. No replacement statement was fabricated.'};break;

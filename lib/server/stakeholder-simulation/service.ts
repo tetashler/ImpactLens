@@ -1,3 +1,4 @@
+import {handleLiveBody,type LiveDependencies} from '../inference/service.ts';
 /** Node-only bounded execution boundary. No credentials are read by deterministic mode. */
 import {parseStakeholderInput} from '../../stakeholder-simulation/contract.ts';
 import {verifyStakeholderRun} from '../../stakeholder-simulation/identities.ts';
@@ -7,7 +8,7 @@ import {acquireAiSlot} from '../ai/gate.ts';
 import {AiError} from '../ai/errors.ts';
 
 export const STAKEHOLDER_API_LIMITS={requestBytes:98_304,responseBytes:524_288,concurrentRuns:2} as const;
-type Dependencies={allowLlm:boolean;llm:Partial<StakeholderLlmDependencies>};
+type Dependencies={live:LiveDependencies;allowLlm:boolean;llm:Partial<StakeholderLlmDependencies>};
 class RequestError extends Error {readonly status:number;readonly code:string;constructor(message:string,status:number,code='STAKEHOLDER_REQUEST'){super(message);this.status=status;this.code=code;}}
 const state=globalThis as typeof globalThis&{__stakeholderPendingV1?:Set<string>};
 const pending=state.__stakeholderPendingV1??=new Set<string>();
@@ -37,6 +38,7 @@ export async function handleStakeholderRequest(request:Request,overrides:Partial
     const value=await readBody(request);
     if(!value||typeof value!=='object'||Array.isArray(value))throw new RequestError('Supply a versioned stakeholder simulation request.',400);
     const body=value as Record<string,unknown>;
+    if(body.version===2)return handleLiveBody(body,request.signal,overrides.live);
     if(Object.keys(body).length!==3||!['version','attemptId','input'].every(k=>Object.hasOwn(body,k))||body.version!==1||typeof body.attemptId!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/.test(body.attemptId))throw new RequestError('Supply version 1, an attempt identifier and simulation input.',400);
     let input;try{input=parseStakeholderInput(body.input);}catch{throw new RequestError('Check the bounded scenario, fictional roles, evidence and simulation options.',400);}
     if(input.simulationOptions.mode==='llm-assisted'&&!overrides.allowLlm)throw new RequestError('Live LLM execution is not authorised in this prototype. Choose deterministic-demo; no provider call was made.',503,'STAKEHOLDER_LLM_UNAVAILABLE');
