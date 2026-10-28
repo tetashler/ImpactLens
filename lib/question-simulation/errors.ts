@@ -1,5 +1,7 @@
+import {INFERENCE_REJECTION_MESSAGES} from '../stakeholder-simulation/inference-errors.ts';
 import type {StakeholderSimulationRunV1} from '../stakeholder-simulation/contract.ts';
-const messages:Record<string,string>={
+const messages:Record<string,string>={...INFERENCE_REJECTION_MESSAGES,
+ AI_REQUEST_TOO_LARGE:'The participant context exceeded the bounded input-size limit.',
  AI_PROVIDER_IDENTITY:'The required serving model and provider could not be verified.',
  AI_TIMEOUT:'A participant model call timed out. Start a new attempt.',
  AI_CONFIG:'Live inference is not configured or enabled on the server.',

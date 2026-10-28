@@ -63,3 +63,9 @@ test('a completed live attempt cannot be reused to rewrite nondeterministic hist
  const dependencies={enabled:true,key:'test-only',transport:{records:[],async generate(c:TurnContext){calls++;return {value:deterministicTurn(c),record:{status:'accepted',inputTokens:null,outputTokens:null,totalTokens:null,costUsd:null}};}} as any};
  await executeLiveRun(input,'sequential-duplicate',dependencies);await assert.rejects(executeLiveRun(input,'sequential-duplicate',dependencies),(e:unknown)=>(e as {status:number}).status===409);assert.equal(calls,8);
 });
+
+test('reservation ceiling can cover every bounded turn in the advertised eight-call run',async()=>{
+ const {LIVE_LIMITS}=await import('../../server/inference/service.ts');
+ const {INPUT_BYTE_LIMIT}=await import('../../server/ai/http.ts');
+ assert.equal(LIVE_LIMITS.reservedTokens,LIVE_LIMITS.calls*(INPUT_BYTE_LIMIT+LIVE_LIMITS.outputTokens+2000));
+});

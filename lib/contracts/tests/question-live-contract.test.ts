@@ -5,7 +5,7 @@ import {createLiveInput} from '../../stakeholder-simulation/inference-input.ts';
 import {runStakeholderSimulation,deterministicTurn} from '../../stakeholder-simulation/engine.ts';
 
 const MODEL='deepseek/deepseek-v4-flash-0731';
-const limits={agents:4,rounds:2,calls:8,outputTokens:800,reservedTokens:120000,runTimeoutMs:120000,costUsd:0.05};
+const limits={agents:4,rounds:2,calls:8,outputTokens:800,reservedTokens:214400,runTimeoutMs:120000,costUsd:0.05};
 async function api(){const value=await import('../../stakeholder-simulation/inference-contract.ts').catch(()=>null);assert.ok(value,'Browser-safe live inference contract must exist');return value;}
 async function fixture(partial=false){
  const input=createLiveInput('mrt','What if a new MRT line opened in Singapore?');
@@ -76,4 +76,18 @@ test('failed call diagnostics preserve known billed usage and must be the final 
  Object.assign(diagnostics,{failedCalls:1,inputTokens:300,outputTokens:150,totalTokens:450,costUsd:diagnostics.records.reduce((sum,r)=>sum+r.costUsd,0)});
  assert.equal(parseInferenceDiagnostics(diagnostics,body.run).failedCalls,1);
  diagnostics.records.reverse();assert.throws(()=>parseInferenceDiagnostics(diagnostics,body.run));
+});
+
+
+test('legacy reservation records remain inspectable and optional termination metadata is strictly bounded',async()=>{
+ const {parseInferenceDiagnostics}=await api(),{body}=await fixture();
+ const legacy=structuredClone(body.inference);legacy.limits.reservedTokens=120000;
+ assert.equal(parseInferenceDiagnostics(legacy,body.run).limits.reservedTokens,120000);
+ assert.throws(()=>parseInferenceDiagnostics({...legacy,reservedTokens:120001},body.run));
+ const termination={httpStatus:200,finishReason:'stop',nativeFinishReason:'stop',reasoningTokens:0,requestedOutputTokens:800,jsonValid:true,actionValid:true};
+ const current=structuredClone(body.inference) as any;current.records[0].termination=termination;
+ assert.equal(parseInferenceDiagnostics(current,body.run).records[0].termination?.reasoningTokens,0);
+ for(const change of [{privateBody:'secret'},{finishReason:'secret'},{reasoningTokens:-1},{requestedOutputTokens:0},{jsonValid:false}]){
+  const invalid=structuredClone(current);Object.assign(invalid.records[0].termination,change);assert.throws(()=>parseInferenceDiagnostics(invalid,body.run));
+ }
 });

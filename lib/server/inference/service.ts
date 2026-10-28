@@ -1,11 +1,11 @@
 /** Node-only live activation. Version 1 scripted API remains unchanged. */
-import {createDeepseekTransport,MODEL,PROVIDER,type InferenceCallRecord} from './deepseek.ts';
+import {createDeepseekTransport,encodeTurnContext,MODEL,PROVIDER,type InferenceCallRecord} from './deepseek.ts';
 import {runStakeholderSimulation} from '../../stakeholder-simulation/engine.ts';
 import {parseStakeholderInput} from '../../stakeholder-simulation/contract.ts';
 import {verifyStakeholderRun} from '../../stakeholder-simulation/identities.ts';
 import {acquireAiSlot} from '../ai/gate.ts';
 import {AiError} from '../ai/errors.ts';
-export const LIVE_LIMITS={agents:4,rounds:2,calls:8,outputTokens:800,reservedTokens:120000,runTimeoutMs:120000,costUsd:0.05} as const;
+export const LIVE_LIMITS={agents:4,rounds:2,calls:8,outputTokens:800,reservedTokens:214400,runTimeoutMs:120000,costUsd:0.05} as const;
 const state=globalThis as typeof globalThis&{__liveInferenceAttemptsV1?:Map<string,number>};
 const attempts=state.__liveInferenceAttemptsV1??=new Map<string,number>();
 type Transport=ReturnType<typeof createDeepseekTransport>;
@@ -28,7 +28,7 @@ export async function executeLiveRun(value:unknown,attemptId:string,overrides:Li
  try{
  const transport=overrides.transport??createDeepseekTransport({key,maxOutputTokens:LIVE_LIMITS.outputTokens,onRecord:record=>records.push(record)});
  const run=await runStakeholderSimulation(input,{attemptId,signal:controller.signal,provider:'openrouter',model:MODEL,generateTurn:async(context,s)=>{
-   const reserve=new TextEncoder().encode(JSON.stringify(context)).byteLength+LIVE_LIMITS.outputTokens+2000;
+   const reserve=new TextEncoder().encode(encodeTurnContext(context)).byteLength+LIVE_LIMITS.outputTokens+2000;
    if(calls>=8||reservedTokens+reserve>(overrides.reservedTokens??LIVE_LIMITS.reservedTokens)||records.reduce((n,r)=>n+(r.costUsd??0),0)>=LIVE_LIMITS.costUsd)throw new AiError('Live run budget exhausted.','STAKEHOLDER_CALL_BUDGET',429);
    reservedTokens+=reserve;calls++;
    try{const result=await transport.generate(context,s);if(overrides.transport&&transport.records.length===readRecords)records.push(result.record);return result.value;}finally{if(overrides.transport){records.push(...transport.records.slice(readRecords));readRecords=transport.records.length;}}
