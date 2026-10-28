@@ -3,6 +3,7 @@
  * NODE_OPTIONS=--import=./scripts/testing/phase56-provider-preload.mjs
  * PHASE56_TEST_PROVIDER=none|gemini|openrouter (default: none)
  * Optional PHASE56_TEST_CONTROL_FILE JSON: {mode:'valid'|'invalid',delayMs:0..5000}.
+ * Planner-only failure modes also support 'invalid-json' and 'rate-limit'.
  * All provider credentials are process-local dummy values; external fetches are blocked.
  */
 import { readFileSync } from 'node:fs';
@@ -31,8 +32,11 @@ async function delay(milliseconds,signal){
     if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});
   });
 }
-function selection(schema,mode){
+function selection(schema,mode,question=''){
   if(mode==='invalid')return {version:1,inventedMetric:12345};
+  if(schema.properties.capabilityId)return /active ag[ei]ing|\bAAC\b/i.test(question)
+    ?{version:1,intent:'aac',capabilityId:'aac-accessibility-v1'}
+    :{version:1,intent:'mrt-line',capabilityId:'mrt-accessibility-v1'};
   if(schema.properties.title)return {version:1,title:'Coverage before conclusions',kpis:['benefitShare','meanSaved','unassigned'],chart:{dimension:'sex',type:'benefit-bars',sort:'benefit-asc'},notes:['assumed-demand','unknown-outcomes']};
   if(schema.properties.facts)return {version:1,focus:'coverage',facts:[{groupId:'g0',metricId:'meanSaved'},{groupId:'g0',metricId:'unassigned'}],notes:['assumed-demand','unknown-outcomes']};
   // Intentionally leave unsupported-personal-question handling to the real application guard.
@@ -49,7 +53,10 @@ globalThis.fetch=async(input,init={})=>{
     const wire=JSON.parse(init.body),config=controls();
     const schema=gemini?wire.generationConfig.responseFormat.text.schema:wire.response_format.json_schema.schema;
     await delay(config.delayMs,init.signal);
-    const output=JSON.stringify(selection(schema,config.mode));
+    if(schema.properties.capabilityId&&config.mode==='rate-limit')return new Response('fixture-only provider body',{status:429});
+    const inputText=gemini?wire.contents[0].parts[0].text:wire.messages[1].content;
+    const question=JSON.parse(inputText).context?.untrustedInput?.question??'';
+    const output=schema.properties.capabilityId&&config.mode==='invalid-json'?'{':JSON.stringify(selection(schema,config.mode,question));
     return gemini
       ?Response.json({candidates:[{content:{parts:[{text:output}]},finishReason:'STOP'}],usageMetadata:{promptTokenCount:100,candidatesTokenCount:40,totalTokenCount:140}})
       :Response.json({choices:[{message:{content:output},finish_reason:'stop'}],usage:{prompt_tokens:100,completion_tokens:40,total_tokens:140}});
