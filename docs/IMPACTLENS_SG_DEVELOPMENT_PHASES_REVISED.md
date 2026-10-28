@@ -1,6 +1,6 @@
 # ImpactLens SG — Development Phases & Hackathon Rebuild Roadmap
 
-**Status:** ImpactLens SG 2.0 transition: Phase 7B scenario-planning foundation implemented, retaining the validated MRT/AAC workspaces. Phase 7A scenario-first UI and Phase 7C/7D/7E remain pending. The feature checkpoint passes 245 tests. OpenRouter live authentication, full Phase 4 geographic trajectories and broader eldercare modelling remain unresolved.
+**Status:** ImpactLens SG 2.0: Phase 7A/7A.1 map-first General plotting and Phase 7C/7C.1 building catalogue are integrated for internal local review, retaining the validated MRT/AAC engines and Phase 7B planner. Integrated suite: 343 Node tests and 19 GIS tests. Public use of the combined building data is not cleared. Phase 7D/7E/7F/7G, live OpenRouter authentication and calculated-population trajectories remain unresolved. All current integration changes remain unstaged and uncommitted at shared `4400f47`.
 **Last updated:** 28 October 2026
 **Team:** 3 (2 AI/data science, 1 mass communications)  
 **Hackathon build window:** 24 hours  
@@ -16,7 +16,7 @@ ImpactLens SG is an evidence-informed, interactive Singapore social-impact sandb
 
 **Model integrity rules**
 
-**ImpactLens SG 2.0 direction:** Start with an open-ended question and a proposed, user-confirmed plan. Calculated simulations use only registered validated engines (currently MRT and limited AAC). Future exploratory stakeholders must be labelled hypothetical, never representative public opinion. Evidence planning does not imply documents were fetched or findings verified. Phase 7B interprets and frames requirements; it does not execute any of these workflows. Existing intervention workspaces remain available while Phase 7A is pending.
+**ImpactLens SG 2.0 direction:** Start with an open-ended question and user-drawn geographic context in General. Explicitly confirm meaning, network connections and assumptions before calculation. Only registered validated engines execute (currently MRT and limited AAC). Future exploratory stakeholders must be labelled hypothetical, never representative public opinion. Evidence planning does not imply documents were fetched or findings verified. Phase 7B interprets without executing; Phase 7A.1 supplies a plotting-to-calculation layer with optional Advanced editors. Knowledge Graph preserves context but contains no constructed graph yet.
 
 - Official statistics and infrastructure records are **observations**, with source and reference date.
 - Synthetic residents, their routines, and behaviour parameters are **modelled assumptions**, not individual government records.
@@ -33,7 +33,7 @@ ImpactLens SG is an evidence-informed, interactive Singapore social-impact sandb
 4. **Synthetic citizens** — Phase 4A foundation, shared contract, Phase 4B illustrative movement and Phase 4C weighted MRT outcomes integrated. Current-proposal metrics/profiles work; calculated citizens still lack justified geographic movement paths.
 5. **Impact dashboard + AI** — weighted dashboard, finite layouts/evidence and synthetic conversations implemented for Gemini/OpenRouter; Gemini adapter live smoke passed, both providers tested with mocks, wider live verification pending.
 6. **New eldercare / active-ageing centre intervention** — AAC placement and straight-line access/threshold dashboard implemented for the limited Bukit Merah preset (**second committed demonstration scenario**). Optional speed/capacity are explicit assumptions; walking routes, service allocation and individual eldercare journeys remain unsupported.
-7. **Scenario-first exploration** — Phase 7B contract/registry/planner implemented; Phase 7A composer, 7C building audit, 7D agents and 7E unified results pending.
+7. **Scenario-first exploration** — Phase 7A live-map composer, Phase 7A.1 General/plotting-to-engine journeys and Phase 7B contract/registry/planner implemented; Phase 7C/7C.1 buildings integrated for internal local review. Public-demo licensing, 7D agents, broader 7E unified results, 7F citizen movement improvements and 7G source-backed graph rendering remain pending.
 8. **Reliability, documentation, and pitch (parallel preparation)** — demonstrate both interventions where feasible.
 
 **Important:** Phase order is for the prototype learning sequence, not a rule that the entire MRT experience must be perfected before eldercare work begins. Both interventions are part of the planned product, with MRT taking priority in the 24-hour build.
@@ -262,14 +262,36 @@ Each phase has a narrow deliverable and an exit check. Stop expanding scope when
 
 ### Phase 7 — Scenario-First Exploration and Parallel Demo Preparation
 
-**Status: Phase 7B implemented; 7A/7C/7D/7E and reliability/rebuild/pitch preparation pending. Full Phase 7 is not complete.**
+**Status: Phase 7A/7A.1/7B implemented; Phase 7C/7C.1 integrated and locally verified for internal review. Public-demo building licensing, 7D/7E/7F/7G and reliability/rebuild/pitch preparation remain pending. Full Phase 7 is not complete.**
 
-**Phase 7A — Pending: scenario-first user interface (Terminal 1)**
+**Phase 7A — Implemented and validated: map-first scenario interface (Terminal 1, 28 October 2026)**
 
-- [ ] New scenario entry page and natural-language question composer.
-- [ ] Guided configuration, progressive disclosure and explicit handoff to the existing validated MRT/AAC editors.
-- [ ] Clearly label unavailable, evidence-planning and planned exploratory-agent states; no implied Run action for unimplemented engines.
-- [ ] Responsive layout and token/revision checks that invalidate plans after question, category or map-point edits.
+- [x] Live miniature Singapore landing page, approximately 75% map / 25% right composer at desktop; non-interactive gradient seam, existing HDB buildings visible from a geometry-supported Tiong Bahru opening camera. Mobile upper map and readable lower composer.
+- [x] Four natural-language examples and chat-style question/interpretation using real `POST /api/scenarios/plan`; strict request and async response correlation/hash validation, actual provider/fallback notices and controlled errors.
+- [x] Guided Question/Plan → Configure → Calculate → Results, advanced MRT timing disclosure, fresh proposal on explicit handoff, Back/resume and Start new scenario. Existing MRT/AAC workspaces, dashboards, profiles, optional AI and illustrative animation retained.
+- [x] Clearly label unavailable, evidence-planning and planned exploratory-agent states; no implied Run action for unimplemented engines. Polyclinic cannot invoke AAC; ASEAN does not produce polling or executed stakeholders.
+- [x] Responsive layout and token/revision/attempt checks invalidate plans after question, category or map-point edits, including A→B→A, supersession, mode/context/reset and corrupted identity responses. No plan ID is used as a calculation ID.
+- [x] Map ownership retained across stages and catalogue loading. Landing/read-only results cannot edit MRT stations, including WebGL fallback; Configure restores the editable network after citizen/baseline views. Style readiness is tied to the loaded map instance.
+
+**Phase 7A validation:** **266 tests passed, zero failed** (245 retained + 21 new client/lifecycle/presentation/React SSR tests). All six MRT/population/eldercare CLIs, application and strict helper/test TypeScript, Next production build and whitespace checks passed sequentially. Playwright exercised actual no-key planner → MRT map editing → journey → demographic dashboard/profile, and planner → AAC placement/demo → actual access metrics → drag/edit/rerun. Existing 360 s / 21.00-minute example and 180 illustrative citizens with play/pause/reset passed. Desktop 1440×900, wide 1920×1080, intermediate 1024×900 and narrow 390×844 had no horizontal overflow. Pan through the gradient and wheel zoom worked. Delayed/corrupted planner responses, back/resume, unsupported questions, safe text, controlled failures and forced-WebGL read-only fallback were checked. All 14 raw hashes match. No paid provider request or secret/environment change was made. See `docs/PHASE7A_SCENARIO_FIRST_UI_IMPLEMENTATION.md` for exact files, screenshots, checks and rebuild steps.
+
+**Phase 7A limits:** The existing 23.53 MB / 13,436-footprint HDB source still loads asynchronously and uses illustrative 12 m heights; this is not Phase 7C building fidelity. Opening camera/loading changed, no geometry was invented. Composer map-point capture, a general conversation model, evidence retrieval and stakeholder execution are not implemented. The two validated calculation engines remain separate; no universal prediction or Phase 7E completion is claimed. Full Phase 4 calculated-population trajectories, Census/source/assumed-demand caveats and limited AAC proxies/unlocated coverage remain unchanged. Provider-assisted status rendering was fixture-checked; live Gemini/OpenRouter calls were not repeated.
+
+**Phase 7A.1 — Implemented and validated: General workspace and universal point/line plotting (Terminal 1, 28 October 2026)**
+
+- [x] General / Knowledge Graph navigation replaces permanent intervention tabs. Empty General shows question/drawing preparation, not a preloaded technical MRT scenario. Map and context remain mounted across tabs.
+- [x] Explore enters General immediately while the real planner request runs; shared Fit Singapore bounds, queued camera commands, reduced-motion handling and persistent street-detail preference (initially on).
+- [x] Strict independent geometry v1, stable user IDs, ordered lines, separate station dots, selection, edit-only dragging, numeric coordinate alternatives, labels/roles, point/vertex order/removal, bounded undo/redo, Finish/Cancel/Escape and reset.
+- [x] Thin plotted-MRT adapter: explicit station order and actual catalogue anchor confirmation, proximity-only suggestions, acknowledged 300 s run / 30 s dwell / 150 s wait / 180 s walking assumptions, valid existing engine input and actual journey/demographic calculation. Advanced editor remains optional.
+- [x] One confirmed plotted point feeds the existing AAC hook/request/session and actual API. One primary hypothetical marker, existing historical AAC markers/radius, geographic unknowns and source caveats retained. Unsupported polyclinic/policy drawings remain planning-only.
+- [x] Monotonic geometry revisions, exact local keys, current-plan execution binding and existing request gates reject obsolete results. Tool/selection/graph changes retain valid calculations; geometry/assumption/question changes invalidate them. Cross-plan advanced drafts/history and pending anchor cancellation reviewed.
+- [x] Honest Knowledge Graph destination and responsive component boundary; no fabricated entities, edges, GraphRAG or stakeholder execution.
+
+**Phase 7A.1 validation:** **313 tests passed, zero failed** (all 266 retained plus 47 geometry/store/adapter/controller/camera/execution/SSR regressions). Six MRT/population/eldercare CLIs, application and strict module/test TypeScript, Next production build and whitespace checks passed sequentially. The ignored derived eldercare catalogue required a permission-correct retry after sandbox EPERM; preparation then passed. All 14 raw-input hashes match. No environment, dependency or engine-formula changes; no paid AI calls.
+
+Real Playwright verified plot-first and question-first MRT proposals with three explicit dots and NS4/NE16 connections: **62.77 → 13.50 modelled minutes** under acknowledged illustrative seconds, followed by weighted demographic results/calculated profile. Direct map selection proposed NS16 for confirmation; searchable fallback also worked. Existing illustrative citizens drew 180 / 13 calls and the play clock advanced; these remain independent of calculated population paths. Plot edits/drag/undo cleared results, delayed MRT/AAC replies could not restore them, and planner edit/A→B→A/new-scenario/corrupt-token/hash cases were rejected. AAC at 1.287,103.824 reproduced **44,520 represented / 6,230 comparable / 38,290 unlocated / 3,890 closer**, **410.44→347.46 m**, and zero threshold gain. Moving it changed the fingerprint. Both plotted calculations worked at 390 px. All four requested widths (1920/1440/1024/390) had no document overflow; graph return kept plot/camera/run context; street preference survived navigation. Forced WebGL fallback allowed plotting and a real 20.00-minute advanced example, blocked online tiles retained local plotting, and controlled planner failure recovered. Final fresh unmocked page: zero console/page errors, one canvas, 317 rendered building features and working pan/zoom through the gradient. Independent re-review found no remaining concrete blocker. See `docs/PHASE7A1_GENERAL_MAP_PLOTTING_IMPLEMENTATION.md` for exact scope, screenshot references and rebuild sequence.
+
+**Phase 7A.1 remaining limits:** Geometry is in-memory; no polygon, saved-project or general graph renderer. Route curvature does not determine times or snap dots into an engineered alignment. Uniform assumed link times need calibration/sensitivity work before decision use. Four historical AAC points/two proxies do not imply nationwide coverage, actual walking access, service uptake or health outcomes. Full Phase 4 calculated-population trajectories, original Census/source discrepancies and unknown/unassigned population remain unresolved. No Phase 7C/7D/7E/7G completion is claimed.
 
 **Phase 7B — Implemented: scenario contract, capability registry and planning API**
 
@@ -279,9 +301,21 @@ Each phase has a narrow deliverable and an exit check. Stop expanding scope when
 - [x] Feature checkpoint `263ef96`: **245 tests passed, zero failed**, application/explicit TypeScript, production build and all six CLI regressions. Main integrates by fast-forward; combined verification is recorded in `docs/PHASE7B_INTEGRATION_CHECKPOINT.md`.
 - [x] Every plan requires confirmation and remains `not-executed`; v1 cannot return `ready`. No automatic simulation, numerical prediction, evidence retrieval or executable stakeholder engine was added. Polyclinics cannot use AAC; ASEAN questions do not produce a poll.
 
-**Phase 7C — Pending: miniature Singapore building audit**
+**Phase 7C — Implemented: building-source audit, preparation and bounded MapLibre adapter**
 
-- [ ] Audit building source provenance, coverage and rendering before proposing improvements. Existing HDB heights remain illustrative.
+- [x] Preserve supplied raw HDB and reviewed URA inputs, audit provenance/geometry/heights and compare source inventory with rendering. The historical 14,212-feature URA-only alternative remains distinct; it is not the current unified catalogue.
+- [x] Integrate one viewport-aware adapter into Terminal 1's persistent map; retain explicit limited-HDB fallback, one active extrusion system, cancellation, source readiness, retry and disposal. Camera coordination and universal plotting retain their existing owners.
+
+**Phase 7C.1 — Integrated and locally verified; public-demo clearance blocked**
+
+- [x] Transfer the exact reviewed manifest and its 1,119 referenced chunks: **234,739 footprints**, **176,643,869 referenced bytes**, 339,308-byte manifest SHA-256 `5ab917ca747b51527868499c58ac6ecc21c82dd8897d3243ed9ff52ef0bfc32b`. No obsolete chunks or raw geometry were copied; audit sidecars, licence notice and stable receipts remain in ignored local paths.
+- [x] Preserve 13,209 HDB / 1,912 URA / 219,618 Overture footprints; 2,392 direct-source heights, 20,610 estimates at an assumed 3 m per floor and 211,737 illustrative 12 m heights. Direct-source is not independently surveyed; no random heights or population allocation were added.
+- [x] Full emitted-data validation, 19 isolated Python GIS tests and the integrated Node/TypeScript/build/CLI checks. Maintain whole footprints, the corrected candidate-union overlap rule and explicit residual-overlap audit; opaque shading does not prove geometry correctness.
+- [x] Actual integrated 14-district fixed-camera sweep reached ready at zoom 15.65, pitch 52°, bearing -9°. Rendered tile features, distinct visible IDs, selected bounding-box features and complete inventory remain different scopes. Screenshots were independently inspected.
+- [x] Replace obsolete HDB-only labels with source-aware status, always-visible source links, complete source/height/licence details and responsive controls. Preserve real MRT/AAC plotting, confirmations, stale-result handling, empty Knowledge Graph navigation and the separate illustrative citizens.
+- [ ] Resolve combined SODL/ODbL compatibility, HDB acquisition provenance and publication obligations **before any public demonstration, hosting or redistribution**, including presentations served from localhost. Manifest remains `local-review-only`; loopback guard remains enforced. A fallback requires its own licence/provenance review.
+
+See `docs/PHASE7A1_7C1_INTEGRATION_CHECKPOINT.md` for actual final results, failure/recovery boundaries, ignored assets, screenshots, preserved inputs and the proposed Git scope. This is an uncommitted local integration, not a Git merge or public-release approval.
 
 **Phase 7D — Pending: exploratory synthetic stakeholder engine**
 
@@ -290,6 +324,15 @@ Each phase has a narrow deliverable and an exit check. Stop expanding scope when
 **Phase 7E — Pending: unified results experience**
 
 - [ ] Distinguish calculated results, future hypothetical exploration and evidence planning in a shared UX without mixing denominators or implying representative opinion.
+
+**Phase 7F — Pending: citizen clustering and movement refinement**
+
+- [ ] Investigate clustering and walking-in-place separately. This integration retains the existing illustrative animation and does not assign residents to building footprints or invent calculated-population trajectories.
+
+**Phase 7G — Pending: source-backed interactive Knowledge Graph**
+
+- [x] Responsive navigation destination preserves current question, drawings and valid calculations, with an honest empty state.
+- [ ] Validated scenario-to-graph adapters, source-backed entities/relationships, renderer, search/filter, node popup/inspector/full-window details and provenance inspection. No graph construction or GraphRAG execution is implemented.
 
 **Parallel preparation — demo reliability, competition rebuild and pitch (original planned stage retained)**
 
@@ -368,12 +411,12 @@ This is a **target schedule**, not a commitment; adjust based on prototype findi
 | 4 | `docs/SYNTHETIC_POPULATION_IMPLEMENTATION.md` (4A); `docs/CITIZEN_SIMULATION_CONTRACT.md` (interface); `docs/ANIMATED_CITIZENS_IMPLEMENTATION.md` (4B); `docs/DEMOGRAPHIC_IMPACT_SIMULATION.md` (4C); `docs/PHASE4_FULL_INTEGRATION.md` (browser/API integration) |
 | 5 | `docs/PHASE5_DASHBOARD_AI_IMPLEMENTATION.md` (implemented dashboard/provider/schema/chat guide); optional future metric/sensitivity deep dives |
 | 6 | `docs/ELDERCARE_ACCESSIBILITY_ENGINE.md` (6A), `docs/ELDERCARE_API_INTEGRATION.md` (6B), `docs/PHASE5_PHASE6_BACKEND_INTEGRATION.md` (integration), `docs/PHASE6C_ELDERCARE_UI_IMPLEMENTATION.md` (interactive AAC/browser/rebuild guide) |
-| 7 | `docs/SCENARIO_PLAN_CONTRACT.md`, `docs/PHASE7B_SCENARIO_PLANNER_IMPLEMENTATION.md`, `docs/PHASE7B_INTEGRATION_CHECKPOINT.md`; planned reliability artifacts: `docs/HACKATHON_REBUILD_GUIDE.md`, `docs/PITCH_SCRIPT.md` |
+| 7 | `docs/PHASE7A_SCENARIO_FIRST_UI_IMPLEMENTATION.md`, `docs/PHASE7A1_GENERAL_MAP_PLOTTING_IMPLEMENTATION.md`, `docs/SCENARIO_PLAN_CONTRACT.md`, `docs/PHASE7B_SCENARIO_PLANNER_IMPLEMENTATION.md`, `docs/PHASE7B_INTEGRATION_CHECKPOINT.md`; planned reliability artifacts: `docs/HACKATHON_REBUILD_GUIDE.md`, `docs/PITCH_SCRIPT.md` |
 
 ## 8. Immediate Next Action
 
-**Terminal 1: Phase 7A - scenario-first entry, natural-language composer and guided MRT/AAC configuration.** Start from the final shared Phase 7B integration checkpoint. Import the browser-safe contract/registry, POST the exact submitted request, validate the response and discard stale revisions. A plan is an interpretation, never calculation authorisation; only complete editor validation plus explicit user confirmation may initiate the existing engines. This integration task did not implement Phase 7A.
+**Review the uncommitted integrated checkpoint and its proposed maintained-file scope.** Phase 7A/7A.1 General plotting now coexists with the 7C.1 unified building preview. Git staging, commits, history changes, worktree synchronisation and public publication require separate explicit approval. Both branches remain at `4400f47`; Terminal 2 still has its original uncommitted stream. Do not fast-forward over its dirty files.
 
-**Parallel ownership:** Terminal 1 owns scenario-first UI and responsive guided configuration. Terminal 2 maintains planner/registry tests and evidence/model boundaries without modifying the frontend. Terminal 3 coordinates contract identity, the shared AI gate, regression review and future Git checkpoints. Phase 7C building/source audit, Phase 7D exploratory agents and Phase 7E unified results remain pending; the original reliability/rebuild/pitch work is retained as parallel preparation. No new infrastructure or live paid AI request is needed for the UI handoff.
+**Parallel ownership:** Terminal 1 owns scenario/plotting UX; Terminal 2 owns audited building sources/preparation and retains its source worktree; Terminal 3 owns integration review and the proposed checkpoint. Before public demo preparation, resolve the combined building licence/provenance boundary or choose a separately reviewed source strategy. Phase 7D/7E/7F/7G remain pending. Keep the original reliability, competition rebuild and pitch track, without claiming a public-cleared complete city or population trajectories.
 
 Keep source-byte identity sensitivity, Census rounding/national discrepancy, assumed demand, unknown AAC classifications/opening/capacity and the large unlocated population visible. Do not treat animated movement as observed behaviour, schematic links as rail alignments, or straight-line proximity as service uptake. AI selects grounded evidence rather than calculating impacts. Full Phase 4 trajectories and broader Phase 6 services/behaviour remain pending; the scoped AAC browser exit check is now validated.

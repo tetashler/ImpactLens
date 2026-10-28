@@ -1,0 +1,8 @@
+'use client';
+import type {PlotMode} from '../lib/plots/store';
+export default function PlotToolbar({mode,onMode,canUndo,canRedo,onUndo,onRedo,onClear,drawing,onFinish,onCancel}:{mode:PlotMode;onMode:(mode:PlotMode)=>void;canUndo:boolean;canRedo:boolean;onUndo:()=>void;onRedo:()=>void;onClear:()=>void;drawing:boolean;onFinish:()=>void;onCancel:()=>void}){
+  return <div className="plot-tools-wrap"><div className="plot-toolbar" role="toolbar" aria-label="Map plotting tools">
+    {([['explore','Explore map'],['point','Add point'],['line','Draw route'],['station','Station dot'],['anchor','Connect station'],['edit','Edit drawing']] as const).map(([value,label])=><button type="button" key={value} aria-pressed={mode===value} onClick={()=>onMode(value)} title={label}>{label}</button>)}
+    <button type="button" onClick={onUndo} disabled={!canUndo} title="Undo drawing edit">Undo</button><button type="button" onClick={onRedo} disabled={!canRedo} title="Redo drawing edit">Redo</button><button type="button" onClick={onClear}>Clear plot</button>
+  </div><p className="plot-tool-hint" role="status">{drawing?<>Click to add route vertices. <button onClick={onFinish}>Finish route</button><button onClick={onCancel}>Cancel stroke</button></>:mode==='station'?'Click along your route to mark station dots. Route vertices are separate.':mode==='point'?'Click an empty location to add a hypothetical point.':mode==='anchor'?'Click an existing MRT station, then explicitly confirm the connection.':mode==='edit'?'Select a point or vertex to inspect it. Drag to move, or edit coordinates.':'Pan and zoom. Schematic drawings require confirmation and an explicit calculation.'}</p></div>;
+}

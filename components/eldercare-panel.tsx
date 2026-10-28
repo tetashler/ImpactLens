@@ -6,7 +6,7 @@ import './eldercare-ui.css';
 function Numeric({label,value,onChange,min,max,step=1}:{label:string;value:number;onChange:(n:number)=>void;min:number;max:number;step?:number}){
   return <label>{label}<input type="number" aria-label={label} value={Number.isFinite(value)?value:''} min={min} max={max} step={step} onChange={e=>onChange(e.target.value===''?NaN:Number(e.target.value))}/></label>;
 }
-export function AacEditor({state:s,hidden}:{state:AacScenario;hidden:boolean}){
+export function AacEditor({state:s,hidden,onCalculate}:{state:AacScenario;hidden:boolean;onCalculate?:()=>void}){
   const d=s.draft,selected=s.facilities?.facilities.find(f=>f.id===s.selectedFacility);
   return <aside hidden={hidden} className="editor-panel aac-controls-panel" aria-label="Active Ageing Centre editor">
     <div className="panel-heading"><div><h2>Active Ageing Centre</h2><p>Hypothetical geographic access</p></div><span className="aac-service-symbol" aria-hidden="true">+</span></div>
@@ -40,7 +40,7 @@ export function AacEditor({state:s,hidden}:{state:AacScenario;hidden:boolean}){
         {selected&&<div className="aac-facility-detail" aria-label="Selected AAC record"><h4>{selected.name}</h4><p>{selected.address??selected.corroboration?.listedAddress??'Address unavailable'}</p><dl><div><dt>Classification</dt><dd>Corroborated AAC</dd></div><div><dt>Operation</dt><dd>Listed, unconfirmed</dd></div><div><dt>Capacity / opening date</dt><dd>Unknown</dd></div><div><dt>Historical point updated</dt><dd>{selected.recordUpdated??'Not supplied'}</dd></div></dl><p>Historical coordinates, not a present-day opening confirmation.</p><a href={selected.corroboration!.evidenceUrl} target="_blank" rel="noreferrer">Operator evidence · checked {selected.corroboration!.checkedDate}</a><a href={s.facilities!.source.url} target="_blank" rel="noreferrer">{s.facilities!.source.agency} historical source</a></div>}
       </section>
     </div>
-    <div className="editor-footer"><button className="run-button" onClick={s.calculate} disabled={!!s.validation||s.busy}>{s.busy?<><span className="spinner"/> Calculating geographic access…</>:'Calculate AAC Impact'}</button>{s.validation&&<p className="aac-control-hint">{s.validation}</p>}</div>
+    <div className="editor-footer"><button className="run-button" onClick={()=>onCalculate?onCalculate():void s.calculate()} disabled={!!s.validation||s.busy}>{s.busy?<><span className="spinner"/> Calculating geographic access…</>:'Calculate AAC Impact'}</button>{s.validation&&<p className="aac-control-hint">{s.validation}</p>}</div>
   </aside>;
 }
 export function AacResults({state:s,hidden}:{state:AacScenario;hidden:boolean}){

@@ -1,0 +1,5 @@
+# Offline extraction/preparation only; never required by Next.js at runtime.
+overturemaps==1.0.2
+shapely==2.2.0
+pyarrow==26.0.0
+numpy==2.5.4

@@ -4,7 +4,7 @@ import type { Position,OriginReference } from '../../prototype/eldercare/types';
 import type { FacilitiesResponse } from './api-contract';
 import { geodesicCircle,toLngLat } from './geometry';
 import { validAacPosition,demonstrationAacDraft } from './editor';
-export interface AacMapOptions {active:boolean;placing:boolean;position:Position|null;radiusMetres:number;facilities:FacilitiesResponse|null;selectedFacility:string|null;origins:OriginReference[];focusKey:number;onPlace:(position:Position)=>void;onSelect:(id:string)=>void;onDragStart:()=>void;onCancel:()=>void;onStartPlacement:()=>void;onFocus:()=>void}
+export interface AacMapOptions {active:boolean;placing:boolean;position:Position|null;radiusMetres:number;facilities:FacilitiesResponse|null;selectedFacility:string|null;origins:OriginReference[];focusKey:number;proposedMarker?:boolean;autoFocus?:boolean;onPlace:(position:Position)=>void;onSelect:(id:string)=>void;onDragStart:()=>void;onCancel:()=>void;onStartPlacement:()=>void;onFocus:()=>void}
 const empty:FeatureCollection={type:'FeatureCollection',features:[]};
 const sourceId='aac-access-radius',fillId='aac-radius-fill',lineId='aac-radius-line';
 function pin(kind:string,label:string,title:string){const b=document.createElement('button');b.type='button';b.className=`aac-map-pin ${kind}`;b.textContent=label;b.title=title;b.setAttribute('aria-label',title);b.addEventListener('click',e=>e.stopPropagation());return b;}
@@ -42,7 +42,7 @@ export class AacMapLayer {
     }
     const data=options.facilities?.facilities??[];
     this.facilities.forEach((m,i)=>m.getElement().classList.toggle('selected',data[i]?.id===options.selectedFacility));
-    if(validAacPosition(options.position)){
+    if(options.proposedMarker!==false&&validAacPosition(options.position)){
       if(!this.proposed){
         const element=pin('proposed','HYP','Hypothetical AAC — drag to reposition');
         this.proposed=new Marker({element,draggable:true}).setLngLat(toLngLat(options.position)).addTo(this.map);
@@ -63,7 +63,7 @@ export class AacMapLayer {
       this.showFacility(options.selectedFacility);
     }
     this.drawCircle(options.position);
-    if(!prev?.active||prev.focusKey!==options.focusKey)this.focus();
+    if((!prev?.active&&options.autoFocus!==false)||(prev?.active&&prev.focusKey!==options.focusKey))this.focus();
     this.previous=options;
   }
   handleClick(position:Position){if(this.options.active&&this.options.placing)this.options.onPlace(position);}

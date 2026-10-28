@@ -2,7 +2,11 @@
 
 Pre-hackathon research prototype for a Singapore social-impact sandbox. The current repository contains a local **Next.js + TypeScript + MapLibre** workspace backed by the validated MRT/LRT routing and hypothetical-line engine. Requires **Node.js 24+**.
 
-Choose **MRT Line** to design a hypothetical rail line and compare calculated journeys. **Calculated impact** shows full-weight demographic comparisons and run-bound synthetic profiles; **Illustrative city** separately animates 180 invented citizens. Optional Gemini or OpenRouter integration provides bounded dashboard layouts, grounded explanations and synthetic conversations. Choose **Active Ageing Centre** to place a hypothetical AAC, calculate straight-line geographic accessibility and inspect weighted older-resident comparisons and unknown coverage.
+Open miniature Singapore and ask **What if...?** The real planning API explains what is supported and which inputs are missing. MRT and limited Active Ageing Centre plans guide you to configuration, explicit calculation and existing results. Polyclinic/policy questions receive honest research or planned-capability views, not invented predictions. The composer works without an AI key. See [scenario-first UI](docs/PHASE7A_SCENARIO_FIRST_UI_IMPLEMENTATION.md).
+
+**General** lets you draw points and routes before or after asking a question. For MRT, draw a route, add separate station dots, explicitly confirm existing network connections and accept illustrative timing assumptions, then calculate. The complete technical editors remain under Advanced settings. **Knowledge Graph** preserves your scenario but honestly remains pending. See [General/map plotting](docs/PHASE7A1_GENERAL_MAP_PLOTTING_IMPLEMENTATION.md).
+
+**Calculated impact** shows full-weight demographic comparisons and run-bound synthetic profiles; **Illustrative city** separately animates 180 invented citizens. Optional Gemini or OpenRouter integration provides bounded layouts, explanations and synthetic conversations. These do not change the deterministic calculations.
 
 ## Run locally
 
@@ -21,7 +25,7 @@ Geography and the MapLibre worker are prepared automatically. No API key, hostin
 
 AI is optional. Set `AI_PROVIDER` to `gemini` or `openrouter`, plus that provider's key and independently selected model, in your private environment; restart the server and reload. See [.env.example](.env.example) for variable names and [Phase 5 notes](docs/PHASE5_DASHBOARD_AI_IMPLEMENTATION.md) for current model/capability checks, bounded answers and actual verification. Preserve existing `.env.local` entries. The calculated dashboard works when AI is unconfigured or unavailable.
 
-For the AAC demonstration, choose **Load Bukit Merah demo**, then **Calculate AAC Impact**. You can also click to place, drag/reposition or enter coordinates. Editing invalidates previous results; calculations run only on request. Four corroborated historical AAC records and two public landmark origin proxies support this limited scenario, not nationwide coverage or actual walking routes. Unlocated residents remain unassessed. Capacity, attendance and health effects are not calculated. See [interactive AAC implementation](docs/PHASE6C_ELDERCARE_UI_IMPLEMENTATION.md).
+For AAC, ask the AAC example, add one map point (or enter coordinates), choose it as the proposed centre and confirm the limited-evidence assumptions. **Calculate AAC impact** calls the existing backend. A reproducible demonstration location is latitude **1.287**, longitude **103.824**; the original Bukit Merah preset/settings remain in Advanced AAC settings. Editing invalidates previous results; calculations run only on request. Four corroborated historical AAC records and two public landmark origin proxies support this limited scenario, not nationwide coverage or actual walking routes. Unlocated residents remain unassessed. Capacity, attendance and health effects are not calculated. See [interactive AAC implementation](docs/PHASE6C_ELDERCARE_UI_IMPLEMENTATION.md).
 
 ```powershell
 npm test

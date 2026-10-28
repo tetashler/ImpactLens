@@ -1,7 +1,7 @@
 'use client';
 import { useCallback,useEffect,useRef,useState } from 'react';
 import { createAacDraft,demonstrationAacDraft,buildAacRequest,draftKey,validAacPosition,type AacDraft } from '../lib/eldercare/editor';
-import { parseFacilitiesResponse,type FacilitiesResponse,type EldercareApiResponse } from '../lib/eldercare/api-contract';
+import { parseFacilitiesResponse,parseEldercareApiRequest,type FacilitiesResponse,type EldercareApiRequest,type EldercareApiResponse } from '../lib/eldercare/api-contract';
 import { AacRequestSession } from '../lib/eldercare/session';
 import type { Position } from '../prototype/eldercare/types';
 
@@ -34,9 +34,9 @@ export function useAacScenario(enabled:boolean){
   },[enabled,retry]);
   useEffect(()=>{if(!enabled)return;const onKey=(event:KeyboardEvent)=>{if(event.key==='Escape')setPlacing(false);};window.addEventListener('keydown',onKey);return ()=>window.removeEventListener('keydown',onKey);},[enabled]);
   let validation='';try{buildAacRequest(draft,'aac-preview');}catch{validation=!draft.position?'Place a hypothetical centre or load the labelled demonstration.':'Check the name, Singapore coordinates, radius and advanced assumptions before calculating.';}
-  async function calculate(){
+  async function calculate(request?:EldercareApiRequest){
     if(!enabled||busy)return;
-    let submitted;try{submitted=buildAacRequest(draft,`aac-${crypto.randomUUID()}`);}catch{setError(validation);return;}
+    let submitted;try{submitted=request?parseEldercareApiRequest(request):buildAacRequest(draft,`aac-${crypto.randomUUID()}`);}catch{setError(validation||'Check the current centre and settings before calculating.');return;}
     const atKey=key,atAttempt=++attempt.current;setBusy(true);setError('');setLoaded(null);
     try{const data=await session.current.calculate(submitted,atKey);if(data&&latest.current.enabled&&latest.current.key===atKey&&attempt.current===atAttempt)setLoaded({key:atKey,data});}
     catch(e){if(latest.current.enabled&&latest.current.key===atKey&&attempt.current===atAttempt)setError((e as Error).message);}
