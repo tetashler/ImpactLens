@@ -1,6 +1,6 @@
 # ScenarioPlan v1 handoff
 
-Phase 7B browser-safe interface, published before provider integration. These files currently exist only in Terminal 2's worktree; Terminal 3 must coordinate a reviewed transfer/commit before Terminal 1 can import them. No branch synchronisation is automatic.
+Phase 7B browser-safe interface, integrated from feature checkpoint `263ef96`. Terminal 1 can consume these modules from the final shared checkpoint recorded in `PHASE7B_INTEGRATION_CHECKPOINT.md`. Git synchronisation is coordinated explicitly; no runtime action advances branches or executes a simulation.
 
 Import from `lib/scenarios/contract.ts`: `ScenarioRequest`, `ScenarioSelection`, `ScenarioPlan`, `ScenarioResponse`, `UserMapPoint`, `ScenarioCategory`, `ScenarioIntent`, `ProviderStatus`, `SCENARIO_PLAN_VERSION`, `SCENARIO_LIMITS`, `SCENARIO_PROVIDER_NOTICES`, `parseScenarioRequest`, `parseScenarioSelection`, `parseScenarioPlan`, async `parseScenarioResponse`, async `createScenarioPlan`, `SCENARIO_SELECTION_SCHEMA`.
 
@@ -56,7 +56,7 @@ A fixture's essential fields look like:
 }
 ```
 
-This is a field excerpt, not a complete parseable plan; use `createScenarioFixtures().aac` for complete JSON. MRT needs exact ordered stations, interchanges, service assumptions and demand settings. AAC needs confirmed location, limited Bukit Merah preset and access/eligibility assumptions. A supplied coordinate does not clear the remaining requirements. Polyclinic uses evidence planning, never AAC. ASEAN uses evidence planning by default or explicitly planned stakeholder exploration; neither produces polling forecasts.
+This is a field excerpt, not a complete parseable plan; use `(await createScenarioFixtures()).aac` for complete JSON. MRT needs exact ordered stations, interchanges, service assumptions and demand settings. AAC needs confirmed location, limited Bukit Merah preset and access/eligibility assumptions. A supplied coordinate does not clear the remaining requirements. Polyclinic uses evidence planning, never AAC. ASEAN uses evidence planning by default or explicitly planned stakeholder exploration; neither produces polling forecasts.
 
 ## Identity, errors and bounds
 

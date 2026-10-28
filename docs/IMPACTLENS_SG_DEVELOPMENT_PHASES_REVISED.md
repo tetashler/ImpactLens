@@ -1,6 +1,6 @@
 # ImpactLens SG — Development Phases & Hackathon Rebuild Roadmap
 
-**Status:** Pre-hackathon prototype; Phase 5 and the limited Phase 6A/6B/6C AAC workflow are implemented and validated (227 tests). MRT/AAC modes share one map with isolated scenarios. OpenRouter live authentication, full Phase 4 geographic trajectories and broader eldercare modelling remain unresolved.
+**Status:** ImpactLens SG 2.0 transition: Phase 7B scenario-planning foundation implemented, retaining the validated MRT/AAC workspaces. Phase 7A scenario-first UI and Phase 7C/7D/7E remain pending. The feature checkpoint passes 245 tests. OpenRouter live authentication, full Phase 4 geographic trajectories and broader eldercare modelling remain unresolved.
 **Last updated:** 28 October 2026
 **Team:** 3 (2 AI/data science, 1 mass communications)  
 **Hackathon build window:** 24 hours  
@@ -15,6 +15,8 @@
 ImpactLens SG is an evidence-informed, interactive Singapore social-impact sandbox. Users can propose new MRT lines, eldercare facilities, and—eventually—other infrastructure or policy interventions. A synthetic population reacts through a deterministic simulation, while blocky animated characters visualize agent movement and Gemini supports structured explanations, generated dashboard configurations, and conversations with representative citizens.
 
 **Model integrity rules**
+
+**ImpactLens SG 2.0 direction:** Start with an open-ended question and a proposed, user-confirmed plan. Calculated simulations use only registered validated engines (currently MRT and limited AAC). Future exploratory stakeholders must be labelled hypothetical, never representative public opinion. Evidence planning does not imply documents were fetched or findings verified. Phase 7B interprets and frames requirements; it does not execute any of these workflows. Existing intervention workspaces remain available while Phase 7A is pending.
 
 - Official statistics and infrastructure records are **observations**, with source and reference date.
 - Synthetic residents, their routines, and behaviour parameters are **modelled assumptions**, not individual government records.
@@ -31,7 +33,8 @@ ImpactLens SG is an evidence-informed, interactive Singapore social-impact sandb
 4. **Synthetic citizens** — Phase 4A foundation, shared contract, Phase 4B illustrative movement and Phase 4C weighted MRT outcomes integrated. Current-proposal metrics/profiles work; calculated citizens still lack justified geographic movement paths.
 5. **Impact dashboard + AI** — weighted dashboard, finite layouts/evidence and synthetic conversations implemented for Gemini/OpenRouter; Gemini adapter live smoke passed, both providers tested with mocks, wider live verification pending.
 6. **New eldercare / active-ageing centre intervention** — AAC placement and straight-line access/threshold dashboard implemented for the limited Bukit Merah preset (**second committed demonstration scenario**). Optional speed/capacity are explicit assumptions; walking routes, service allocation and individual eldercare journeys remain unsupported.
-7. **Reliability, documentation, and pitch** — demonstrate both interventions where feasible.
+7. **Scenario-first exploration** — Phase 7B contract/registry/planner implemented; Phase 7A composer, 7C building audit, 7D agents and 7E unified results pending.
+8. **Reliability, documentation, and pitch (parallel preparation)** — demonstrate both interventions where feasible.
 
 **Important:** Phase order is for the prototype learning sequence, not a rule that the entire MRT experience must be perfected before eldercare work begins. Both interventions are part of the planned product, with MRT taking priority in the 24-hour build.
 
@@ -257,9 +260,38 @@ Each phase has a narrow deliverable and an exit check. Stop expanding scope when
 
 **Integration assessment:** The scoped placement-to-calculated-results AAC demonstration and its browser exit check are implemented and independently validated at the Phase 6C Git checkpoint. Full eldercare service modelling is not complete. The four-AAC catalogue is limited, with historical coordinates, unknown current opening/capacity, two assumed public landmark proxies and a large unlocated population. Unknown residents are not unaffected. The radius is not a walking catchment; capacity does not allocate services, and no health/attendance outcome is asserted. Phase 4's missing individual geographic trajectories remain unresolved. See `docs/PHASE6C_ELDERCARE_UI_IMPLEMENTATION.md` for architecture, evidence, browser screenshots and rebuild steps, alongside the existing Phase 6A/6B and integration reports. Terminal 3 independently revalidated the 227-test checkpoint, production browser workflows and raw/environment hashes, then checkpointed Phase 6C and synchronised the feature branch by fast-forward. See `docs/PHASE6C_INTEGRATION_CHECKPOINT.md`; final commit/branch hashes are recorded in the post-commit completion response. No push was performed.
 
-### Phase 7 — Demo Reliability, Documentation and Pitch
+### Phase 7 — Scenario-First Exploration and Parallel Demo Preparation
 
-**Status: Planned**
+**Status: Phase 7B implemented; 7A/7C/7D/7E and reliability/rebuild/pitch preparation pending. Full Phase 7 is not complete.**
+
+**Phase 7A — Pending: scenario-first user interface (Terminal 1)**
+
+- [ ] New scenario entry page and natural-language question composer.
+- [ ] Guided configuration, progressive disclosure and explicit handoff to the existing validated MRT/AAC editors.
+- [ ] Clearly label unavailable, evidence-planning and planned exploratory-agent states; no implied Run action for unimplemented engines.
+- [ ] Responsive layout and token/revision checks that invalidate plans after question, category or map-point edits.
+
+**Phase 7B — Implemented: scenario contract, capability registry and planning API**
+
+- [x] Browser-safe version-1 contract, semantic/identity validation, detached capability registry and validated MRT/AAC/polyclinic/ASEAN fixtures.
+- [x] `POST /api/scenarios/plan`, conservative no-key fallback and finite Gemini/OpenRouter interpretation using existing providers and the shared two-request AI gate.
+- [x] Four capabilities: `mrt-accessibility-v1` (available), `aac-accessibility-v1` (available-limited), `stakeholder-exploration-v1` (planned), `evidence-exploration-v1` (planning-only).
+- [x] Feature checkpoint `263ef96`: **245 tests passed, zero failed**, application/explicit TypeScript, production build and all six CLI regressions. Main integrates by fast-forward; combined verification is recorded in `docs/PHASE7B_INTEGRATION_CHECKPOINT.md`.
+- [x] Every plan requires confirmation and remains `not-executed`; v1 cannot return `ready`. No automatic simulation, numerical prediction, evidence retrieval or executable stakeholder engine was added. Polyclinics cannot use AAC; ASEAN questions do not produce a poll.
+
+**Phase 7C — Pending: miniature Singapore building audit**
+
+- [ ] Audit building source provenance, coverage and rendering before proposing improvements. Existing HDB heights remain illustrative.
+
+**Phase 7D — Pending: exploratory synthetic stakeholder engine**
+
+- [ ] Define and validate explicitly hypothetical stakeholder interactions, assumptions and evidence boundaries. Planned capability does not mean agents have run.
+
+**Phase 7E — Pending: unified results experience**
+
+- [ ] Distinguish calculated results, future hypothetical exploration and evidence planning in a shared UX without mixing denominators or implying representative opinion.
+
+**Parallel preparation — demo reliability, competition rebuild and pitch (original planned stage retained)**
 
 - [ ] Run a complete three-minute scenario: baseline → new line → agents reroute → demographic impacts → inspect/talk to citizen.
 - [ ] Verify local startup from a fresh terminal (`npm install` if needed, then `npm run dev`).
@@ -336,12 +368,12 @@ This is a **target schedule**, not a commitment; adjust based on prototype findi
 | 4 | `docs/SYNTHETIC_POPULATION_IMPLEMENTATION.md` (4A); `docs/CITIZEN_SIMULATION_CONTRACT.md` (interface); `docs/ANIMATED_CITIZENS_IMPLEMENTATION.md` (4B); `docs/DEMOGRAPHIC_IMPACT_SIMULATION.md` (4C); `docs/PHASE4_FULL_INTEGRATION.md` (browser/API integration) |
 | 5 | `docs/PHASE5_DASHBOARD_AI_IMPLEMENTATION.md` (implemented dashboard/provider/schema/chat guide); optional future metric/sensitivity deep dives |
 | 6 | `docs/ELDERCARE_ACCESSIBILITY_ENGINE.md` (6A), `docs/ELDERCARE_API_INTEGRATION.md` (6B), `docs/PHASE5_PHASE6_BACKEND_INTEGRATION.md` (integration), `docs/PHASE6C_ELDERCARE_UI_IMPLEMENTATION.md` (interactive AAC/browser/rebuild guide) |
-| 7 | `docs/HACKATHON_REBUILD_GUIDE.md`, `docs/PITCH_SCRIPT.md` |
+| 7 | `docs/SCENARIO_PLAN_CONTRACT.md`, `docs/PHASE7B_SCENARIO_PLANNER_IMPLEMENTATION.md`, `docs/PHASE7B_INTEGRATION_CHECKPOINT.md`; planned reliability artifacts: `docs/HACKATHON_REBUILD_GUIDE.md`, `docs/PITCH_SCRIPT.md` |
 
 ## 8. Immediate Next Action
 
-**Next development cycle: Phase 7 - demonstration reliability and reconstruction rehearsal.** The Phase 6C review, local Git checkpoint and worktree synchronisation are complete. Rehearse both validated MRT and AAC workflows with their assumptions and unknown coverage visible. Phase 7 remains pending; no Phase 7 feature development was performed during this checkpoint. OpenRouter live authentication is optional follow-up, not a blocker for either deterministic intervention. Broader eldercare datasets, capacity allocation, walking routes and eldercare AI require separate evidence and scoped work.
+**Terminal 1: Phase 7A - scenario-first entry, natural-language composer and guided MRT/AAC configuration.** Start from the final shared Phase 7B integration checkpoint. Import the browser-safe contract/registry, POST the exact submitted request, validate the response and discard stale revisions. A plan is an interpretation, never calculation authorisation; only complete editor validation plus explicit user confirmation may initiate the existing engines. This integration task did not implement Phase 7A.
 
-**Parallel ownership:** Terminal 1 owns the implemented mode selector, AAC map/editor/dashboard and this roadmap. Terminal 2 may strengthen facility/proxy provenance and accessibility evidence without editing the dashboard. Terminal 3 coordinates contract/lifecycle review and explicitly authorised future Git integration. Agree interface changes before parallel edits to shared files; do not modify the other worktree or synchronise history without permission.
+**Parallel ownership:** Terminal 1 owns scenario-first UI and responsive guided configuration. Terminal 2 maintains planner/registry tests and evidence/model boundaries without modifying the frontend. Terminal 3 coordinates contract identity, the shared AI gate, regression review and future Git checkpoints. Phase 7C building/source audit, Phase 7D exploratory agents and Phase 7E unified results remain pending; the original reliability/rebuild/pitch work is retained as parallel preparation. No new infrastructure or live paid AI request is needed for the UI handoff.
 
 Keep source-byte identity sensitivity, Census rounding/national discrepancy, assumed demand, unknown AAC classifications/opening/capacity and the large unlocated population visible. Do not treat animated movement as observed behaviour, schematic links as rail alignments, or straight-line proximity as service uptake. AI selects grounded evidence rather than calculating impacts. Full Phase 4 trajectories and broader Phase 6 services/behaviour remain pending; the scoped AAC browser exit check is now validated.
