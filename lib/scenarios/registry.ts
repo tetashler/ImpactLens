@@ -49,12 +49,12 @@ const registry: Capability[] = [
   },
   {
     id: 'stakeholder-exploration-v1', domain: 'general', execution: 'exploratory-agents', availability: 'planned',
-    requiredInputs: [{ id: 'stakeholders', label: 'Define stakeholder categories and explicit synthetic-reaction assumptions.' }, { id: 'evidence', label: 'Obtain and verify relevant evidence before configuring exploration.' }, { id: 'future-engine', label: 'Wait for a registered, validated exploratory-agent engine (Phase 7D).' }],
+    requiredInputs: [{ id: 'stakeholders', label: 'Define stakeholder categories and explicit synthetic-reaction assumptions.' }, { id: 'evidence', label: 'Obtain and verify relevant evidence before configuring exploration.' }, { id: 'future-engine', label: 'Open Stakeholder simulation for an explicitly configured scripted experiment; automatic planner execution remains unregistered.' }],
     supportedOutcomes: ['Planning future synthetic stakeholder exploration only.'],
     unsupportedOutcomes: ['Executed agents, representative polling, predictions or numerical social impacts.'],
     geography: ['none'], adapter: null,
     assumptions: ['Future stakeholder reactions would be synthetic and assumption-dependent, not representative public opinion.'],
-    limitations: ['The exploratory-agent engine is not implemented; no execution identifier or simulation result exists.'],
+    limitations: ['This planning route does not execute stakeholder turns. The independent Phase 7D deterministic experiment is available through Stakeholder simulation; no run is created by this plan.'],
   },
   {
     id: 'evidence-exploration-v1', domain: 'general', execution: 'evidence-analysis', availability: 'planning-only',

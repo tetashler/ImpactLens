@@ -1,0 +1,116 @@
+{
+  "version": 1,
+  "sourceExperimentId": "experiment-phase7d-fixture-1",
+  "scenarioIdentity": "scenario-7b6a342d4cb9be44d7668387bdd0baaa7299f353a18f541c90a96c063566b2de",
+  "question": "What if Singapore leaves ASEAN?",
+  "configuration": {
+    "horizonYears": 5,
+    "notes": "",
+    "kind": "asean",
+    "withdrawalTiming": "immediate",
+    "transitionMonths": 0,
+    "tradeArrangements": "unresolved",
+    "stakeholderFocus": [
+      "businesses-trade",
+      "workers-households",
+      "government-diplomacy"
+    ]
+  },
+  "configurationIdentity": "config-ff210eb2fab03a8fad94e3b5856c9316e162314ae0d14b69b15dbf6576a9ba9c",
+  "geometryContext": null,
+  "evidence": {
+    "version": 1,
+    "bundleId": "evidence-61e30b88875dd7b8eb6d1a56d5678e3b7eec0fa30b31188a6323eccd395ff70f",
+    "scenarioIdentity": "scenario-7b6a342d4cb9be44d7668387bdd0baaa7299f353a18f541c90a96c063566b2de",
+    "researchAttemptId": "research-phase7d-fixture-1",
+    "queries": [
+      "What if Singapore leaves ASEAN?"
+    ],
+    "sources": [
+      {
+        "id": "asean-summit-official-20261028",
+        "url": "https://asean.org/about-asean/asean-summit/",
+        "publisher": "ASEAN Secretariat",
+        "title": "ASEAN Summit",
+        "publishedAt": null,
+        "verifiedAt": "2026-10-28T11:45:14.000Z",
+        "retrievalMode": "verified-replay",
+        "documentType": "official-html",
+        "fetchStatus": "verified-snapshot",
+        "excerpt": "The ASEAN Summit is the highest policy-making body in ASEAN"
+      },
+      {
+        "id": "singapore-fta-official-20261028",
+        "url": "https://www.meti.gov.sg/trade-international-economic-relations/agreements/free-trade-agreements-fta/",
+        "publisher": "Singapore Ministry of Energy, Trade and Industry",
+        "title": "Free Trade Agreements (FTAs)",
+        "publishedAt": "2026-08-21",
+        "verifiedAt": "2026-10-28T11:45:14.000Z",
+        "retrievalMode": "verified-replay",
+        "documentType": "official-html",
+        "fetchStatus": "verified-snapshot",
+        "excerpt": "Free Trade Agreements (FTAs) are treaties which make trade and investment between 2 or more economies easier."
+      }
+    ],
+    "findings": [
+      {
+        "id": "asean-summit-institutional-role",
+        "statement": "The ASEAN Summit is ASEAN’s highest policy-making body.",
+        "classification": "directly-supported",
+        "sourceId": "asean-summit-official-20261028",
+        "excerpt": "The ASEAN Summit is the highest policy-making body in ASEAN",
+        "limitations": [
+          "This describes an institutional role; it does not establish a withdrawal procedure."
+        ]
+      },
+      {
+        "id": "fta-treaty-definition",
+        "statement": "FTAs are treaties intended to make trade and investment between economies easier.",
+        "classification": "directly-supported",
+        "sourceId": "singapore-fta-official-20261028",
+        "excerpt": "Free Trade Agreements (FTAs) are treaties which make trade and investment between 2 or more economies easier.",
+        "limitations": [
+          "This definition does not establish what happens to any specific treaty after an ASEAN membership change."
+        ]
+      }
+    ],
+    "unknowns": [
+      "A procedure, legal basis and negotiated terms for a hypothetical Singapore withdrawal from ASEAN have not been established by this reference set.",
+      "Whether any individual FTA would continue, change or require termination depends on that treaty and any future arrangements; automatic termination is not established here.",
+      "Economic magnitudes, implementation timelines, public opinion and stakeholder responses have not been established."
+    ],
+    "status": "partial",
+    "mode": "verified-replay",
+    "createdAt": "2026-10-28T12:00:00.000Z",
+    "limitations": [
+      "Historical snapshot: these excerpts were checked on 28 October 2026 and replayed; no live source retrieval or new verification occurred for this request.",
+      "The ASEAN excerpt was checked against search-indexed content of the official page; direct automated access returned HTTP 403. The full page was not directly retrieved.",
+      "The trade-agreement page was checked at its final official METI URL after the MTI URL redirected. Its displayed last-updated date is recorded as publishedAt, not a first-publication date.",
+      "This small reference set does not answer the whole scenario, quantify impacts, establish legal advice, or predict stakeholder responses."
+    ],
+    "snapshotIdentity": "sha256-61e30b88875dd7b8eb6d1a56d5678e3b7eec0fa30b31188a6323eccd395ff70f"
+  },
+  "evidenceSnapshotIdentity": "sha256-61e30b88875dd7b8eb6d1a56d5678e3b7eec0fa30b31188a6323eccd395ff70f",
+  "limitations": [
+    "Research and configuration only. No stakeholder simulation has been executed.",
+    "Future synthetic stakeholder outputs would be hypothetical and would not represent public opinion.",
+    "The embedded evidence is a verified replay snapshot, not a live or exhaustive evidence review.",
+    "Withdrawal mechanisms, transition periods and trade arrangements are scenario assumptions, not established legal or economic outcomes.",
+    "Historical snapshot: these excerpts were checked on 28 October 2026 and replayed; no live source retrieval or new verification occurred for this request.",
+    "The ASEAN excerpt was checked against search-indexed content of the official page; direct automated access returned HTTP 403. The full page was not directly retrieved.",
+    "The trade-agreement page was checked at its final official METI URL after the MTI URL redirected. Its displayed last-updated date is recorded as publishedAt, not a first-publication date.",
+    "This small reference set does not answer the whole scenario, quantify impacts, establish legal advice, or predict stakeholder responses."
+  ],
+  "horizonYears": 5,
+  "stakeholderFocus": [
+    "businesses-trade",
+    "workers-households",
+    "government-diplomacy"
+  ],
+  "researchFocus": "",
+  "execution": {
+    "status": "not-executed",
+    "reason": "Stakeholder simulation not yet available."
+  },
+  "executionInputIdentity": "input-aca8f02e3e5a7c4b1bbf11ffe38668157beb6d6378b5bded5414da0f2ecbae7a"
+}

@@ -79,7 +79,7 @@ test('empty graph renders an honest recovery action and hidden tab keeps semanti
   assert.match(html,/Give your question a context\./);
   assert.match(html,/No matching entities\. Adjust your search or filters\./);
   assert.match(html,/>Open General<\/button>/);
-  assert.match(html,/No document retrieval or stakeholder simulation has run\./);
+  assert.match(html,/This view does not retrieve documents or execute stakeholder turns\./);
   assert.doesNotMatch(html,/GraphRAG.*(?:completed|executed|operational)/i);
   const hidden=renderKnowledge(graph,false);
   assert.match(hidden,/<section class="kg-workspace" hidden="" aria-label="Knowledge Graph"/);

@@ -31,6 +31,15 @@ import type {EldercareApiResponse} from '../lib/eldercare/api-contract';
 import type {ImpactResponse} from '../lib/impact/api-contract';
 import type {CitizenSimulationPayload} from '../lib/contracts/citizen-simulation';
 import GeneralPlotPanel from './general-plot-panel';
+import ExperimentLab from './experiment-lab';
+import {useExperimentLab} from './use-experiment-lab';
+import {appendExperimentGraph} from '../lib/experiments/graph';
+import type {ScenarioExperimentV1} from '../lib/experiments/index';
+import {createScenarioExperimentInput} from '../lib/experiments/index';
+import StakeholderWorkspace from './stakeholder-workspace';
+import {convertScenarioExperimentInput,stakeholderRoleIdsForFocus,type LinkedStakeholderRunV1} from '../lib/stakeholder-simulation/experiment-bridge';
+import {projectLinkedExperimentGraph} from '../lib/stakeholder-simulation/experiment-graph';
+import type {KnowledgeGraph} from '../lib/knowledge-graph/contract';
 import './scenario-experience.css';
 import './general-workspace.css';
 const NO_AAC_ORIGINS:OriginReference[]=[];
@@ -66,6 +75,11 @@ function NumberField({ label, value, onChange, step = 1, min = 0 }: { label: str
 export default function Workspace() {
   const planner=useScenarioPlanner();
   const plot=useScenarioPlot();
+  const experiment=useExperimentLab({question:planner.question,intent:planner.response?.plan.interpretation.intent,geometry:plot.geometry,geometryRevision:plot.revision});
+  const [labOpen,setLabOpen]=useState(false);
+  const [graphScope,setGraphScope]=useState<{kind:'current'}|{kind:'experiment';id:string}|{kind:'run';graph:KnowledgeGraph}>({kind:'current'});
+  const [stakeholderOpen,setStakeholderOpen]=useState(false),[executionRecord,setExecutionRecord]=useState<ScenarioExperimentV1|null>(null),[simulationError,setSimulationError]=useState('');
+  const graphAttempt=useRef(0),prepareAttempt=useRef(0);
   const [stage,setStage]=useState<'compose'|'general'|'configure'|'calculate'|'results'|'workspace'>('compose');
   const [tab,setTab]=useState<'general'|'knowledge'>('general');
   const [cameraCommand,setCameraCommand]=useState<CameraCommand>({id:0,target:'landing'}),surface=useRef<'landing'|'general'>('landing');
@@ -76,6 +90,26 @@ export default function Workspace() {
   const [canResume,setCanResume]=useState(false);
   const [advanced,setAdvanced]=useState(false),[mapFocus,setMapFocus]=useState(0);
   const exploring=stage==='compose',guided=stage!=='workspace'&&!exploring;
+  // Draft context is an invalidation token, never a replacement for a frozen input identity.
+  const stakeholderContext=JSON.stringify([exploring,planner.question,plot.revision,plot.geometry,experiment.contextCurrent,experiment.state.contextKey,experiment.state.configuration,experiment.state.evidence?.snapshotIdentity,experiment.state.selectedId,experiment.state.records.map(r=>r.experimentId)]);
+  const latestStakeholderContext=useRef(stakeholderContext);latestStakeholderContext.current=stakeholderContext;
+  useEffect(()=>{graphAttempt.current++;prepareAttempt.current++;setGraphScope({kind:'current'});setSimulationError('');},[stakeholderContext]);
+  const showStandaloneGraph=useCallback((graph:KnowledgeGraph|null)=>{graphAttempt.current++;if(graph){setGraphScope({kind:'run',graph});setStakeholderOpen(false);setTab('knowledge');}},[]);
+  const showLinkedGraph=useCallback(async(linked:LinkedStakeholderRunV1,accepts:()=>boolean=()=>true)=>{
+    const at=++graphAttempt.current,context=latestStakeholderContext.current;
+    const graph=await projectLinkedExperimentGraph(linked);
+    if(at!==graphAttempt.current||context!==latestStakeholderContext.current||!accepts())return;
+    setGraphScope({kind:'run',graph});setStakeholderOpen(false);setTab('knowledge');
+  },[]);
+  async function openStakeholder(record:ScenarioExperimentV1){
+    const at=++prepareAttempt.current,context=stakeholderContext;setSimulationError('');
+    try{
+      const source=await createScenarioExperimentInput(record);
+      await convertScenarioExperimentInput(source,{stakeholderRoleIds:stakeholderRoleIdsForFocus(source.stakeholderFocus),simulationOptions:{mode:'deterministic-demo',rounds:3,seed:'phase7d-demo',memoryEvents:6}});
+      if(at!==prepareAttempt.current||context!==latestStakeholderContext.current)return;setExecutionRecord(record);setStakeholderOpen(true);
+    }
+    catch(error){if(at===prepareAttempt.current)setSimulationError(error instanceof Error?error.message:'The saved experiment could not be validated. Save a supported ASEAN snapshot before executing.');}
+  }
   const [interventionMode,setInterventionMode]=useState<'mrt'|'aac'>('mrt');
   const aac=useAacScenario(!exploring&&interventionMode==='aac');
   const aacOrigins=aac.report?.result.provenance.originReferences??NO_AAC_ORIGINS;
@@ -88,7 +122,7 @@ export default function Workspace() {
   const [showPedestrianPath,setShowPedestrianPath]=useState(false);
   const [playing,setPlaying]=useState(false),[speed,setSpeed]=useState(1),[resetKey,setResetKey]=useState(0),[focusKey,setFocusKey]=useState(0),[citizensEnabled,setCitizensEnabled]=useState(true);
   const [citizenStats,setCitizenStats]=useState<CitizenStats>({visible:0,fps:null,drawCalls:0,status:'Zoom in to see citizens',elapsedSeconds:0});
-  const focusCitizens=useCallback(()=>{setStage(current=>current==='configure'||current==='general'?'results':current);setInspector('citizens');setMode('anchor');setCitizensEnabled(true);setFocusKey(k=>k+1);},[]);
+  const focusCitizens=useCallback(()=>{setLabOpen(false);setStage(current=>current==='configure'||current==='general'?'results':current);setInspector('citizens');setMode('anchor');setCitizensEnabled(true);setFocusKey(k=>k+1);},[]);
   const selectCitizen=useCallback((id:string)=>{setSelectedId(id);setInspector('citizens');if(pair===citizenViewPairFixture){const actor=illustrativePedestrianActors.find(a=>a.agentId===id),path=actor&&illustrativePedestrianPaths.find(p=>p.id===actor.pathId);if(path&&path.areaId!==pedestrianArea){setPedestrianArea(path.areaId);setFocusKey(k=>k+1);}}},[pair,pedestrianArea]);
   const togglePlayback=useCallback(()=>setPlaying(p=>!p),[]);
   // Calculated mode has no geographic agents. Fixture mode never overlays the unrelated editable proposal.
@@ -114,12 +148,12 @@ export default function Workspace() {
   const aacBound=!!aacBinding&&aacBinding.revision===plot.revision&&aacBinding.planId===planner.response?.plan.planId&&points.some(p=>p.id===aacBinding.pointId&&p.coordinate.lat===aac.draft.position?.lat&&p.coordinate.lon===aac.draft.position?.lon);
   const aacOptions=useMemo<AacMapOptions>(()=>({active:tab==='general'&&!exploring&&interventionMode==='aac',placing:primary?false:aac.placing,position:primary&&!aacBound?null:aac.draft.position,proposedMarker:!primary,autoFocus:false,radiusMetres:aac.draft.thresholdMetres,facilities:aac.facilities,selectedFacility:aac.selectedFacility,origins:aacOrigins,focusKey:aac.focusKey,onPlace:aac.place,onSelect:aac.setSelectedFacility,onDragStart:aac.invalidate,onCancel:aac.cancelPlacement,onStartPlacement:()=>aac.setPlacing(true),onFocus:aac.focus}),[tab,exploring,interventionMode,primary,aacBound,aac.placing,aac.draft.position,aac.draft.thresholdMetres,aac.facilities,aac.selectedFacility,aacOrigins,aac.focusKey,aac.place,aac.setSelectedFacility,aac.invalidate,aac.cancelPlacement,aac.setPlacing,aac.focus]);
   function invalidateResults(){execution.current=null;invalidate();aac.invalidate();setPlotError('');}
-  function invalidatePlot(){invalidateResults();setAacBinding(null);setPendingAnchor(null);}
+  function invalidatePlot(){experiment.lab.invalidate();setGraphScope({kind:'current'});invalidateResults();setAacBinding(null);setPendingAnchor(null);}
   function editPlot(action:()=>unknown){try{invalidatePlot();action();}catch(error){setPlotError((error as Error).message);}}
   function changePlotMode(next:Parameters<typeof plot.setMode>[0]){try{const before=plot.getSnapshot().revision;setPendingAnchor(null);plot.setMode(next);if(plot.getSnapshot().revision!==before)invalidatePlot();}catch(error){setPlotError((error as Error).message);}}
   function enterGeneral(){if(surface.current==='landing'){surface.current='general';setCameraCommand(c=>({id:c.id+1,target:'singapore'}));}setStage('general');setTab('general');setPlaying(false);setInspector('journey');setImpactWide(false);}
-  function returnLanding(){if(planner.busy)planner.invalidate();invalidateResults();surface.current='landing';setCameraCommand(c=>({id:c.id+1,target:'landing'}));setStage('compose');setTab('general');setPlaying(false);setImpactWide(false);}
-  function startNewScenario(){planner.reset();invalidatePlot();plot.startNew();setDraft(emptyDraft());setHistory([]);setDisabledSegments([]);aac.reset();setInterventionMode('mrt');setAnchors({});setPendingAnchor(null);setCanResume(false);setActivePlan(null);setAdvanced(false);enterGeneral();}
+  function returnLanding(){prepareAttempt.current++;graphAttempt.current++;setStakeholderOpen(false);experiment.lab.cancelResearch();setLabOpen(false);if(planner.busy)planner.invalidate();invalidateResults();surface.current='landing';setCameraCommand(c=>({id:c.id+1,target:'landing'}));setStage('compose');setTab('general');setPlaying(false);setImpactWide(false);}
+  function startNewScenario(){prepareAttempt.current++;graphAttempt.current++;setStakeholderOpen(false);planner.reset();invalidatePlot();experiment.lab.clearActive();setLabOpen(false);plot.startNew();setDraft(emptyDraft());setHistory([]);setDisabledSegments([]);aac.reset();setInterventionMode('mrt');setAnchors({});setPendingAnchor(null);setCanResume(false);setActivePlan(null);setAdvanced(false);enterGeneral();}
   function returnToQuestion(){enterGeneral();}
   function openConfiguration(){enterGeneral();}
   function openWorkspace(){enterGeneral();}
@@ -128,6 +162,7 @@ export default function Workspace() {
     setActivePlan(response);setInterventionMode(target);enterGeneral();
   }
   useEffect(()=>{setActivePlan(planner.response);if(planner.response)setInterventionMode(planner.response.plan.capabilityId==='aac-accessibility-v1'?'aac':'mrt');},[planner.response]);
+  useEffect(()=>{if(planner.response&&planner.response.plan.execution!=='calculated')setLabOpen(true);},[planner.response]);
   const lastPlotRevision=useRef(plot.revision);
   useEffect(()=>{if(lastPlotRevision.current!==plot.revision){lastPlotRevision.current=plot.revision;invalidatePlot();}},[plot.revision]);
   useEffect(()=>{if(exploring||tab!=='general')return;const cancel=(event:KeyboardEvent)=>{if(event.key==='Escape'){const before=plot.getSnapshot().revision;setPendingAnchor(null);plot.cancel();if(plot.getSnapshot().revision!==before)invalidatePlot();}};window.addEventListener('keydown',cancel);return()=>window.removeEventListener('keydown',cancel);},[exploring,tab,plot.cancel]);
@@ -186,6 +221,20 @@ export default function Workspace() {
   const onGraphPopulation=useCallback((data:ImpactResponse|null,context:string|null)=>{setGraphPopulation(data&&context?{scenarioIdentity:context,executionIdentity:data.identity.runId,result:data.payload}:null);},[]);
   useEffect(()=>{setGraphAac(aac.report&&pendingGraphAac.current===graphIdentity?{scenarioIdentity:graphIdentity,executionIdentity:aac.report.identity.scenarioId,result:aac.report}:null);},[aac.report,graphIdentity]);
   const knowledgeGraph=useMemo(()=>{try{if(!planner.question.trim()&&!plot.geometry.features.length)return null;return buildKnowledgeGraph({question:planner.question,plan:planner.response?.plan??null,geometry:plot.geometry,catalog,anchors:validAnchors,scenarioIdentity:graphIdentity,draft:boundMrt?draft:null,mrt:graphMrt,aac:graphAac,facilities:aac.facilities,demographic:graphPopulation});}catch{return null;}},[planner.question,planner.response,plot.geometry,catalog,validAnchors,graphIdentity,boundMrt,draft,graphMrt,graphAac,aac.facilities,graphPopulation]);
+  const experimentGraph=useMemo(()=>{try{
+    if(graphScope.kind==='run')return graphScope.graph;
+    const archived=graphScope.kind==='experiment'?experiment.state.records.find(record=>record.experimentId===graphScope.id):null;
+    if(archived)return appendExperimentGraph(null,{scenarioIdentity:archived.scenarioIdentity,question:archived.question,configuration:archived.configuration,evidence:archived.evidence,experiment:archived,geometryContext:archived.geometryContext,archived:true,executionAvailable:true});
+    if(graphScope.kind==='experiment')return null;
+    if(!experiment.contextCurrent||!experiment.state.configuration||!experiment.state.scenarioIdentity)return knowledgeGraph;
+    return appendExperimentGraph(knowledgeGraph,{scenarioIdentity:knowledgeGraph?.scenarioIdentity??experiment.state.scenarioIdentity,question:experiment.state.question,configuration:experiment.state.configuration,evidence:experiment.state.evidence,experiment:null,geometryContext:experiment.state.geometryContext,evidenceScenarioIdentity:experiment.state.scenarioIdentity,executionAvailable:true});
+  }catch{return graphScope.kind!=='current'?null:knowledgeGraph;}},[knowledgeGraph,graphScope,experiment.state,experiment.contextCurrent]);
+  async function restoreExperiment(record:ScenarioExperimentV1){
+    setStakeholderOpen(false);prepareAttempt.current++;graphAttempt.current++;
+    invalidatePlot();planner.reset();planner.setQuestion(record.question);if(record.geometryContext)plot.load(JSON.parse(record.geometryContext.canonicalContent));else plot.startNew();
+    setAnchors({});setAacBinding(null);enterGeneral();setLabOpen(true);
+    await experiment.lab.setContext({question:record.question,geometry:plot.getSnapshot().geometry,geometryRevision:plot.getSnapshot().revision});experiment.lab.restoreConfiguration(record.experimentId);
+  }
   const canRun = boundMrt&&!!catalog && draft.stations.length >= 2 && draft.stations.some(s => s.kind === 'existing') && !disabledSegments.length;
   const simulate = async (proposal:EditorDraft=draft,plotContext?:{revision:number;key:string;routeId:string;pointIds:string[];planId:string}) => {
     const binding=execution.current;
@@ -222,12 +271,12 @@ export default function Workspace() {
   const primaryPlanner={...planner,setQuestion:(question:string)=>{invalidatePlot();planner.setQuestion(question);},setCategory:(category:Parameters<typeof planner.setCategory>[0])=>{invalidatePlot();planner.setCategory(category);},setMapPoints:(values:Parameters<typeof planner.setMapPoints>[0])=>{invalidatePlot();planner.setMapPoints(values);},submit:()=>{invalidateResults();enterGeneral();return planner.submit();}};
   const min = (value: number | null | undefined) => value == null ? '—' : value.toFixed(2);
 
-  return <main className={`workspace-shell scenario-experience general-experience stage-${stage} ${tab==='knowledge'?'knowledge-active':''} ${guided?'guided-experience':''} ${advanced?'advanced-open':''} ${interventionMode==='aac'?'inspecting-aac':inspector==='citizens'?'inspecting-citizens':inspector==='impact'?'inspecting-impact':''} ${interventionMode==='mrt'&&impactWide?'dashboard-wide':''}`}>
+  return <main className={`workspace-shell scenario-experience general-experience stage-${stage} ${labOpen&&!exploring&&stage==='general'?'experiment-open':''} ${tab==='knowledge'?'knowledge-active':''} ${guided?'guided-experience':''} ${advanced?'advanced-open':''} ${interventionMode==='aac'?'inspecting-aac':inspector==='citizens'?'inspecting-citizens':inspector==='impact'?'inspecting-impact':''} ${interventionMode==='mrt'&&impactWide?'dashboard-wide':''}`}>
     <header className="app-header"><button type="button" onClick={returnLanding} className="brand" aria-label="ImpactLens SG home"><span className="brand-symbol"><Icon name="layers" size={24} /></span><strong>ImpactLens<span>SG</span></strong></button>
       <nav className="general-tabs" aria-label="Workspace views"><button type="button" aria-current={!exploring&&tab==='general'?'page':undefined} onClick={()=>{if(exploring)enterGeneral();else setTab('general');}}>General</button><button type="button" aria-current={tab==='knowledge'?'page':undefined} onClick={()=>{if(exploring)enterGeneral();setTab('knowledge');}}>Knowledge Graph</button></nav>
       <div className="header-end">{exploring?<button className="experience-tools" onClick={openWorkspace}>Open General</button>:<><button className="experience-tools return-landing" onClick={returnLanding}>Return to landing</button><button className="experience-tools" onClick={startNewScenario}>Start new scenario</button></>}<span className="prototype-badge">Research prototype</span></div>
     </header>
-    {!exploring&&<section className="general-summary" aria-label="Current scenario"><div><span>{planner.busy?'Interpreting your scenario…':result||aac.report?'Calculated comparison · current confirmed inputs':planner.response?`${planner.response.plan.execution==='calculated'?'Accessibility plan':'Planning only'} · ${planner.response.plan.executionState}`:'Question and drawing preparation'}</span><h1>{planner.question||'What would you change?'}</h1></div><div className="general-summary-actions"><button onClick={enterGeneral}>Edit scenario & drawing</button><button className="show-map-button" onClick={showMap}>Show map</button>{(result||aac.report)&&<button onClick={()=>{setStage('results');setInspector('journey');}}>View results</button>}<span>{points.length} points · {plot.geometry.features.filter(f=>f.kind==='line').length} lines</span></div></section>}
+    {!exploring&&<section className="general-summary" aria-label="Current scenario"><div><span>{planner.busy?'Interpreting your scenario…':result||aac.report?'Calculated comparison · current confirmed inputs':planner.response?`${planner.response.plan.execution==='calculated'?'Accessibility plan':'Planning only'} · ${planner.response.plan.executionState}`:'Question and drawing preparation'}</span><h1>{planner.question||'What would you change?'}</h1></div><div className="general-summary-actions"><button onClick={()=>{setLabOpen(false);enterGeneral();}}>Edit scenario & drawing</button><button disabled={!planner.question.trim()} onClick={()=>{enterGeneral();setLabOpen(true);setGraphScope({kind:'current'});}}>Experiment lab</button><button className="show-map-button" onClick={showMap}>Show map</button>{(result||aac.report)&&<button onClick={()=>{setStage('results');setInspector('journey');}}>View results</button>}<span>{points.length} points · {plot.geometry.features.filter(f=>f.kind==='line').length} lines</span></div></section>}
     <div className="workspace-heading"><div><div className="breadcrumb">Interventions <Icon name="chevron" size={12} /> {interventionMode==='aac'?'New Active Ageing Centre':'New MRT line'}</div><h1>{interventionMode==='aac'?'Bring care closer.':'Explore a better connection.'}</h1></div><div className="network-summary">{interventionMode==='aac'?<><span><strong>{aac.facilities?.summary.corroboratedAac??'—'}</strong> corroborated AAC records</span><span><strong>{aac.facilities?.summary.unknownServicePoints??'—'}</strong> unclassified historical points</span></>:<><span><strong>{catalog?.stations.length ?? '—'}</strong> existing stations</span><span><strong>{catalog?.quarantinedTrips ?? '—'}</strong> trips quarantined</span><span className="model-tag">Static travel-time model</span></>}</div></div>
     <div className="workspace-grid" aria-hidden={tab==='knowledge'} inert={tab==='knowledge'}>
       <aside hidden={exploring||interventionMode!=='mrt'||(guided&&stage!=='configure')} className="editor-panel" aria-label="MRT line editor">
@@ -286,10 +335,13 @@ export default function Workspace() {
         </>:null}
       </aside>
       <AacResults state={aac} hidden={exploring||stage==='general'||interventionMode!=='aac'||(guided&&stage==='configure')}/>
-      <GeneralPlotPanel hidden={stage!=='general'} planner={primaryPlanner} plot={plot} catalog={catalog} anchors={validAnchors} pendingAnchor={pendingAnchor} onEdit={editPlot} onInvalidate={invalidateResults} onRequestAnchor={requestAnchor} onConfirmAnchor={confirmAnchor} onDisconnect={id=>{invalidateResults();setAnchors(old=>Object.fromEntries(Object.entries(old).filter(([key])=>key!==id)));}} onRunMrt={runPlottedMrt} onAdvancedMrt={()=>{const keep=boundMrt;invalidateResults();if(!keep){setDraft(emptyDraft());setHistory([]);setDisabledSegments([]);}if(planner.response?.plan.capabilityId==='mrt-accessibility-v1')execution.current={kind:'advanced',planId:planner.response.plan.planId};setStage('workspace');setInterventionMode('mrt');setInspector('journey');setAdvanced(true);}} aac={aac} aacBound={aacBound} onConfirmAac={confirmPlottedAac} onRunAac={runPlottedAac} onAdvancedAac={()=>{const keep=aacBound;invalidateResults();if(!keep)aac.reset();setStage('configure');setInterventionMode('aac');}} onShowResults={()=>{setStage('results');setInspector('journey');}} hasResults={!!result||!!aac.report} error={plotError} onResetSimulation={invalidateResults} onUsePlan={configureScenario}/>
+      <GeneralPlotPanel hidden={stage!=='general'||labOpen} planner={primaryPlanner} plot={plot} catalog={catalog} anchors={validAnchors} pendingAnchor={pendingAnchor} onEdit={editPlot} onInvalidate={invalidateResults} onRequestAnchor={requestAnchor} onConfirmAnchor={confirmAnchor} onDisconnect={id=>{invalidateResults();setAnchors(old=>Object.fromEntries(Object.entries(old).filter(([key])=>key!==id)));}} onRunMrt={runPlottedMrt} onAdvancedMrt={()=>{const keep=boundMrt;invalidateResults();if(!keep){setDraft(emptyDraft());setHistory([]);setDisabledSegments([]);}if(planner.response?.plan.capabilityId==='mrt-accessibility-v1')execution.current={kind:'advanced',planId:planner.response.plan.planId};setStage('workspace');setInterventionMode('mrt');setInspector('journey');setAdvanced(true);}} aac={aac} aacBound={aacBound} onConfirmAac={confirmPlottedAac} onRunAac={runPlottedAac} onAdvancedAac={()=>{const keep=aacBound;invalidateResults();if(!keep)aac.reset();setStage('configure');setInterventionMode('aac');}} onShowResults={()=>{setStage('results');setInspector('journey');}} hasResults={!!result||!!aac.report} error={plotError} onResetSimulation={invalidateResults} onUsePlan={configureScenario}/>
+      <ExperimentLab state={experiment.state} lab={experiment.lab} current={experiment.contextCurrent} visible={labOpen&&!exploring&&stage==='general'} geometry={plot.geometry} plan={planner.response?.plan??null} onClose={()=>setLabOpen(false)} executionAvailable onSimulate={record=>void openStakeholder(record)} simulationError={simulationError} onGraph={()=>{setGraphScope(experiment.state.selectedId?{kind:'experiment',id:experiment.state.selectedId}:{kind:'current'});setTab('knowledge');}} onRestore={record=>void restoreExperiment(record)}/>
       {exploring&&<ScenarioComposer planner={primaryPlanner} onConfigure={configureScenario}/>}
     </div>
-    <KnowledgeWorkspace graph={knowledgeGraph} visible={tab==='knowledge'} onReturn={()=>setTab('general')}/>
+    <StakeholderWorkspace open={stakeholderOpen&&!exploring} experiment={executionRecord} experiments={experiment.state.records} contextToken={stakeholderContext} question={planner.question} scenarioIdentity={experiment.state.scenarioIdentity??''} onClose={()=>{graphAttempt.current++;prepareAttempt.current++;setStakeholderOpen(false);}} onUseExample={()=>{}} onGraph={showStandaloneGraph} onLinkedGraph={showLinkedGraph}/>
+    {tab==='knowledge'&&graphScope.kind!=='current'&&<button className="archive-return" onClick={()=>setGraphScope({kind:'current'})}>Return to current scenario graph</button>}
+    <KnowledgeWorkspace graph={experimentGraph} archived={graphScope.kind!=='current'} resultLabel={graphScope.kind==='run'?'Recorded synthetic stakeholder run':undefined} visible={tab==='knowledge'} onReturn={()=>setTab('general')}/>
     <footer className="app-footer"><span><span className="live-dot" /> Evidence-informed scenario modelling</span><span>Pre-hackathon prototype · Proposed infrastructure is hypothetical</span><span>ImpactLens SG / MRT + AAC</span></footer>
   </main>;
 }

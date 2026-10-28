@@ -1,0 +1,61 @@
+.experiment-open:not(.stage-compose) { --composer-width:clamp(450px,55vw,900px); }
+.experiment-lab { display:flex; flex-direction:column; min-width:0; }
+.experiment-heading { padding:20px 22px 14px; display:flex; gap:16px; justify-content:space-between; align-items:flex-start; border-bottom:1px solid #324a54; }
+.experiment-heading h2 { font-size:21px; font-weight:550; letter-spacing:-.5px; }
+.experiment-heading p { color:#afc7ca; font-size:12px; max-width:46ch; margin-top:5px; }
+.experiment-heading button { flex-shrink:0; max-width:130px; }
+.experiment-tabs { padding:8px 16px; display:flex; gap:4px; border-bottom:1px solid #324a54; }
+.experiment-tabs button { flex:1; padding:7px!important; background:transparent!important; border-color:transparent!important; }
+.experiment-tabs button[aria-current] { background:#25423f!important; border-color:#70978b!important; color:#d4eee3; }
+.experiment-scroll { flex:1; min-height:0; overflow:auto; padding:20px 24px 28px; scrollbar-width:thin; scrollbar-color:#45616b transparent; }
+.experiment-scope { font-size:16px; line-height:1.5; overflow-wrap:anywhere; margin-bottom:12px; }
+.experiment-state { display:flex; flex-direction:column; gap:3px; font-size:12px; color:#d8cfaa; padding:10px 0; border-block:1px solid #314a51; margin-bottom:20px; }
+.experiment-state>span { color:#9fb9bc; }
+.experiment-lab h3 { font-size:17px; margin-bottom:14px; font-weight:550; }
+.experiment-lab h4 { font-size:14px; margin-block:10px; }
+.experiment-lab p,.experiment-lab li { line-height:1.7; }
+.experiment-lab a { color:#aedbce; text-decoration:underline; text-underline-offset:3px; }
+.experiment-fields { display:grid; grid-template-columns:1fr 1fr; align-items:start; gap:16px; }
+.experiment-fields>fieldset,.experiment-fields>.experiment-hint,.experiment-fields>label:has(textarea),.experiment-fields>.experiment-assumption-editor,.experiment-fields>.experiment-named-assumption { grid-column:1/-1; }
+.experiment-fields :is(input,select,textarea) { min-width:0; max-width:100%; }
+.experiment-fields textarea { width:100%; min-height:75px; padding:11px; border:1px solid #48616b; border-radius:5px; background:#10232d; color:#e1ecea; font:inherit; resize:vertical; }
+.experiment-fields fieldset { border:1px solid #405b61; border-radius:6px; padding:12px 14px 6px; }
+.experiment-fields legend { padding:0 5px; color:#bed6d1; font-size:12px; }
+.experiment-lab .experiment-check { display:flex!important; flex-direction:row!important; gap:10px; align-items:center; padding:5px 0; min-height:38px; }
+.experiment-hint { color:#b0c3c7; font-size:12px; }
+.experiment-actions { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0; }
+.experiment-lab .experiment-primary { background:#afd9c9; color:#142f31; border-color:#afd9c9; font-weight:600; }
+.experiment-lab .experiment-primary:hover:not(:disabled) { background:#c2e8d8; }
+.experiment-empty { padding:18px 0; color:#b2c4c8; }
+.experiment-empty strong { color:#d4e4df; }
+.experiment-error,.experiment-warning { color:#f1b3a4; background:#442d2c; border-left:3px solid #bc8878; padding:12px; margin-bottom:14px; }
+.experiment-notice { color:#b9d9ce; padding:10px 12px; border-left:2px solid #6a9987; margin-bottom:14px; font-size:12px; }
+.experiment-replay { padding:14px; border:1px solid #486369; border-radius:6px; background:#182f37; }
+.experiment-replay p { color:#b5c9ca; font-size:12px; margin-top:5px; }
+.experiment-findings article { padding:18px 0; border-bottom:1px solid #324a54; }
+.experiment-classification { color:#a8d1bf; font-size:11px; }
+.experiment-findings article p { margin:5px 0; }
+.experiment-findings article small { display:block; color:#b0c3c7; margin-top:6px; }
+.experiment-lab details { border-top:1px solid #324a54; margin-top:12px; padding-bottom:8px; }
+.experiment-lab summary { padding:12px 0; cursor:pointer; min-height:44px; font-weight:500; }
+.experiment-lab summary small { display:block; margin-top:3px; color:#b0c3c7; font-weight:400; }
+.experiment-lab blockquote { margin:12px 0; padding:12px 14px; border-left:2px solid #a2c4b5; background:#192e37; font-size:13px; }
+.experiment-source-url,.experiment-lab pre,.experiment-facts dd { overflow-wrap:anywhere; word-break:break-word; }
+.experiment-source-url { font-size:11px; color:#a6bcc2; margin:8px 0; }
+.experiment-facts { margin:14px 0; font-size:12px; }
+.experiment-facts>div { display:grid; grid-template-columns:minmax(100px,1fr) minmax(0,1.8fr); gap:10px; padding:8px 0; border-bottom:1px solid #2c414b; }
+.experiment-facts dt { color:#a9c2c5; }.experiment-facts dd { margin:0; color:#deebe6; }
+.experiment-gaps { margin:18px 0; padding:12px 15px; border-left:2px solid #aa9c71; background:#272f30; }
+.experiment-lab ul { padding-left:20px; }.experiment-lab li { margin-block:6px; }.experiment-limitations { color:#b0c3c7; font-size:12px; }
+.experiment-history { list-style:none; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.experiment-history li { margin:0; min-width:0; }.experiment-history button { width:100%; text-align:left; height:100%; }.experiment-history span,.experiment-history small { display:block; margin-top:5px; color:#b0c3c7; font-size:11px; }.experiment-history button[aria-pressed=true] { border-color:#abd7c7; background:#23463f; }
+.experiment-archive { margin-top:24px; padding-top:18px; border-top:2px solid #709c8c; }.experiment-archive>strong { color:#c9d9b5; font-size:12px; }.experiment-archive>p { font-size:12px; color:#b0c3c7; }
+.experiment-lab pre { white-space:pre-wrap; max-height:350px; overflow:auto; font-size:11px; background:#0d1b24; padding:12px; }
+.experiment-file { display:block!important; padding:9px 12px; border:1px solid #43616b; border-radius:6px; cursor:pointer; }.experiment-file input { width:100%; max-width:240px; font-size:11px!important; margin-top:6px; }
+.experiment-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:18px 0; }.experiment-comparison-boundary { padding:13px; background:#233a3e; color:#bed8d2; border-radius:5px; }
+.experiment-diff { margin:20px 0; font-size:12px; }.experiment-diff>[role=row] { display:grid; grid-template-columns:1fr 1.2fr 1.2fr; gap:10px; padding:12px 10px; border-bottom:1px solid #3c535a; }.experiment-diff span,.experiment-diff strong { min-width:0; overflow-wrap:anywhere; }.experiment-diff strong { font-weight:500; }.experiment-diff small { display:block; color:#9bb6b8; font-size:10px; margin-top:4px; }.experiment-diff .changed { border-left:2px solid #a1cdbc; background:#1f393b; }.experiment-diff-header { color:#b7c8c8; }
+.experiment-execution { margin-top:26px; padding-top:18px; border-top:1px solid #3d565e; font-size:12px; color:#b2c8ca; }.experiment-execution strong { color:#d4e5df; }.experiment-execution button { margin-top:12px; width:100%; }
+.experiment-named-assumption { display:flex; gap:12px; justify-content:space-between; }.experiment-assumption-editor { display:grid; gap:12px; }
+.archive-return{align-self:flex-start;margin:12px 24px;padding:10px 14px;background:#172735;color:#dfe8f1;border:1px solid #688795;border-radius:7px;cursor:pointer}.archive-return:focus-visible{outline:2px solid #80e6df;outline-offset:3px}
+@media(max-width:1150px){.experiment-open:not(.stage-compose){--composer-width:clamp(390px,54vw,650px)}.experiment-fields{grid-template-columns:1fr}.experiment-fields>*{grid-column:1/-1}.experiment-heading{flex-direction:column}.experiment-heading button{max-width:none}.experiment-scroll{padding:18px}.experiment-tabs{padding-inline:8px;gap:0}.experiment-tabs button{font-size:12px;padding-inline:3px!important}}
+@media(max-width:700px){.experiment-open:not(.stage-compose){--composer-width:100%}.experiment-open .experiment-lab:not([hidden]){position:relative;inset:auto;width:100%;order:2;max-height:none}.experiment-scroll{overflow:visible}.experiment-heading{flex-direction:row;gap:8px;padding-inline:16px}.experiment-heading h2{font-size:18px}.experiment-heading button{max-width:120px;font-size:11px}.experiment-pair,.experiment-history{grid-template-columns:1fr}.experiment-diff>[role=row]{gap:8px;padding:12px 8px;grid-template-columns:.9fr 1fr 1fr}.experiment-diff{font-size:11px}.experiment-scroll{padding:16px}.experiment-fields{gap:14px}}

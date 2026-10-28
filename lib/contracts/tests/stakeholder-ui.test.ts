@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
+test('actual stakeholder workspace renders safe role controls and explicit playback and synthetic disclosures',()=>{
+  const component=new URL('../../../components/stakeholder-workspace.tsx',import.meta.url).href;
+  const code=`import {registerHooks} from 'node:module';import{readFileSync,existsSync}from'node:fs';import babel from'next/dist/compiled/babel/core.js';import ts from'next/dist/compiled/babel/preset-typescript.js';import react from'next/dist/compiled/babel/preset-react.js';import{createElement}from'react';import{renderToStaticMarkup}from'react-dom/server';registerHooks({resolve(s,c,n){if(s.startsWith('.')&&c.parentURL)for(const ext of['.tsx','.ts']){const u=new URL(s+ext,c.parentURL);if(existsSync(u))return n(u.href,c);}return n(s,c);},load(u,c,n){if(u.endsWith('.css'))return{format:'module',source:'',shortCircuit:true};if(u.endsWith('.tsx'))return{format:'module',source:babel.transformSync(readFileSync(new URL(u),'utf8'),{filename:new URL(u).pathname,presets:[[ts,{isTSX:true,allExtensions:true}],[react,{runtime:'automatic'}]],babelrc:false,configFile:false}).code,shortCircuit:true};return n(u,c);}});const{default:View}=await import(${JSON.stringify(component)});process.stdout.write(renderToStaticMarkup(createElement(View,{open:true,question:'<img src=x onerror=alert(1)>',scenarioIdentity:'fixture',onClose(){},onUseExample(){},onGraph(){}})));`;
+  const r=spawnSync(process.execPath,['--input-type=module','--eval',code],{encoding:'utf8',timeout:20000});assert.equal(r.status,0,r.stderr);
+  assert.match(r.stdout,/fictional stakeholder simulations/);assert.match(r.stdout,/Start simulation/);assert.match(r.stdout,/Timeline playback/);assert.match(r.stdout,/Withdraw/);assert.doesNotMatch(r.stdout,/<img|<script/);assert.match(r.stdout,/&lt;img/);
+});
