@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createDynamicPlanner} from '../../server/inference/planner.ts';
-import {dynamicFixtures} from '../../dynamic-scenarios/fixtures.ts';
+import {worldFixtures as dynamicFixtures} from '../../world-graph/fixtures.ts';
 import {MODEL} from '../../server/inference/deepseek.ts';
 import {parseDynamicDraft} from '../../dynamic-scenarios/plan.ts';
 test('planning instructions select directly affected stakeholders and question-grounded scope, not analyst substitutes',async()=>{
@@ -15,7 +15,7 @@ test('planning instructions select directly affected stakeholders and question-g
  assert.match(system,/entityIds.*entities\[\]\.id/);
  assert.match(system,/Do not introduce numerical targets/);
  assert.equal(JSON.parse(captured.messages[1].content).question,f.request.question);
- assert.deepEqual(captured.reasoning,{effort:'none',exclude:true});assert.equal(captured.max_tokens,3000);
+ assert.deepEqual(captured.reasoning,{effort:'none',exclude:true});assert.equal(captured.max_tokens,6000);
 });
 test('undeclared planner entity references remain rejected rather than being repaired or treated as jurisdictions',()=>{
  const f=dynamicFixtures()[0],draft=structuredClone(f.draft);draft.agents[0].entityIds=['sg'];assert.throws(()=>parseDynamicDraft(draft,f.request),/Unknown generated entity/);
@@ -69,7 +69,7 @@ test('new planner rejects local scope with multiple relevant jurisdictions while
 
 test('archive inspection preserves a completed active dynamic run and returning restores its exact identity',async()=>{
  const {createQuestionSimulation}=await import('../../question-simulation/client.ts');const {handleDynamicRequest}=await import('../../server/inference/dynamic-service.ts');const {mockDynamicProvider}=await import('./helpers/dynamic-provider.ts');
- const f=dynamicFixtures()[0],m=mockDynamicProvider(f);let calls=0;const c=createQuestionSimulation({execution:'dynamic',fetcher:async(url,init)=>{calls++;return handleDynamicRequest(new Request('http://localhost'+url,init),{enabled:true,key:'mock',fetcher:m.fetcher});}});
+ const f=dynamicFixtures()[0],m=mockDynamicProvider(f);let calls=0;const c=createQuestionSimulation({execution:'dynamic',fetcher:async(url,init)=>{calls++;return handleDynamicRequest(new Request('http://localhost'+url,init),{enabled:true,groundingKey:'',key:'mock',fetcher:m.fetcher});}});
  c.invalidate({question:f.request.question,geometry:f.request.geometry,geometryRevision:0});await c.start();const accepted=c.getSnapshot().dynamic!;assert.equal(c.getSnapshot().phase,'completed');
  c.inspectArchive(accepted.run.runId);c.inspectArchive(null);assert.equal(c.getSnapshot().phase,'completed');assert.deepEqual(c.getSnapshot().dynamic,accepted);assert.equal(c.getSnapshot().run?.runId,accepted.run.runId);assert.equal(calls,1);
  c.invalidate({question:f.request.question,geometry:f.request.geometry,geometryRevision:1});assert.equal(c.getSnapshot().dynamic,null);c.dispose();
@@ -78,7 +78,7 @@ test('archive inspection preserves a completed active dynamic run and returning 
 test('archive selection during pending work cancels it and cannot restore a late dynamic response',async()=>{
  const {createQuestionSimulation}=await import('../../question-simulation/client.ts');const {handleDynamicRequest}=await import('../../server/inference/dynamic-service.ts');const {mockDynamicProvider}=await import('./helpers/dynamic-provider.ts');
  const f=dynamicFixtures()[0],m=mockDynamicProvider(f);let held=false,release!:(r:Response)=>void;const pending=new Promise<Response>(r=>release=r);
- const c=createQuestionSimulation({execution:'dynamic',fetcher:async(url,init)=>held?pending:handleDynamicRequest(new Request('http://localhost'+url,init),{enabled:true,key:'mock',fetcher:m.fetcher})});
+ const c=createQuestionSimulation({execution:'dynamic',fetcher:async(url,init)=>held?pending:handleDynamicRequest(new Request('http://localhost'+url,init),{enabled:true,groundingKey:'',key:'mock',fetcher:m.fetcher})});
  c.invalidate({question:f.request.question,geometry:f.request.geometry,geometryRevision:0});await c.start();const archive=c.getSnapshot().history[0].id;held=true;const running=c.start();c.inspectArchive(archive);c.inspectArchive(null);release(Response.json({invalid:'late'}));await running;await new Promise(r=>setTimeout(r,5));
  assert.equal(c.getSnapshot().phase,'cancelled');assert.equal(c.getSnapshot().run,null);assert.equal(c.getSnapshot().dynamic,null);assert.equal(c.getSnapshot().history[0].id,archive);c.dispose();
 });

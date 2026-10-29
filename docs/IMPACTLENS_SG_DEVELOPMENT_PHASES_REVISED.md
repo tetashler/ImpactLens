@@ -532,3 +532,13 @@ Evidence, exact files, safe ledger/screenshot references, reproduced failures an
 - [ ] Existing geographic, source/licence, proxy/unlocated, synthetic dialogue and forecasting limits remain. No new entity verification, population-grounded trajectories or predictive policy model is claimed.
 
 See `docs/MAP_FIRST_UI_UX_REFACTOR.md` for exact paths, attribution review, browser evidence and reproduction. Changes remain unstaged/uncommitted on main at baseline `c8148c5`; the unused secondary directory is untouched.
+
+## World Knowledge Graph — Phase 2 (29 October 2026)
+
+- [x] Retained Cytoscape with independently implemented D3-force dragging, spring-connected neighbour motion, cooling, stable scenario/run layouts, mixed straight/parallel/self-loop edges and preserved three-level inspectors. Official MiroFish source and licence were reviewed at pinned revision `7657031ac01184afe2cb220f5ee3545573b5e843`; no upstream application code was copied.
+- [x] Versioned dynamic world ontology and actual-type legend/filtering replace the fixed visible nine-category taxonomy. Four active agents remain separate from additional proposed context entities; old plan/run records remain readable.
+- [x] Optional one-search Tavily adapter, bounded source excerpts, exact quotation references and graph/report provenance. Missing-key/error paths remain usable. Retrieved passages are not independently corroborated facts; model entities and relationships remain unverified.
+- [x] Mocked production-browser workweek, cross-border water-export and polyclinic flows, mouse/touch neighbour motion, four viewport sizes, layout retention and 20/100/300-node measurements. The 300-node view remains heavier; no sustained-FPS or live-source-verification claim is made.
+- [ ] Expanded planner schema/output cap and Tavily retrieval need separately authorised live acceptance. Full factual entity resolution, semantic corroboration, GraphRAG, population-grounded behaviour and quantitative policy forecasting remain future work.
+
+See `docs/WORLD_KNOWLEDGE_GRAPH_PHASE2.md` for exact contracts, measured limitations, browser artifacts, final validation totals and rebuild instructions. No paid API requests, staging, commits, pushes, deployment or secondary-directory access occurred.

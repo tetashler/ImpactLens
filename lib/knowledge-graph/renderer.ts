@@ -1,12 +1,14 @@
 import cytoscape from 'cytoscape';
 import type {Core,ElementDefinition,StylesheetJson,EdgeSingular} from 'cytoscape';
 import {parseKnowledgeGraph,type KnowledgeGraph} from './contract.ts';
-import {CATEGORY_COLOURS} from './palette.ts';
+import {knowledgeEntityType,knowledgeRelationshipLabel,entityTypeColour} from './display.ts';
+import {WorldPhysics,relationshipPairs,type PhysicsSnapshot} from './physics.ts';
 export {CATEGORY_COLOURS} from './palette.ts';
 export type GraphSelection={kind:'node'|'edge';id:string}|null;
 export interface RendererSnapshot {
   zoom:number;pan:{x:number;y:number};positions:{id:string;x:number;y:number}[];
   nodes:number;edges:number;visibleNodes:number;visibleEdges:number;layoutMs:number;destroyed:boolean;
+  physics:PhysicsSnapshot;
 }
 
 /** Display coordinates only: these are deterministic seeds, never geographic points. */
@@ -14,26 +16,34 @@ export function graphElements(graph:KnowledgeGraph):ElementDefinition[]{
   const degree=new Map<string,number>();
   for(const e of graph.edges){degree.set(e.source,(degree.get(e.source)??0)+1);degree.set(e.target,(degree.get(e.target)??0)+1);}
   const nodes=[...graph.nodes].sort((a,b)=>a.id.localeCompare(b.id));
+  const pairs=relationshipPairs(graph),edgeClasses=new Map<string,string>();
+  for(const group of pairs.values())for(const edge of group)edgeClasses.set(edge.id,edge.source===edge.target?'loop':group.length>1?'parallel':'single');
   return [
     ...nodes.map((n,i)=>{
       const angle=i*2.399963229728653,radius=55*Math.sqrt(i+1),connections=degree.get(n.id)??0;
-      return {data:{id:n.id,label:n.label,category:n.category,colour:CATEGORY_COLOURS[n.category],size:n.category==='scenario'?32:Math.min(27,10+Math.sqrt(connections)*2.7),degree:connections},
+      return {data:{id:n.id,label:n.label,category:n.category,entityType:knowledgeEntityType(n),colour:entityTypeColour(knowledgeEntityType(n)),size:n.category==='scenario'?32:Math.min(27,10+Math.sqrt(connections)*2.7),degree:connections},
         position:{x:Math.cos(angle)*radius,y:Math.sin(angle)*radius},classes:n.category==='scenario'?'hub':''};
     }),
-    ...graph.edges.map(e=>({data:{id:e.id,source:e.source,target:e.target,label:e.relationship,directed:e.directed}})),
+    ...graph.edges.map(e=>({data:{id:e.id,source:e.source,target:e.target,label:knowledgeRelationshipLabel(e),directed:e.directed},classes:edgeClasses.get(e.id)})),
   ];
 }
 
 const stylesheet:StylesheetJson=[
-  {selector:'node',style:{'background-color':'data(colour)',width:'data(size)',height:'data(size)',label:'data(label)',color:'#cbd9e8','font-size':12,'font-family':'Arial, sans-serif','text-valign':'bottom','text-margin-y':7,'min-zoomed-font-size':16,'text-max-width':'135px','text-wrap':'ellipsis','border-width':1.5,'border-color':'#12202f','overlay-opacity':0}},
+  {selector:'node',style:{'background-color':'data(colour)',width:'data(size)',height:'data(size)',label:'data(label)',color:'#cbd9e8','font-size':12,'font-family':'Arial, sans-serif','text-valign':'bottom','text-margin-y':7,'min-zoomed-font-size':8,'text-max-width':'135px','text-wrap':'ellipsis','border-width':1.5,'border-color':'#12202f','overlay-opacity':0}},
   {selector:'node.hub',style:{'border-width':3,'border-color':'#b5eee7','font-size':16,'font-weight':'bold','min-zoomed-font-size':0}},
+  {selector:'node.labels-hidden',style:{label:''}},
   {selector:'edge',style:{width:.8,'line-color':'#58738d',opacity:.42,'curve-style':'bezier','target-arrow-shape':'none','arrow-scale':.55,'overlay-padding':7,'overlay-opacity':0}},
+  {selector:'edge.single',style:{'curve-style':'straight'}},
+  {selector:'edge.parallel',style:{'curve-style':'bezier','control-point-step-size':42}},
+  {selector:'edge.loop',style:{'curve-style':'bezier','loop-direction':'-45deg','loop-sweep':'70deg'}},
+  {selector:'edge.edge-label',style:{label:'data(label)','font-size':10,color:'#9aafc3','min-zoomed-font-size':8,'text-rotation':'autorotate','text-background-color':'#0b1722','text-background-opacity':.85,'text-background-padding':'3px'}},
+  {selector:'edge.labels-hidden',style:{label:''}},
   {selector:'edge[?directed]',style:{'target-arrow-shape':'triangle','target-arrow-color':'#58738d'}},
   {selector:'.dimmed',style:{opacity:.12}},
   {selector:'node.neighbour',style:{opacity:1,'border-width':2,'border-color':'#b6d8df'}},
-  {selector:'node.focused',style:{opacity:1,'border-width':4,'border-color':'#f4fbff','font-size':16,'font-weight':'bold','min-zoomed-font-size':0,'text-background-color':'#102231','text-background-opacity':.95,'text-background-padding':'4px','text-background-shape':'roundrectangle'}},
+  {selector:'node.focused',style:{label:'data(label)',opacity:1,'border-width':4,'border-color':'#f4fbff','font-size':16,'font-weight':'bold','min-zoomed-font-size':0,'text-background-color':'#102231','text-background-opacity':.95,'text-background-padding':'4px','text-background-shape':'roundrectangle'}},
   {selector:'edge.focused',style:{opacity:.95,width:2,'line-color':'#96e6d8','target-arrow-color':'#96e6d8'}},
-  {selector:'node.hovered',style:{'min-zoomed-font-size':0,'font-size':14,'border-width':3,'border-color':'#e7f4ff'}},
+  {selector:'node.hovered',style:{label:'data(label)','min-zoomed-font-size':0,'font-size':14,'border-width':3,'border-color':'#e7f4ff'}},
   {selector:'.kg-hidden',style:{display:'none'}},
 ];
 
@@ -42,31 +52,79 @@ export function createGraphCore(input:KnowledgeGraph,container?:HTMLElement):Cor
   const graph=parseKnowledgeGraph(input);
   const core=cytoscape({container,elements:graphElements(graph),headless:!container,styleEnabled:true,
     style:stylesheet,layout:{name:'preset'},minZoom:.08,maxZoom:4,
-    pixelRatio:1,boxSelectionEnabled:false,selectionType:'single',autounselectify:true});
+    pixelRatio:1,boxSelectionEnabled:false,selectionType:'single',autounselectify:true,desktopTapThreshold:3,touchTapThreshold:3});
   return core;
 }
 
-/** Owns no application state, network calls, external DOM controls or idle physics. */
+type CachedLayout={positions:{id:string;x:number;y:number}[];zoom:number;pan:{x:number;y:number}};
+const layoutCache=new Map<string,CachedLayout>();
+const CACHE_LIMIT=8;
+
+/** Owns a bounded force lifecycle; no application state or network calls. */
 export class GraphRenderer {
   readonly core:Core;
   readonly layoutMs:number;
+  readonly physics:WorldPhysics;
   private disposed=false;
   private chosen:string|null=null;
   private onSelect:(selection:GraphSelection)=>void;
+  private readonly cacheKey:string;
+  private readonly seeds:{id:string;x:number;y:number}[];
+  private readonly automatic:boolean;
+  private visible=true;
+  private grabbed:string|null=null;
+  private dragged=false;
+  private suppressTapUntil=0;
+  private labels=false;
+  private cleanup:(()=>void)[]=[];
   constructor(container:HTMLElement|undefined,graph:KnowledgeGraph,onSelect:(selection:GraphSelection)=>void){
     this.onSelect=onSelect;
-    const start=performance.now();this.core=createGraphCore(graph,container);
-    // CoSE executes a fixed number of steps without animation, then stops. Seeds
-    // and the headless reference box are stable; opening inspectors never reruns it.
-    if(graph.nodes.length)this.core.layout({name:'cose',animate:false,randomize:false,fit:!!container,padding:55,
-      boundingBox:{x1:0,y1:0,w:1000,h:760},numIter:250,nodeRepulsion:()=>6500,idealEdgeLength:()=>85,
-      edgeElasticity:()=>80,gravity:.15,componentSpacing:100,nodeDimensionsIncludeLabels:false}).run();
+    const start=performance.now();this.core=createGraphCore(graph,container);this.automatic=!!container;
+    const coreNodes=this.core.nodes();
+    this.seeds=coreNodes.map(n=>({id:n.id(),x:n.position('x'),y:n.position('y')}));
+    this.cacheKey=JSON.stringify([graph.scenarioIdentity,graph.executionIdentity??null,this.seeds.map(n=>n.id).sort(),
+      graph.edges.map(e=>[e.id,e.source,e.target,e.directed]).sort((a,b)=>String(a[0]).localeCompare(String(b[0])))]);
+    const cached=layoutCache.get(this.cacheKey);
+    this.physics=new WorldPhysics(graph,cached?.positions??this.seeds,this.automatic,()=>{
+      if(this.disposed)return;
+      // Collection positions batches renderer notification and reuses the stable
+      // node ordering, avoiding hundreds of collection lookups per force frame.
+      coreNodes.positions((node,index)=>{
+        const position=node.id()===this.grabbed?node.position():this.physics.nodes[index];return {x:position.x,y:position.y};
+      });
+    });
+    if(cached){
+      coreNodes.positions((_node,index)=>{const position=cached.positions[index];return {x:position.x,y:position.y};});
+      this.core.viewport({zoom:cached.zoom,pan:cached.pan});this.physics.cool();
+    }else if(!container){this.physics.tick(350);}
+    else {
+      // Seed a readable camera immediately. The expensive force settling happens
+      // over D3's bounded cooling timer, never as a blocking browser layout.
+      this.fit();
+    }
+    if(container){
+      const media=typeof window!=='undefined'?window.matchMedia?.('(prefers-reduced-motion: reduce)'):undefined;
+      if(media){this.physics.setReducedMotion(media.matches);const change=()=>this.physics.setReducedMotion(media.matches);media.addEventListener('change',change);this.cleanup.push(()=>media.removeEventListener('change',change));}
+      if(typeof document!=='undefined'){const change=()=>this.syncVisibility();document.addEventListener('visibilitychange',change);this.cleanup.push(()=>document.removeEventListener('visibilitychange',change));change();}
+      this.physics.start();
+    }
     this.layoutMs=performance.now()-start;
-    this.core.on('tap','node',event=>{const id=event.target.id();this.select(id);this.onSelect({kind:'node',id});});
+    this.core.on('grab','node',event=>{
+      const node=event.target;this.grabbed=node.id();this.dragged=false;this.suppressTapUntil=0;this.physics.pin(node.id(),node.position('x'),node.position('y'));
+    });
+    this.core.on('drag','node',event=>{
+      const node=event.target;this.dragged=true;this.physics.move(node.id(),node.position('x'),node.position('y'));
+    });
+    this.core.on('free','node',event=>{
+      const node=event.target;this.physics.release(node.id(),node.position('x'),node.position('y'));this.grabbed=null;this.suppressTapUntil=this.dragged?performance.now()+100:0;this.dragged=false;
+    });
+    this.core.on('tap','node',event=>{if(performance.now()<this.suppressTapUntil){this.suppressTapUntil=0;return;}const id=event.target.id();this.select(id);this.onSelect({kind:'node',id});});
     this.core.on('tap','edge',event=>{const id=event.target.id();this.select(id);this.onSelect({kind:'edge',id});});
     this.core.on('tap',event=>{if(event.target===this.core){this.select(null);this.onSelect(null);}});
     this.core.on('mouseover','node',event=>event.target.addClass('hovered'));
     this.core.on('mouseout','node',event=>event.target.removeClass('hovered'));
+    this.core.on('zoom',()=>this.updateLabelDensity());
+    this.updateLabelDensity();
   }
   select(id:string|null):void {
     if(this.disposed)return;
@@ -85,20 +143,57 @@ export class GraphRenderer {
     if(this.disposed)return;const item=this.core.getElementById(id);if(item.empty()||item.hasClass('kg-hidden'))return;
     this.select(id);this.core.center(item);this.core.zoom({level:Math.max(this.core.zoom(),.8),position:item.position()});
   }
-  filter(categories:readonly string[]):void {
+  filter(categories:readonly string[],mode:'category'|'entity-type'='category'):void {
     if(this.disposed)return;const allowed=new Set(categories);
     this.core.batch(()=>{
-      this.core.nodes().forEach(node=>{node.toggleClass('kg-hidden',!allowed.has(node.data('category')));});
+      this.core.nodes().forEach(node=>{node.toggleClass('kg-hidden',!allowed.has(node.data(mode==='entity-type'?'entityType':'category')));});
       this.core.edges().forEach(edge=>{edge.toggleClass('kg-hidden',edge.source().hasClass('kg-hidden')||edge.target().hasClass('kg-hidden'));});
     });
     this.select(this.chosen);
+    this.updateLabelDensity();
   }
   fit():void {if(!this.disposed&&this.core.nodes().not('.kg-hidden').length){this.core.resize();this.core.fit(this.core.elements().not('.kg-hidden'),55);}}
   zoomBy(factor:number):void {if(!this.disposed&&Number.isFinite(factor)&&factor>0)this.core.zoom(Math.min(4,Math.max(.08,this.core.zoom()*factor)));}
   resize():void {if(!this.disposed)this.core.resize();}
+  setVisible(visible:boolean):void {
+    if(this.disposed)return;this.visible=visible;
+    this.syncVisibility();
+    if(visible)this.resize();else this.remember();
+  }
+  private syncVisibility():void {
+    const effective=this.visible&&(typeof document==='undefined'||!document.hidden);
+    if(!effective&&this.grabbed){
+      const node=this.core.getElementById(this.grabbed);
+      this.physics.release(node.id(),node.position('x'),node.position('y'));this.grabbed=null;this.dragged=false;this.suppressTapUntil=0;
+    }
+    this.physics.setVisible(effective);
+  }
+  resetLayout():void {
+    if(this.disposed)return;
+    this.physics.reset(this.seeds);if(!this.automatic)this.physics.tick(350);
+    this.remember();
+  }
+  resetView():void {
+    if(this.disposed)return;this.core.resize();this.core.zoom(1);
+    const visible=this.core.elements().not('.kg-hidden');if(visible.length)this.core.center(visible);else this.core.pan({x:0,y:0});
+  }
+  setEdgeLabels(enabled:boolean):void {if(this.disposed)return;this.labels=enabled;this.core.edges().toggleClass('edge-label',enabled);this.updateLabelDensity();}
+  private updateLabelDensity():void {
+    if(this.disposed)return;
+    // Dense, zoomed-out graphs keep labels available without painting a wall of text.
+    const lowZoom=this.core.zoom()<.8;
+    this.core.batch(()=>{
+      this.core.nodes().toggleClass('labels-hidden',this.core.nodes().not('.kg-hidden').length>=100&&lowZoom);
+      this.core.edges().toggleClass('labels-hidden',this.labels&&this.core.edges().length>120&&lowZoom);
+    });
+  }
+  private remember():void {
+    const {positions,zoom,pan}=this.snapshot();layoutCache.delete(this.cacheKey);layoutCache.set(this.cacheKey,{positions,zoom,pan});
+    while(layoutCache.size>CACHE_LIMIT)layoutCache.delete(layoutCache.keys().next().value!);
+  }
   snapshot():RendererSnapshot {
     return {zoom:this.core.zoom(),pan:this.core.pan(),positions:this.core.nodes().map(n=>({id:n.id(),x:n.position('x'),y:n.position('y')})).sort((a,b)=>a.id.localeCompare(b.id)),
-      nodes:this.core.nodes().length,edges:this.core.edges().length,visibleNodes:this.core.nodes().not('.kg-hidden').length,visibleEdges:this.core.edges().not('.kg-hidden').length,layoutMs:this.layoutMs,destroyed:this.disposed};
+      nodes:this.core.nodes().length,edges:this.core.edges().length,visibleNodes:this.core.nodes().not('.kg-hidden').length,visibleEdges:this.core.edges().not('.kg-hidden').length,layoutMs:this.layoutMs,destroyed:this.disposed,physics:this.physics.snapshot()};
   }
-  dispose():void {if(this.disposed)return;this.disposed=true;this.core.removeAllListeners();this.core.destroy();}
+  dispose():void {if(this.disposed)return;this.remember();this.disposed=true;this.physics.dispose();for(const cleanup of this.cleanup)cleanup();this.cleanup=[];this.core.removeAllListeners();this.core.destroy();}
 }

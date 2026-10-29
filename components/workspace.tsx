@@ -1,4 +1,5 @@
 'use client';
+import {isArchivedGraphView} from '../lib/knowledge-graph/display';
 import {startQuestionWork} from '../lib/dynamic-scenarios/client';
 import {projectDynamicGraph} from '../lib/dynamic-scenarios/projection';
 
@@ -108,6 +109,7 @@ export default function Workspace() {
   const [plotToolsOpen,setPlotToolsOpen]=useState(false);
   const mapPanel=useRef<HTMLElement>(null);
   useEffect(()=>{if(mapPanel.current)return observeMapControlLayout(mapPanel.current);},[]);
+  const graphArchived=isArchivedGraphView(graphScope,flow.state.run?.runId,!!flow.state.selectedArchiveId);
   const openMapView=()=>{flow.controller.inspectArchive(null);setTab('general');setExperienceView('map');};
   const closePlotTools=()=>{setPlotToolsOpen(false);setPendingAnchor(null);if(stage==='workspace'||stage==='configure')setStage('general');};
   // Draft context is an invalidation token, never a replacement for a frozen input identity.
@@ -365,9 +367,9 @@ export default function Workspace() {
       <ExperimentLab state={experiment.state} lab={experiment.lab} current={experiment.contextCurrent} visible={labOpen&&!exploring&&stage==='general'} geometry={plot.geometry} plan={planner.response?.plan??null} onClose={()=>setLabOpen(false)} executionAvailable onSimulate={record=>void openStakeholder(record)} simulationError={simulationError} onGraph={()=>{setGraphScope(experiment.state.selectedId?{kind:'experiment',id:experiment.state.selectedId}:{kind:'current'});setTab('knowledge');}} onRestore={record=>void restoreExperiment(record)}/>
     </div>
     <StakeholderWorkspace open={stakeholderOpen&&!exploring} experiment={executionRecord} experiments={experiment.state.records} contextToken={stakeholderContext} question={planner.question} scenarioIdentity={experiment.state.scenarioIdentity??''} onClose={()=>{graphAttempt.current++;prepareAttempt.current++;setStakeholderOpen(false);}} onUseExample={()=>{}} onGraph={showStandaloneGraph} onLinkedGraph={showLinkedGraph}/>
-    {tab==='knowledge'&&graphScope.kind!=='current'&&<button className="archive-return" onClick={()=>setGraphScope({kind:'current'})}>Return to current scenario graph</button>}
-    {tab==='knowledge'&&<p className="world-context-note">Source-verified world entity extraction is not enabled. AI-suggested entities and proposed relationships, when present, remain unverified; recorded agent actions are synthetic. An empty entity context does not mean zero relevant entities.</p>}
-    <KnowledgeWorkspace graph={experimentGraph} archived={graphScope.kind!=='current'} resultLabel={graphScope.kind==='run'?'Recorded synthetic stakeholder run':undefined} visible={tab==='knowledge'} onReturn={openMapView}/>
+    {tab==='knowledge'&&graphArchived&&<button className="archive-return" onClick={()=>setGraphScope({kind:'current'})}>Return to current scenario graph</button>}
+    {tab==='knowledge'&&<p className="world-context-note">Entity types follow this scenario. Model suggestions and fictional interactions remain distinct from retrieved source passages; check each relationship's provenance. Missing evidence does not mean zero relevant entities.</p>}
+    <KnowledgeWorkspace graph={experimentGraph} archived={graphArchived} resultLabel={graphScope.kind==='run'?'Recorded synthetic stakeholder run':undefined} visible={tab==='knowledge'} onReturn={openMapView}/>
     <footer className="app-footer"><span><span className="live-dot" /> Evidence-informed scenario modelling</span><span>Pre-hackathon prototype · Proposed infrastructure is hypothetical</span><span>ImpactLens SG / MRT + AAC</span></footer>
   </main>;
 }

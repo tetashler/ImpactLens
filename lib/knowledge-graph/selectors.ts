@@ -1,9 +1,10 @@
+import {knowledgeEntityType} from './display.ts';
 import type {KnowledgeGraph,KnowledgeNode,NodeCategory,KnowledgeEdge} from './contract.ts';
 
 /** Search only supported entity text/IDs; never creates entities or relationships. */
 export function searchKnowledgeNodes(graph:KnowledgeGraph,query:string):KnowledgeNode[]{
   const q=query.trim().toLocaleLowerCase('en-SG');if(!q)return graph.nodes;
-  return graph.nodes.filter(n=>`${n.label} ${n.category} ${n.description} ${n.id} ${Object.values(n.properties).join(' ')}`.toLocaleLowerCase('en-SG').includes(q));
+  return graph.nodes.filter(n=>`${n.label} ${knowledgeEntityType(n)} ${n.category} ${n.description} ${n.id} ${Object.values(n.properties).join(' ')}`.toLocaleLowerCase('en-SG').includes(q));
 }
 /** Category filtering preserves full source identity and only edges with visible endpoints. */
 export function filterKnowledgeGraph(graph:KnowledgeGraph,categories:readonly NodeCategory[]):KnowledgeGraph{

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {createQuestionSimulation} from '../../question-simulation/client.ts';
 import {handleDynamicRequest} from '../../server/inference/dynamic-service.ts';
-import {dynamicFixtures} from '../../dynamic-scenarios/fixtures.ts';
+import {worldFixtures as dynamicFixtures} from '../../world-graph/fixtures.ts';
 import {mockDynamicProvider} from './helpers/dynamic-provider.ts';
 import {mapResultFor} from '../../question-simulation/map-view.ts';
 
@@ -24,7 +24,7 @@ test('pending map execution keeps the form with cancellation and no premature re
  const html=render('default',{question:context.question,state:{...initial(),phase:'preparing'},toolsOpen:false,result:null});assert.match(html,/>Cancel<\/button>/);assert.match(html,/role="status"/);assert.match(html,/disabled=""[^>]*type="submit"|type="submit"[^>]*disabled=""/);assert.doesNotMatch(html,/View Knowledge Graph|View Report/);
 });
 test('result links require the exact current question and geographic revision, and use actual completed runs',async()=>{
- const m=mockDynamicProvider(fixture),c=createQuestionSimulation({execution:'dynamic',fetcher:async(u,i)=>handleDynamicRequest(new Request('http://localhost'+u,i),{enabled:true,key:'mock',fetcher:m.fetcher})});c.invalidate(context);await c.start();const state=c.getSnapshot();assert.equal(mapResultFor(state,context),'completed');
+ const m=mockDynamicProvider(fixture),c=createQuestionSimulation({execution:'dynamic',fetcher:async(u,i)=>handleDynamicRequest(new Request('http://localhost'+u,i),{enabled:true,groundingKey:'',key:'mock',fetcher:m.fetcher})});c.invalidate(context);await c.start();const state=c.getSnapshot();assert.equal(mapResultFor(state,context),'completed');
  const html=render('default',{question:context.question,state,toolsOpen:false,result:'completed'});assert.match(html,/>View Knowledge Graph<\/button>/);assert.match(html,/>View Report<\/button>/);
  assert.equal(mapResultFor(state,{...context,question:'Another question'}),null);assert.equal(mapResultFor(state,{...context,geometryRevision:context.geometryRevision+1}),null);
  const edited=structuredClone(context.geometry);edited.features.push({kind:'point',id:'new-point',label:'Point 1',coordinate:{lat:1.3,lon:103.8},role:'unassigned',provenance:'user-drawn'});assert.equal(mapResultFor(state,{...context,geometry:edited}),null);
@@ -35,6 +35,6 @@ test('untrusted question text is escaped in the map composer',()=>{
 });
 test('partial runs expose explicitly partial inspection without claiming successful completion',async()=>{
  let actions=0;const m=mockDynamicProvider(fixture,(body,reply)=>{if(body.response_format.json_schema.name==='stakeholder_turn_v1'&&++actions===3)reply.choices[0].message.content='invalid JSON';});
- const c=createQuestionSimulation({execution:'dynamic',fetcher:async(u,i)=>handleDynamicRequest(new Request('http://localhost'+u,i),{enabled:true,key:'mock',fetcher:m.fetcher})});c.invalidate(context);await c.start();const state=c.getSnapshot();assert.equal(state.run?.events.length,2);assert.equal(mapResultFor(state,context),'partial');
+ const c=createQuestionSimulation({execution:'dynamic',fetcher:async(u,i)=>handleDynamicRequest(new Request('http://localhost'+u,i),{enabled:true,groundingKey:'',key:'mock',fetcher:m.fetcher})});c.invalidate(context);await c.start();const state=c.getSnapshot();assert.equal(state.run?.events.length,2);assert.equal(mapResultFor(state,context),'partial');
  const html=render('default',{question:context.question,state,toolsOpen:false,result:'partial'});assert.match(html,/Inspect partial Knowledge Graph/);assert.match(html,/Inspect partial Report/);assert.match(html,/Exploration interrupted/);assert.doesNotMatch(html,/>View Report<|Exploration complete/);c.dispose();
 });

@@ -44,7 +44,7 @@ export function parseInferenceStatus(value:unknown):InferenceStatusV1 {
 }
 
 export function parseInferenceCallRecord(value:unknown,outputLimit=1200):InferenceCallRecordV1 {
- bounded(value,8192);ensure(outputLimit>=1&&outputLimit<=3000);
+ bounded(value,8192);ensure(outputLimit>=1&&outputLimit<=6000);
 
   const required=['requestedModel','requestedProvider','servingModel','servingProvider','identityVerification','generationId','inputTokens','outputTokens','totalTokens','costUsd','status','errorCode','durationMs'];
   const record=object(value,[...required,'termination'],required);

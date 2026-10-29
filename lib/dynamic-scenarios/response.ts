@@ -14,13 +14,13 @@ export async function validateDynamicResponse(value:unknown,wireValue:DynamicWir
  assertJsonData(value);ensure(new TextEncoder().encode(JSON.stringify(value)).byteLength<=1048576);const wire=parseDynamicWire(wireValue);
  const keys=['version','kind','attemptId','requestIdentity','planning','accounting'];const v=value as Record<string,unknown>;
  object(value,[...keys,...(v.kind==='planning-failed'?['error']:['plan','run','inference'])]);ensure(v.version===1&&v.attemptId===wire.attemptId&&v.requestIdentity===await digest('dynamic-request-',wire.request),'Scenario response identity mismatch.');
- const p=object(v.planning,['record']);const record=p.record===null?null:parseInferenceCallRecord(p.record,3000);
+ const p=object(v.planning,['record']);const record=p.record===null?null:parseInferenceCallRecord(p.record,6000);
  if(v.kind==='planning-failed'){
   const e=object(v.error,['code','message']);ensure(typeof e.code==='string'&&Object.hasOwn(DYNAMIC_ERRORS,e.code)&&e.message===DYNAMIC_ERRORS[e.code]);
   ensure(canonical(v.accounting)===canonical(dynamicAccounting(record,[])));return freezeSnapshot(value) as DynamicFailure;
  }
- ensure(v.kind==='dynamic-execution'&&record?.status==='accepted'&&record.termination?.requestedOutputTokens===3000,'A dynamic execution needs accepted planning.');
- const plan=await validateDynamicPlan(v.plan);ensure(canonical(plan.request)===canonical(wire.request));
+ ensure(v.kind==='dynamic-execution'&&record?.status==='accepted'&&[3000,6000].includes(record.termination?.requestedOutputTokens??0),'A dynamic execution needs accepted planning.');
+ const plan=await validateDynamicPlan(v.plan);ensure(record.termination?.requestedOutputTokens===(plan.version===2?6000:3000),'Planning cap differs from the versioned contract.');ensure(canonical(plan.request)===canonical(wire.request));
  const input=await createDynamicInput(plan);const {run,inference}=await validateInferenceResponse({version:2,attemptId:wire.attemptId,run:v.run,inference:v.inference},{attemptId:wire.attemptId,input});
  ensure(canonical(v.accounting)===canonical(dynamicAccounting(record,inference.records)),'Planning and action usage mismatch.');
  return freezeSnapshot({...v,plan,run,inference}) as unknown as DynamicResponse;

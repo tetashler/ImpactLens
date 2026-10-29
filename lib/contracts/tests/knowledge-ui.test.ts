@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
-import {NODE_CATEGORIES,type KnowledgeGraph} from '../../knowledge-graph/contract.ts';
+import {type KnowledgeGraph} from '../../knowledge-graph/contract.ts';
 
 /** Exercise the actual React component with the repository's existing TSX loader.
  * Effects intentionally do not run during SSR; browser tests own the renderer and
@@ -63,15 +63,13 @@ test('actual React markup exposes labelled search, category checkboxes and keybo
   assert.match(html,/<section[^>]*aria-label="Knowledge Graph"/);
   assert.match(html,/<aside[^>]*aria-label="Graph exploration"/);
   assert.match(html,/<label[^>]*>Search graph<input type="search"/);
-  assert.equal([...html.matchAll(/type="checkbox"/g)].length,NODE_CATEGORIES.length);
-  for(const category of NODE_CATEGORIES){
-    const name=category[0].toUpperCase()+category.slice(1);
-    assert.ok(html.includes(`<span>${name}</span>`),`Missing category label ${name}`);
-  }
+  assert.equal([...html.matchAll(/type="checkbox"/g)].length,2); // One present entity type and the edge-label control.
+  assert.ok(html.includes('<span>Scenario</span>'));
+  assert.ok(!html.includes('<span>Infrastructure</span>'));
   assert.match(html,/<h2>Entity index/);
   assert.match(html,/<button[^>]*aria-pressed="false"[^>]*>/);
   assert.match(html,/Interactive relationship network\. Use the entity index for keyboard selection\./);
-  for(const label of ['Zoom graph in','Zoom graph out','Fit graph','Reset view','Reset focus','Back to Map'])assert.ok(html.includes(label),label);
+  for(const label of ['Zoom graph in','Zoom graph out','Fit Graph','Reset View','Reset Focus','Back to Map'])assert.ok(html.includes(label),label);
 });
 
 test('empty graph renders an honest recovery action and hidden tab keeps semantic hidden state',()=>{

@@ -44,7 +44,7 @@ export interface StructuredSpec<C,T>{name:string;system:string;schema:(context:C
 export function createStructuredTransport<C,T>(options:DeepseekTransportOptions,spec:StructuredSpec<C,T>){
   if(typeof options.key!=='string'||!options.key.trim()||/[\r\n]/.test(options.key))throw new AiError('OPENROUTER_API_KEY is not configured.','AI_CONFIG',503);
   const timeoutMs=options.timeoutMs??30000,maxOutputTokens=options.maxOutputTokens??spec.defaultOutput;
-  if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>30000||!Number.isSafeInteger(maxOutputTokens)||maxOutputTokens<1||maxOutputTokens>spec.outputLimit||spec.outputLimit>3000)throw new AiError('Invalid bounded inference configuration.','AI_CONFIG',503);
+  if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>30000||!Number.isSafeInteger(maxOutputTokens)||maxOutputTokens<1||maxOutputTokens>spec.outputLimit||spec.outputLimit>6000)throw new AiError('Invalid bounded inference configuration.','AI_CONFIG',503);
   const records:InferenceCallRecord[]=[];const fetcher=options.fetcher??fetch;
   async function checkedJson(url:string,init:RequestInit,metadata=false,onStatus?:(status:number)=>void){
     try{return await fetchJson(async(u,i)=>{const response=await fetcher(u,i);onStatus?.(response.status);return response;},url,init);}
