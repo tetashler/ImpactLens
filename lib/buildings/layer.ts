@@ -1,27 +1,30 @@
+import {selectBuildingChunks} from './display-policy.ts';
 import type { Map as LibreMap, GeoJSONSource, FillExtrusionLayerSpecification } from 'maplibre-gl';
 import { parseBuildingManifest,validateBuilding,intersects,geometryBounds,ensure,type BuildingManifest,type BuildingCollection,type BuildingChunk,type Bounds } from './contract.ts';
-export interface BuildingStatus {state:'waiting-for-map'|'loading'|'ready'|'hidden'|'overview'|'error'|'disposed';features:number;chunks:number;message:string}
-export interface BuildingLayerOptions { beforeId?:string; fetcher?:typeof fetch; onStatus?:(status:BuildingStatus)=>void }
+export interface BuildingStatus {state:'waiting-for-map'|'loading'|'ready'|'hidden'|'overview'|'error'|'disposed';features:number;chunks:number;message:string;limited?:boolean;candidateChunks?:number}
+export interface BuildingLayerOptions { minZoom?:number; beforeId?:string; fetcher?:typeof fetch; onStatus?:(status:BuildingStatus)=>void }
 const SOURCE='sg-buildings',LAYER='sg-buildings-extrusion';
 const empty=():BuildingCollection=>({type:'FeatureCollection',features:[]});
 export function buildingLayerStyle():FillExtrusionLayerSpecification{return {id:LAYER,type:'fill-extrusion',source:SOURCE,minzoom:14,layout:{visibility:'visible'},paint:{'fill-extrusion-height':['get','heightMetres'],'fill-extrusion-base':['coalesce',['get','baseMetres'],0],'fill-extrusion-color':['match',['get','heightBasis'],'verified','#8ba9ad','derived','#7f999c','#71888c'],'fill-extrusion-opacity':1,'fill-extrusion-vertical-gradient':true}};}
 /** One source/layer; bounded viewport loading and a byte-bounded process-local LRU.
  * Instantiate once per map. It owns no camera, control or animation state. */
 export class BuildingLayer {
-  private map:LibreMap;private manifest:BuildingManifest;private options:BuildingLayerOptions;
+  private map:LibreMap;private manifest:BuildingManifest;private options:BuildingLayerOptions;private minZoom:number;
   private visible=true;private disposed=false;private revision=0;private abort?:AbortController;private owned=false;private waiting=false;
   private cache=new Map<string,{data:BuildingCollection;bytes:number}>();private cachedBytes=0;
   private changed=()=>{void this.refresh();};
   private readyChanged=()=>{if(this.waiting&&this.map.isStyleLoaded()){this.waiting=false;void this.refresh();}};
   constructor(map:LibreMap,manifest:BuildingManifest,options:BuildingLayerOptions={}){
-    this.map=map;this.manifest=parseBuildingManifest(manifest);this.options=options;
+    this.map=map;this.manifest=parseBuildingManifest(manifest);this.options=options;this.minZoom=options.minZoom??this.manifest.minZoom;
+    // Preserve legacy display overrides; a stricter camera gate may exceed preparation metadata.
+    ensure(Number.isFinite(this.minZoom)&&this.minZoom>=12.5&&this.minZoom<=20,'Invalid building display zoom');
     // A technical preview guard, not a legal clearance for public localhost demos.
     if(this.manifest.distribution==='local-review-only'&&typeof location!=='undefined')ensure(['localhost','127.0.0.1','[::1]'].includes(location.hostname),'Combined building licence review required before public use');
     ensure(!map.getSource(SOURCE)&&!map.getLayer(LAYER),'A building adapter is already registered');
     map.on('moveend',this.changed);map.on('load',this.changed);map.on('style.load',this.changed);map.on('idle',this.readyChanged);
   }
-  private status(state:BuildingStatus['state'],features=0,chunks=0,message='') {if(!this.disposed||state==='disposed')this.options.onStatus?.({state,features,chunks,message:message||this.manifest.source.attribution});}
-  private addExtrusion(){const style=buildingLayerStyle();style.minzoom=this.manifest.minZoom;this.map.addLayer(style,this.options.beforeId&&this.map.getLayer(this.options.beforeId)?this.options.beforeId:undefined);}
+  private status(state:BuildingStatus['state'],features=0,chunks=0,message='',display?:{limited:boolean;candidateChunks:number}) {if(!this.disposed||state==='disposed')this.options.onStatus?.({state,features,chunks,message:message||this.manifest.source.attribution,...display});}
+  private addExtrusion(){const style=buildingLayerStyle();style.minzoom=this.minZoom;this.map.addLayer(style,this.options.beforeId&&this.map.getLayer(this.options.beforeId)?this.options.beforeId:undefined);}
   private register(){
     if(this.map.getSource(SOURCE)){ensure(this.owned,'Source ID collision');if(!this.map.getLayer(LAYER))this.addExtrusion();return;}
     const s=this.manifest.source;
@@ -53,10 +56,9 @@ export class BuildingLayer {
     if(!this.visible){this.status('hidden');return;}
     try {
       this.register();
-      if(this.map.getZoom()<this.manifest.minZoom){(this.map.getSource(SOURCE) as GeoJSONSource).setData(empty());this.status('overview',0,0,`Zoom to ${this.manifest.minZoom} for sourced building footprints.`);return;}
+      if(this.map.getZoom()<this.minZoom){(this.map.getSource(SOURCE) as GeoJSONSource).setData(empty());this.status('overview',0,0,`Zoom to ${this.minZoom} for sourced building footprints.`);return;}
       const b=this.map.getBounds(),bounds:Bounds=[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()];
-      const chunks=this.manifest.chunks.filter(c=>intersects(bounds,c.bounds));
-      if(chunks.length>32||chunks.reduce((s,c)=>s+c.bytes,0)>12_000_000){(this.map.getSource(SOURCE) as GeoJSONSource).setData(empty());this.status('overview',0,0,'Viewport covers too many chunks; zoom in. No partial inventory is shown.');return;}
+      const selection=selectBuildingChunks(this.manifest.chunks,bounds,this.map.getCenter?.()),chunks=selection.chunks;
       this.status('loading',0,chunks.length);
       let next=0,failed=0;const loaded:BuildingCollection[]=[];
       await Promise.all(Array.from({length:Math.min(3,chunks.length)},async()=>{while(next<chunks.length&&!signal.aborted){const chunk=chunks[next++];try{loaded.push(await this.load(chunk,signal));}catch{if(!signal.aborted)failed++;}}}));
@@ -64,7 +66,8 @@ export class BuildingLayer {
       const seen=new Set<string>(),data=empty();for(const d of loaded)for(const f of d.features)if(!seen.has(String(f.id))&&intersects(bounds,geometryBounds(f.geometry))){seen.add(String(f.id));data.features.push(f);}
       data.features.sort((a,b)=>String(a.id).localeCompare(String(b.id)));
       (this.map.getSource(SOURCE) as GeoJSONSource).setData(data);
-      this.status(failed?'error':'ready',data.features.length,chunks.length,failed?'Some building chunks are unavailable; coverage is incomplete.':undefined);
+      const message=selection.limited?`Display budget: ${chunks.length} of ${selection.candidateChunks} viewport chunks selected; zoom in for detail. Coverage is incomplete.${failed?' Some selected chunks are unavailable.':''}`:failed?'Some building chunks are unavailable; coverage is incomplete.':undefined;
+      this.status(failed?'error':'ready',data.features.length,chunks.length,message,{limited:selection.limited,candidateChunks:selection.candidateChunks});
     }catch{if(!this.disposed&&!signal.aborted)this.status('error',0,0,'Building layer unavailable; other map tools remain usable.');}
   }
   setVisible(visible:boolean):void {if(this.disposed)return;this.visible=visible;this.abort?.abort();if(this.map.getLayer(LAYER))this.map.setLayoutProperty(LAYER,'visibility',visible?'visible':'none');void this.refresh();}

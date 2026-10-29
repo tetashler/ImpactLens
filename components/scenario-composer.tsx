@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef } from 'react';
-import type { ScenarioCategory, ScenarioResponse } from '../lib/scenarios/contract';
+import type { ScenarioResponse } from '../lib/scenarios/contract';
 import { SCENARIO_LIMITS } from '../lib/scenarios/contract';
 import { SCENARIO_EXAMPLES } from '../lib/scenarios/client';
 import type { useScenarioPlanner } from './use-scenario-planner';
@@ -28,13 +28,11 @@ export default function ScenarioComposer({planner:p,onConfigure,resume,compact=f
       {p.busy&&<p className="scenario-interpreting" role="status"><span className="spinner"/> Interpreting your scenario…</p>}
       {p.error&&<div className="scenario-planner-error" role="alert"><strong>Interpretation unavailable</strong><p>{p.error}</p><p>Edit your question or try again. Nothing has been simulated.</p></div>}
       {p.response&&(compact?<details className="compact-plan"><summary>{p.response.plan.title}</summary><ScenarioPlanView response={p.response} onConfigure={mode=>onConfigure(mode,p.response!)} onRevise={()=>input.current?.focus({preventScroll:true})}/></details>:<ScenarioPlanView response={p.response} onConfigure={mode=>onConfigure(mode,p.response!)} onRevise={()=>input.current?.focus({preventScroll:true})}/>)}
-      {(p.submittedQuestion||p.response||compact)&&<details className="scenario-more-examples"><summary>Try another question</summary>{examples}</details>}
     </div>
     <form className="scenario-input-form" onSubmit={event=>{event.preventDefault();void p.submit();}}>
       <label htmlFor={questionId}>Your what-if question</label>
       <textarea ref={input} id={questionId} aria-describedby={hintId} value={p.question} placeholder="What if a new MRT line connected…" maxLength={SCENARIO_LIMITS.questionCharacters} rows={3} onChange={event=>p.setQuestion(event.target.value)} onKeyDown={event=>{if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();event.currentTarget.form?.requestSubmit();}}}/>
       <div className="scenario-input-actions"><span id={hintId}>Plan first. Calculate after review.</span><button type="submit" disabled={!p.question.trim()||p.busy} aria-label="Interpret scenario">{p.busy?'Interpreting…':<>Explore <span aria-hidden="true">↗</span></>}</button></div>
-      <details className="scenario-routing"><summary>Category hint <span>optional</span></summary><label>Preferred planning route<select aria-label="Scenario category hint" value={p.category??''} onChange={event=>p.setCategory((event.target.value||undefined) as ScenarioCategory|undefined)}><option value="">Interpret from question</option><option value="mrt">MRT accessibility</option><option value="aac">Active Ageing Centre</option><option value="evidence-analysis">Evidence planning</option><option value="exploratory-agents">Future stakeholder exploration</option></select></label><p>A hint cannot enable an unsupported model.</p></details>
     </form>
   </section>;
 }

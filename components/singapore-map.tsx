@@ -7,6 +7,7 @@ import type { FeatureCollection, Feature, Geometry } from 'geojson';
 import type { NetworkCatalog, CompactComparison } from '../lib/map-contract';
 import type { EditorDraft } from '../lib/editor';
 import { CitizenLayer, type CitizenLayerOptions } from '../lib/citizens/layer';
+import {BUILDING_DISPLAY_LIMITS} from '../lib/buildings/display-policy';
 import {syncCitizenPath} from '../lib/citizens/path-overlay';
 import { AacMapLayer,type AacMapOptions } from '../lib/eldercare/map-layer';
 import { PlotMapLayer,type PlotMapOptions } from '../lib/plots/map-layer';
@@ -98,8 +99,6 @@ export default function SingaporeMap(props: Props) {
       mapRef.current = map;
       observer = new ResizeObserver(() => {map.resize();container.current?.parentElement?.style.setProperty('--geographic-canvas-height',`${container.current.clientHeight}px`);});
       observer.observe(container.current);
-      map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
-      map.addControl(new maplibregl.AttributionControl({compact:true}), 'top-right');
       map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
       loadTimer = setTimeout(() => { setFatal(true); setNotice('Map could not initialise. Use the geographic plan view and station editor.'); }, 20000);
       map.on('load', () => {
@@ -107,10 +106,6 @@ export default function SingaporeMap(props: Props) {
         // Slow online tiles may finish after the 20-second plan fallback appears.
         setFatal(false);
         loadedMap.current=map;
-        // Credits remain always visible in the footer and complete in the dialog.
-        // Start the native compact control closed once; later user toggles are retained.
-        const attribution=map.getContainer().querySelector<HTMLDetailsElement>('details.maplibregl-ctrl-attrib');
-        if(attribution?.open)attribution.querySelector<HTMLElement>('summary')?.click();
         const citizens = new CitizenLayer(latest.current.citizens);
         try { map.addLayer(citizens); citizensRef.current=citizens; }
         catch { citizens.onRemove(); latest.current.citizens.onStats({visible:0,fps:null,drawCalls:0,elapsedSeconds:0,status:'3D citizens unavailable; profiles remain usable'}); }
@@ -230,7 +225,7 @@ export default function SingaporeMap(props: Props) {
     const map=mapRef.current;if(!ready||!map||loadedMap.current!==map)return;
     let current=true;const isCurrent=()=>current&&mapRef.current===map&&loadedMap.current===map;
     const session=new BuildingCatalogueSession({isCurrent,onStatus:setUnifiedStatus,onManifest:setBuildingManifest,
-      createLayer:(manifest,onStatus)=>new BuildingLayer(map,manifest,{beforeId:'network-lines',onStatus})});
+      createLayer:(manifest,onStatus)=>new BuildingLayer(map,manifest,{minZoom:BUILDING_DISPLAY_LIMITS.minZoom,beforeId:'network-lines',onStatus})});
     buildingSession.current=session;void session.setVisible(buildingChoice.current.enabled&&buildingChoice.current.view==='unified');
     return()=>{current=false;if(buildingSession.current===session)buildingSession.current=null;session.dispose();};
   },[ready]);
@@ -245,26 +240,25 @@ export default function SingaporeMap(props: Props) {
     if (visible && neighbourhood && !map.getSource('hdb')) {
       setHdbStatus('Loading limited HDB footprints…');
       map.addSource('hdb', { type: 'geojson', data: '/geography/buildings.geojson',attribution:`HDB supplied footprints · <a href="${HDB_SOURCE_URL}">Source</a> · <a href="${SODL_URL}">Singapore Open Data Licence</a>` });
-      map.addLayer({ id: 'hdb-buildings', type: 'fill-extrusion', source: 'hdb', minzoom: 11.5,
+      map.addLayer({ id: 'hdb-buildings', type: 'fill-extrusion', source: 'hdb', minzoom: BUILDING_DISPLAY_LIMITS.minZoom,
         paint: { 'fill-extrusion-color': '#69858b', 'fill-extrusion-height': 12, 'fill-extrusion-base': 0, 'fill-extrusion-opacity': 0.72 } }, 'network-lines');
     }
     if (map.getLayer('hdb-buildings')) map.setLayoutProperty('hdb-buildings', 'visibility', visible ? 'visible' : 'none');
   }, [buildings, buildingView, ready, neighbourhood]);
 
-  const buildingStatus=fatal?'3D buildings require WebGL; the geographic plan remains usable.':!buildings?'3D buildings are off.':buildingView==='hdb'?hdbStatus:unifiedStatus.state==='ready'?`${unifiedStatus.features.toLocaleString()} selected footprints in ${unifiedStatus.chunks} viewport chunks. Coverage incomplete.`:unifiedStatus.message;
+  const buildingStatus=fatal?'3D buildings require WebGL; the geographic plan remains usable.':!buildings?'3D buildings are off.':buildingView==='hdb'?hdbStatus:unifiedStatus.state==='ready'?`${unifiedStatus.features.toLocaleString()} selected footprints in ${unifiedStatus.chunks} viewport chunks. ${unifiedStatus.limited?unifiedStatus.message:'Coverage incomplete.'}`:unifiedStatus.message;
   function changeBuildingView(view:BuildingView){void buildingSession.current?.setVisible(false);const map=mapRef.current;if(map?.getLayer('hdb-buildings'))map.setLayoutProperty('hdb-buildings','visibility','none');setBuildingView(view);}
 
   return <><div data-building-view={buildingView} data-building-state={buildingView==='unified'?unifiedStatus.state:buildings?'legacy':'hidden'} className={`map-frame ${!props.exploring&&(props.plotting?.active?['point','station','line','anchor'].includes(props.plotting.mode):props.aac.active?props.aac.placing:props.editing&&props.mode==='place')?'placing':''} ${props.plotting?.active?'universal-plotting':''} ${props.exploring?'map-exploring':''} ${props.aac.active?'aac-mode':''} ${props.citizens.networkView==='baseline'?'citizen-baseline':''}`}>
     <div ref={container} className="map-canvas" role="region" aria-label="Interactive geographic Singapore map" />
     {fatal && <PlanFallback {...props} />}
-    <div className="map-top-card"><span className="live-dot" /><div><strong>{props.exploring?'Explore Singapore':props.plotting?.active?'General · user drawing':props.aac.active?'AAC access · Bukit Merah':props.citizens.enabled?'Illustrative pedestrians':'Singapore'}</strong><span>{props.exploring?'Pan, zoom and discover the city':props.plotting?.active?'Draw geography, then confirm its meaning before calculating':props.aac.active?(props.aac.placing?'Click to place a hypothetical centre · Escape cancels':'Limited corroborated AAC subset · select a marker'):props.citizens.enabled?'Select a pedestrian · motion is visual only':props.mode === 'place' ? 'Click the map to place a hypothetical station' : 'Click an existing station to add an interchange'}</span></div></div>
     <div className="map-toolbar">
       <button onClick={() => { mapRef.current?.easeTo({ pitch: pitch ? 0 : 48, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 500 }); setPitch(!pitch); }} aria-pressed={pitch}>▱ {pitch ? '3D view' : 'Plan view'}</button>
       <button onClick={() => {if(mapRef.current)fitSingapore(mapRef.current,matchMedia('(prefers-reduced-motion: reduce)').matches);}}>Fit Singapore</button>
-      {props.exploring?<button onClick={()=>mapRef.current?.easeTo({...LANDING_CAMERA,duration:matchMedia('(prefers-reduced-motion: reduce)').matches?0:650})}>Reset view</button>:props.plotting?.active?(props.aac.active?<button onClick={props.aac.onFocus}>Focus AAC area</button>:<button onClick={props.citizens.onFocus}>Illustrative citizens</button>):props.aac.active?<><button onClick={props.aac.onFocus}>Focus AAC area</button><button onClick={props.aac.placing?props.aac.onCancel:props.aac.onStartPlacement}>{props.aac.placing?'Cancel placement':'Place centre'}</button></>:props.citizens.enabled?<button onClick={props.citizens.onFocus}>Focus pedestrians</button>:<><button onClick={() => mapRef.current?.easeTo({ center: [103.85, 1.35], zoom: 14, pitch: 48, duration: 600 })}>Neighbourhood</button><button onClick={props.citizens.onFocus}>Citizens</button></>}
-      {ready&&citizensRef.current&&props.citizens.enabled&&props.citizens.networkView!=='editor'&&<button onClick={props.citizens.onPlayPause} aria-label={props.citizens.playing?'Pause citizen animation':'Play citizen animation'}>{props.citizens.playing?'Pause':'Play'}</button>}
+      {props.exploring&&<button onClick={()=>mapRef.current?.easeTo({...LANDING_CAMERA,duration:matchMedia('(prefers-reduced-motion: reduce)').matches?0:650})}>Reset view</button>}
+      {!props.exploring&&props.aac.active&&<><button onClick={props.aac.onFocus}>Focus AAC area</button>{!props.plotting?.active&&<button onClick={props.aac.placing?props.aac.onCancel:props.aac.onStartPlacement}>{props.aac.placing?'Cancel placement':'Place centre'}</button>}</>}
     </div>
-    <details className="map-layers"><summary>Map layers</summary><div><label><input type="checkbox" checked={buildings} disabled={fatal} onChange={e=>setBuildings(e.target.checked)}/> 3D Buildings</label><label className="building-source-select">Building source<select aria-label="Building source" disabled={fatal} value={buildingView} onChange={e=>changeBuildingView(e.target.value as BuildingView)}><option value="unified">Unified Singapore — internal review only</option><option value="hdb">Existing HDB — limited footprint coverage</option></select></label><label><input type="checkbox" checked={streets} onChange={e => setStreets(e.target.checked)} /> Street detail <span>online</span></label><small className="building-status" role="status">{buildingStatus}</small>{buildingView==='unified'&&buildings&&unifiedStatus.state==='error'&&<button type="button" className="building-retry" onClick={()=>void buildingSession.current?.retry()}>Retry unified buildings</button>}<small>{buildingView==='unified'?'Mixed source heights, assumed 3 m per floor or illustrative 12 m. Internal review only.':'Limited HDB footprints; all heights illustrative 12 m.'}</small></div></details>
+    <details className="map-layers"><summary>Map layers{buildingView==='unified'&&buildings&&unifiedStatus.limited&&<span className="building-detail-limit"> · limited detail</span>}</summary><div><label><input type="checkbox" checked={buildings} disabled={fatal} onChange={e=>setBuildings(e.target.checked)}/> 3D Buildings</label><label className="building-source-select">Building source<select aria-label="Building source" disabled={fatal} value={buildingView} onChange={e=>changeBuildingView(e.target.value as BuildingView)}><option value="unified">Unified Singapore — internal review only</option><option value="hdb">Existing HDB — limited footprint coverage</option></select></label><label><input type="checkbox" checked={streets} onChange={e => setStreets(e.target.checked)} /> Street detail <span>online</span></label><small className="building-status" role="status">{buildingStatus}</small>{buildingView==='unified'&&buildings&&unifiedStatus.state==='error'&&<button type="button" className="building-retry" onClick={()=>void buildingSession.current?.retry()}>Retry unified buildings</button>}<small>{buildingView==='unified'?'Mixed source heights, assumed 3 m per floor or illustrative 12 m. Internal review only.':'Limited HDB footprints; all heights illustrative 12 m.'}</small></div></details>
     {buildings&&buildingView==='unified'&&unifiedStatus.state==='loading'&&<p className="building-load-status" role="status"><span className="spinner"/> Loading sourced building footprints…</p>}
     {props.aac.active?<div className="map-legend aac-map-legend"><span>AAC · historical, corroborated records</span><span>HYP · hypothetical centre · P · landmark proxy</span><strong>Assumed straight-line accessibility radius — not a walking-network catchment.</strong></div>:<div className="map-legend"><span><i className="legend-line existing" /> Existing connections</span><span><i className="legend-line proposed" /> Proposed line</span><strong>All links are schematic, not track alignments</strong></div>}
     {!ready && !fatal && <div className="map-loading"><span className="spinner" /> Loading geographic canvas</div>}

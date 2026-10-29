@@ -14,7 +14,7 @@ export function useAacScenario(enabled:boolean){
   const invalidate=useCallback(()=>{attempt.current++;session.current.cancel();setLoaded(null);setBusy(false);setError('');},[]);
   const update=useCallback((patch:Partial<AacDraft>)=>{invalidate();setDraft(d=>({...d,...patch}));},[invalidate]);
   const place=useCallback((position:Position)=>{
-    if(!validAacPosition(position)){setError('Select a point within latitude 1.15–1.5 and longitude 103.6–104.1. The point is not a site approval.');return;}
+    if(!validAacPosition(position)){setError('Choose a location within the supported Singapore map area. The point is not a site approval.');return;}
     update({position:{...position}});setPlacing(false);
   },[update]);
   const reset=useCallback(()=>{invalidate();setDraft(createAacDraft());setPlacing(false);setSelectedFacility(null);},[invalidate]);
@@ -33,7 +33,7 @@ export function useAacScenario(enabled:boolean){
     return ()=>controller.abort();
   },[enabled,retry]);
   useEffect(()=>{if(!enabled)return;const onKey=(event:KeyboardEvent)=>{if(event.key==='Escape')setPlacing(false);};window.addEventListener('keydown',onKey);return ()=>window.removeEventListener('keydown',onKey);},[enabled]);
-  let validation='';try{buildAacRequest(draft,'aac-preview');}catch{validation=!draft.position?'Place a hypothetical centre or load the labelled demonstration.':'Check the name, Singapore coordinates, radius and advanced assumptions before calculating.';}
+  let validation='';try{buildAacRequest(draft,'aac-preview');}catch{validation=!draft.position?'Place a hypothetical centre or load the labelled demonstration.':'Check the name, map location, radius and advanced assumptions before calculating.';}
   async function calculate(request?:EldercareApiRequest){
     if(!enabled||busy)return;
     let submitted;try{submitted=request?parseEldercareApiRequest(request):buildAacRequest(draft,`aac-${crypto.randomUUID()}`);}catch{setError(validation||'Check the current centre and settings before calculating.');return;}

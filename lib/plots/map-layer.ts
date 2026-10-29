@@ -179,7 +179,7 @@ export class PlotMapLayer {
     entry.element.title = title;
     entry.element.setAttribute('aria-label', title);
     entry.element.setAttribute('aria-pressed', String(selected));
-    entry.element.setAttribute('aria-description', editable ? 'Drag to move this plot. Select it to edit its coordinates.' : 'Select this plot. Use Edit mode to move it.');
+    entry.element.setAttribute('aria-description', editable ? 'Drag to move this plot. Select it to edit its label and order.' : 'Select this plot. Use Edit mode to move it.');
     entry.element.classList.toggle('selected', selected);
     entry.element.style.cursor = editable ? 'grab' : 'pointer';
     entry.element.style.zIndex = selected ? '6' : vertex ? '4' : '5';

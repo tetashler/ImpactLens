@@ -1,0 +1,72 @@
+.workspace-shell.scenario-experience.general-experience.map-first { --composer-width:clamp(340px,26vw,400px); min-height:100dvh; background:#0b1921; }
+.workspace-shell.scenario-experience.general-experience.map-first .app-header { height:66px; min-height:66px; padding:12px 24px; justify-content:space-between; gap:20px; position:relative; z-index:9; }
+.workspace-shell.scenario-experience.general-experience.map-first .general-tabs { margin-left:auto; }
+.workspace-shell.scenario-experience.general-experience.map-first .general-tabs button { min-height:42px; }
+.workspace-shell.scenario-experience.general-experience.map-first .workspace-grid { display:grid; grid-template-columns:minmax(0,1fr) var(--composer-width); grid-template-rows:minmax(0,1fr); height:calc(100dvh - 66px); min-height:480px; max-height:none; margin:0; border:0; border-radius:0; overflow:hidden; position:relative; }
+.workspace-shell.scenario-experience.general-experience.map-first .map-panel { position:relative; inset:auto; grid-column:1; grid-row:1; height:100%; width:100%; min-height:0; }
+.workspace-shell.scenario-experience.general-experience.map-first .map-frame { min-height:0; flex:1; }
+.workspace-shell.scenario-experience.general-experience.map-first .map-scenario-sidebar { grid-column:2; grid-row:1; height:100%; min-width:0; overflow:auto; border-left:1px solid #29404b; background:#10212b; scrollbar-width:thin; scrollbar-color:#46616a transparent; }
+.map-scenario-panel { padding:28px 24px 16px; color:#e4efef; }
+.map-scenario-panel h1 { font-size:28px; font-weight:550; letter-spacing:-.7px; margin:0 0 24px; }
+.map-scenario-panel label { display:block; font-size:12px; color:#b7cbd1; margin-bottom:9px; }
+.map-scenario-panel textarea { display:block; width:100%; min-height:128px; resize:vertical; padding:14px; border:1px solid #49616d; border-radius:8px; background:#0c1a23; color:#e8f3f3; font:inherit; line-height:1.6; }
+.map-scenario-panel textarea::placeholder { color:#819ba7; }
+.map-scenario-panel :is(button,textarea,select,summary):focus-visible { outline:2px solid #83dad0; outline-offset:3px; }
+.map-question-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+.map-scenario-panel button,.native-model-tools button { min-height:44px; padding:10px 12px; border:1px solid #3c5865; border-radius:6px; background:#1b333e; color:#d7e9eb; font-size:13px; }
+.map-scenario-panel button:hover:not(:disabled) { background:#274752; }
+.map-scenario-panel .map-explore-button { background:#8ed9cd; color:#0e2c2e; border-color:#8ed9cd; font-weight:650; }
+.map-scenario-panel .map-explore-button:hover:not(:disabled) { background:#a5e5da; }
+.map-question-actions button[aria-expanded='true'] { border-color:#8ed9cd; background:#284943; }
+.map-exploration-status { display:flex; align-items:center; gap:8px; font-size:13px; color:#b9dcd3; margin-top:20px; flex-wrap:wrap; }
+.map-exploration-status:empty { display:none; }
+.map-exploration-status>span:not(.spinner) { display:block; width:100%; font-size:11px; color:#9eb7bf; }
+.map-scenario-panel .map-cancel-button { min-height:36px; margin-top:10px; padding:5px 12px; background:transparent; }
+.map-exploration-error { color:#f0b6b0; font-size:12px; line-height:1.65; margin-top:12px; }
+.map-result-links { display:grid; gap:9px; padding-top:18px; }
+.map-result-links button { text-align:left; border-color:#47746b; background:#183c37; }
+.map-scenario-panel details { border-top:1px solid #2a424e; padding-top:13px; margin-top:22px; font-size:12px; }
+.map-scenario-panel summary { min-height:32px; color:#9cb5bf; }
+.map-scenario-panel details p { color:#9cb5bf; line-height:1.7; margin-top:8px; }
+.map-scenario-panel details label { margin-top:10px; }
+.map-scenario-panel select { margin-top:6px; font-size:12px; }
+.workspace-shell.scenario-experience.general-experience.map-first .map-scenario-sidebar .general-plot-panel { position:static; inset:auto; width:100%; height:auto; max-height:none; min-height:0; border:0; background:transparent; }
+.workspace-shell.scenario-experience.general-experience.map-first .general-plot-scroll { overflow:visible; padding:8px 20px 22px; }
+.native-model-tools { margin:0 24px 24px; font-size:12px; border-top:1px solid #29424e; padding-top:14px; color:#a4bec5; }
+.native-model-tools p { margin:10px 0; }
+.workspace-shell.scenario-experience.general-experience.map-first .workspace-grid>.editor-panel:not([hidden]),.workspace-shell.scenario-experience.general-experience.map-first .workspace-grid>.results-panel:not([hidden]) { position:absolute; z-index:6; top:12px; bottom:12px; left:12px; right:auto; width:min(320px,calc(100% - var(--composer-width) - 30px)); height:auto; max-height:calc(100% - 24px); overflow:auto; border:1px solid #39515c; border-radius:8px; }
+.workspace-shell.scenario-experience.general-experience.map-first .app-footer { display:none; }
+.workspace-shell.scenario-experience.general-experience.map-first .map-toolbar { left:14px; top:14px; }
+.workspace-shell.scenario-experience.general-experience.map-first .map-frame { --building-panel-bottom:var(--map-layers-bottom,10px); }
+.workspace-shell.scenario-experience.general-experience.map-first .map-layers { left:14px; top:auto; bottom:var(--map-layers-bottom,10px); max-height:var(--map-layers-max-height,calc(100% - 70px)); box-sizing:border-box; overflow:auto; }
+.workspace-shell.scenario-experience.general-experience.map-first .map-layers>div { max-height:none; overflow:visible; }
+.workspace-shell.scenario-experience.general-experience.map-first #map-plot-controls { position:absolute; z-index:7; left:14px; right:14px; bottom:var(--plot-tools-bottom,calc(var(--building-credit-height,0px) + 10px)); display:flex; flex-direction:column; align-items:stretch; max-height:50%; overflow:auto; }
+.workspace-shell.scenario-experience.general-experience.map-first .plot-tools-wrap { position:static; width:100%; max-width:none; flex-shrink:0; margin:0; }
+.workspace-shell.scenario-experience.general-experience.map-first .plot-toolbar { flex-wrap:wrap; overflow:visible; }
+.workspace-shell.scenario-experience.general-experience.map-first .plot-toolbar button { min-height:42px; padding:8px 10px; }
+.workspace-shell.scenario-experience.general-experience.map-first.report-view .workspace-grid { position:absolute; top:66px; left:0; right:0; visibility:hidden; pointer-events:none; }
+.workspace-shell.scenario-experience.general-experience.map-first.report-view .question-surface { min-height:calc(100dvh - 66px); padding:20px; }
+.workspace-shell.scenario-experience.general-experience.map-first.knowledge-active .workspace-grid { display:grid!important; position:absolute; top:66px; left:0; right:0; visibility:hidden; pointer-events:none; }
+@media(max-width:700px) {
+ .workspace-shell.scenario-experience.general-experience.map-first .app-header { height:104px; min-height:104px; padding:10px 14px; flex-wrap:wrap; gap:6px; }
+ .workspace-shell.scenario-experience.general-experience.map-first .brand strong { font-size:20px; }
+ .workspace-shell.scenario-experience.general-experience.map-first .general-tabs { margin:0; width:100%; order:1; }
+ .workspace-shell.scenario-experience.general-experience.map-first .general-tabs button { flex:1; min-width:0; padding:8px; font-size:12px; }
+ .workspace-shell.scenario-experience.general-experience.map-first .workspace-grid { display:flex; flex-direction:column; height:auto; min-height:0; overflow:visible; }
+ .workspace-shell.scenario-experience.general-experience.map-first .map-panel { flex:none; height:clamp(330px,46svh,430px); min-height:0; order:0; }
+ .workspace-shell.scenario-experience.general-experience.map-first .map-frame { min-height:0; }
+ .workspace-shell.scenario-experience.general-experience.map-first .map-scenario-sidebar { height:auto; overflow:visible; order:1; width:100%; border-left:0; border-top:1px solid #29404b; }
+ .map-scenario-panel { padding:22px 20px 16px; }
+ .map-scenario-panel h1 { font-size:25px; margin-bottom:18px; }
+ .map-scenario-panel textarea { min-height:105px; font-size:16px; }
+ .map-exploration-status { margin-top:16px; }
+ .map-scenario-panel details { margin-top:16px; }
+ .workspace-shell.scenario-experience.general-experience.map-first .map-toolbar { left:10px; top:10px; }
+ .workspace-shell.scenario-experience.general-experience.map-first .map-layers { left:10px; }
+ .workspace-shell.scenario-experience.general-experience.map-first #map-plot-controls { left:8px; right:8px; max-height:55%; }
+ .workspace-shell.scenario-experience.general-experience.map-first .plot-toolbar { flex-wrap:nowrap; overflow-x:auto; }
+ .workspace-shell.scenario-experience.general-experience.map-first .plot-toolbar button { min-height:44px; }
+ .workspace-shell.scenario-experience.general-experience.map-first .workspace-grid>.editor-panel:not([hidden]),.workspace-shell.scenario-experience.general-experience.map-first .workspace-grid>.results-panel:not([hidden]) { position:relative; inset:auto; width:100%; max-height:none; order:2; border-radius:0; }
+ .workspace-shell.scenario-experience.general-experience.map-first.report-view .workspace-grid,.workspace-shell.scenario-experience.general-experience.map-first.knowledge-active .workspace-grid { top:104px; height:clamp(330px,46svh,430px); overflow:hidden; }
+ .workspace-shell.scenario-experience.general-experience.map-first.report-view .question-surface { min-height:calc(100dvh - 104px); padding:0; }
+}

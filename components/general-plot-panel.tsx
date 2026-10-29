@@ -1,13 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import ScenarioComposer from './scenario-composer';
 import type { ScenarioPlannerState } from './use-scenario-planner';
 import type { useScenarioPlot } from './use-scenario-plot';
 import type { AacScenario } from './use-aac-scenario';
 import type { NetworkCatalog } from '../lib/map-contract';
 import type { ScenarioResponse } from '../lib/scenarios/contract';
-import { PLOT_LIMITS, type PlotFeature, type PlotPoint, type PlotPosition } from '../lib/plots/geometry';
+import { PLOT_LIMITS, type PlotFeature, type PlotPoint } from '../lib/plots/geometry';
 import { buildPlottedMrt, suggestedStations, type MrtPlotSettings } from '../lib/plots/adapters';
 import './general-plot-panel.css';
 
@@ -39,23 +38,6 @@ export interface GeneralPlotPanelProps {
   onUsePlan: (mode: 'mrt' | 'aac', response: ScenarioResponse) => void;
 }
 
-function CoordinateForm({ initial, disabled, label, onSave }: {
-  initial?: PlotPosition; disabled: boolean; label: string; onSave: (position: PlotPosition) => void;
-}) {
-  const [lat, setLat] = useState(initial ? String(initial.lat) : '');
-  const [lon, setLon] = useState(initial ? String(initial.lon) : '');
-  return <form className="plot-coordinate-form" onSubmit={event => {
-    event.preventDefault();
-    onSave({ lat: Number(lat), lon: Number(lon) });
-  }}>
-    <div className="plot-input-pair">
-      <label>Latitude<input type="number" inputMode="decimal" step="any" min={PLOT_LIMITS.minLat} max={PLOT_LIMITS.maxLat} required disabled={disabled} value={lat} onChange={event => setLat(event.target.value)} /></label>
-      <label>Longitude<input type="number" inputMode="decimal" step="any" min={PLOT_LIMITS.minLon} max={PLOT_LIMITS.maxLon} required disabled={disabled} value={lon} onChange={event => setLon(event.target.value)} /></label>
-    </div>
-    <button type="submit" disabled={disabled}>{label}</button>
-  </form>;
-}
-
 function FeatureEditor({ feature, plot, onEdit, disabled }: {
   feature: PlotFeature; plot: Plot; onEdit: GeneralPlotPanelProps['onEdit']; disabled: boolean;
 }) {
@@ -69,18 +51,17 @@ function FeatureEditor({ feature, plot, onEdit, disabled }: {
       <button type="submit" disabled={disabled || !label.trim() || label === feature.label}>Save label</button>
     </form>
     {feature.kind === 'point' ? <>
-      <CoordinateForm initial={feature.coordinate} disabled={disabled} label="Move point" onSave={position => onEdit(() => plot.movePoint(feature.id, position))} />
+      <p className="plot-help">Use Edit drawing to drag this point on the map.</p>
       <label>Point role<select value={feature.role} disabled={disabled} onChange={event => onEdit(() => plot.setPointRole(feature.id, event.target.value as PlotPoint['role']))}>
         <option value="unassigned">General point</option><option value="station">Proposed station</option><option value="site">Proposed site</option>
       </select></label>
       <div className="plot-action-row"><button type="button" disabled={disabled || pointIndex <= 0} onClick={() => onEdit(() => plot.reorderPoint(feature.id, -1))}>Move earlier</button><button type="button" disabled={disabled || pointIndex >= pointCount - 1} onClick={() => onEdit(() => plot.reorderPoint(feature.id, 1))}>Move later</button></div>
     </> : <>
-      <p className="plot-help">Select a vertex to edit its coordinates. Vertex order describes the drawn line.</p>
-      <ol className="plot-vertex-list">{feature.coordinates.map((position, index) => <li key={index}>
-        <button type="button" className="plot-vertex-select" aria-pressed={vertex === index} onClick={() => plot.select({ id: feature.id, vertex: index })}><strong>Vertex {index + 1}</strong><span>{position.lat.toFixed(5)}, {position.lon.toFixed(5)}</span></button>
+      <p className="plot-help">Use Edit drawing to drag vertices on the map. Their order describes the line.</p>
+      <ol className="plot-vertex-list">{feature.coordinates.map((_, index) => <li key={index}>
+        <button type="button" className="plot-vertex-select" aria-pressed={vertex === index} onClick={() => plot.select({ id: feature.id, vertex: index })}><strong>Vertex {index + 1}</strong></button>
         <div className="plot-order-actions"><button type="button" aria-label={`Move vertex ${index + 1} earlier`} disabled={disabled || index === 0} onClick={() => onEdit(() => plot.reorderVertex(feature.id, index, -1))}>↑</button><button type="button" aria-label={`Move vertex ${index + 1} later`} disabled={disabled || index === feature.coordinates.length - 1} onClick={() => onEdit(() => plot.reorderVertex(feature.id, index, 1))}>↓</button><button type="button" aria-label={`Remove vertex ${index + 1}`} disabled={disabled} onClick={() => onEdit(() => plot.removeVertex(feature.id, index))}>×</button></div>
       </li>)}</ol>
-      {vertex !== undefined && feature.coordinates[vertex] && <CoordinateForm key={`${vertex}:${plot.revision}`} initial={feature.coordinates[vertex]} disabled={disabled} label={`Move vertex ${vertex + 1}`} onSave={position => onEdit(() => plot.moveVertex(feature.id, vertex, position))} />}
       {feature.coordinates.length <= 2 && <p className="plot-help">Removing a vertex from a two-vertex line removes that line.</p>}
     </>}
     <button type="button" className="plot-delete" disabled={disabled} onClick={() => onEdit(() => plot.removeFeature(feature.id))}>Remove {feature.kind}</button>
@@ -140,7 +121,7 @@ function MrtControls(props: GeneralPlotPanelProps) {
           <div className="plot-order-actions"><button type="button" disabled={disabled || index === 0} aria-label={`Move ${point.label} earlier in station order`} onClick={() => onEdit(() => plot.reorderPoint(point.id, -1))}>↑</button><button type="button" disabled={disabled || index === points.length - 1} aria-label={`Move ${point.label} later in station order`} onClick={() => onEdit(() => plot.reorderPoint(point.id, 1))}>↓</button></div></div>
         <div className="plot-stop-secondary"><button type="button" aria-pressed={selected?.id === point.id} onClick={() => plot.select({ id: point.id })}>Select on map</button>{stationId && <button type="button" disabled={disabled} onClick={() => onDisconnect(point.id)}>Disconnect</button>}</div>
       </li>;
-    })}</ol> : <p className="plot-empty">Add station dots with the map toolbar, or enter coordinates below.</p>}
+    })}</ol> : <p className="plot-empty">Add station dots with the map toolbar.</p>}
 
     <details className="plot-disclosure" open={Object.keys(activeAnchors).length === 0 || pendingAnchor !== null}>
       <summary>Connect an existing MRT station</summary>
@@ -148,7 +129,7 @@ function MrtControls(props: GeneralPlotPanelProps) {
         <label>Find an existing station<input type="search" value={search} disabled={disabled || !catalog} placeholder="Station name or ID" onChange={event => setSearch(event.target.value)} /></label>
         {query && <div className="plot-search-results" aria-live="polite">{matches.length ? matches.map(station => <button type="button" key={station.id} disabled={disabled} onClick={() => onRequestAnchor(station.id, selected?.id)}><span>{station.name}</span><small>{station.id}</small></button>) : <p className="plot-help">No matching served MRT stations.</p>}</div>}
         {selected && nearby.length > 0 && <div className="plot-nearby"><h3>Nearby suggestions</h3>{nearby.map(({ station, distanceMetres }) => <button type="button" key={station.id} disabled={disabled} onClick={() => onRequestAnchor(station.id, selected.id)}><span>{station.name}</span><small>{Math.round(distanceMetres).toLocaleString()} m</small></button>)}<p className="plot-help">Distance is straight line. Choosing a suggestion still needs confirmation.</p></div>}
-        {pendingAnchor && <div className="plot-confirm-anchor"><strong>{pendingStation?.name ?? pendingAnchor.stationId}</strong><p>{pendingPoint ? `Confirming moves “${pendingPoint.label}” to this station's recorded coordinates.` : 'Confirming adds a point at this station’s recorded coordinates.'} This explicitly creates an interchange.</p><button type="button" disabled={disabled || !pendingStation} onClick={onConfirmAnchor}>Confirm interchange</button></div>}
+        {pendingAnchor && <div className="plot-confirm-anchor"><strong>{pendingStation?.name ?? pendingAnchor.stationId}</strong><p>{pendingPoint ? `Confirming moves “${pendingPoint.label}” to this station.` : 'Confirming adds a point at this station.'} This explicitly creates an interchange.</p><button type="button" disabled={disabled || !pendingStation} onClick={onConfirmAnchor}>Confirm interchange</button></div>}
       </div>
     </details>
 
@@ -191,7 +172,7 @@ function AacControls({ plot, aac, aacBound, onInvalidate, onConfirmAac, onRunAac
 }
 
 export default function GeneralPlotPanel(props: GeneralPlotPanelProps) {
-  const { planner, plot, hidden, onEdit, hasResults, onShowResults, onResetSimulation, onUsePlan, error } = props;
+  const { planner, plot, hidden, onEdit, hasResults, onShowResults, onResetSimulation, error } = props;
   const plan = planner.response?.plan;
   const selected = plot.geometry.features.find(feature => feature.id === plot.selection?.id);
   const disabled = plot.activeLineId !== null;
@@ -201,18 +182,13 @@ export default function GeneralPlotPanel(props: GeneralPlotPanelProps) {
   const lines = plot.geometry.features.filter(feature => feature.kind === 'line');
   return <aside className="editor-panel general-plot-panel" hidden={hidden} aria-label="General scenario inspector">
     <div className="general-plot-scroll">
-      <ScenarioComposer planner={planner} onConfigure={onUsePlan} compact />
-      {!plan && <div className="plot-intro-note"><strong>A question and a place to explore</strong><p>Ask any what-if question above. Use the map toolbar to add points and lines, then review what the selected model can calculate.</p></div>}
-      {plan && !mrt && !aac && <div className="plot-intro-note"><strong>Evidence planning</strong><p>{plan.interpretation.intent === 'international-policy' ? 'This question does not need a map plot. Use the interpretation plan to review the evidence and questions that matter.' : 'Your drawings remain available as annotations. This question has no supported impact calculation; use the plan to guide further research.'}</p></div>}
-
       <section className="plot-geometry" aria-labelledby="plot-geometry-heading">
         <div className="plot-section-heading"><span className="plot-step">01</span><div><h2 id="plot-geometry-heading">Your map drawings</h2><p>{points.length} {points.length === 1 ? 'point' : 'points'} · {lines.length} {lines.length === 1 ? 'line' : 'lines'}</p></div></div>
         {disabled && <p className="plot-draft-warning" role="status">A line is in progress. Use Finish or Cancel on the map toolbar before editing other drawings.</p>}
         {plot.geometry.features.length ? <details className="plot-disclosure" open><summary>Select or edit a drawing</summary><div className="plot-disclosure-content">
-          <ul className="plot-feature-list">{plot.geometry.features.map(feature => <li key={feature.id}><button type="button" aria-pressed={selected?.id === feature.id} onClick={() => plot.select({ id: feature.id })}><span className={`plot-feature-symbol ${feature.kind}`} aria-hidden="true" /><span><strong>{feature.label}</strong><small>{feature.kind === 'point' ? `${feature.role === 'station' ? 'Station point' : feature.role === 'site' ? 'Site point' : 'Point'} · ${feature.coordinate.lat.toFixed(4)}, ${feature.coordinate.lon.toFixed(4)}` : `Line · ${feature.coordinates.length} vertices`}</small></span></button></li>)}</ul>
+          <ul className="plot-feature-list">{plot.geometry.features.map(feature => <li key={feature.id}><button type="button" aria-pressed={selected?.id === feature.id} onClick={() => plot.select({ id: feature.id })}><span className={`plot-feature-symbol ${feature.kind}`} aria-hidden="true" /><span><strong>{feature.label}</strong><small>{feature.kind === 'point' ? feature.role === 'station' ? 'Station point' : feature.role === 'site' ? 'Site point' : 'Point' : `Line · ${feature.coordinates.length} vertices`}</small></span></button></li>)}</ul>
           {selected && <FeatureEditor key={`${selected.id}:${plot.revision}:${plot.selection?.vertex ?? 'feature'}`} feature={selected} plot={plot} onEdit={onEdit} disabled={disabled} />}
         </div></details> : <p className="plot-empty">Choose a drawing tool on the map. Add station dots separately from a route line.</p>}
-        <details className="plot-disclosure"><summary>Add a point using coordinates</summary><div className="plot-disclosure-content"><p className="plot-help">Singapore bounds: latitude {PLOT_LIMITS.minLat}–{PLOT_LIMITS.maxLat}, longitude {PLOT_LIMITS.minLon}–{PLOT_LIMITS.maxLon}.</p><CoordinateForm disabled={disabled} label="Add point" onSave={position => onEdit(() => plot.addPoint(position))} /></div></details>
       </section>
 
       {mrt && <MrtControls key={plan.planId} {...props} />}

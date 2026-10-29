@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BuildingLayer,buildingLayerStyle } from '../../buildings/layer.ts';
+import {BUILDING_DISPLAY_LIMITS} from '../../buildings/display-policy.ts';
 import type { Map as LibreMap } from 'maplibre-gl';
 import { createHash } from 'node:crypto';
 import { prepareBuildings } from '../../buildings/prepare.ts';
@@ -84,4 +85,24 @@ test('mixed available and missing chunks report partial coverage and keep valid 
 });
 test('opaque extrusions avoid compounded alpha darkness at retained shared roof overlaps',()=>{
   assert.equal(buildingLayerStyle().paint?.['fill-extrusion-opacity'],1);
+});
+
+test('explicit wider display range loads original geometry below the preparation default zoom',async()=>{
+ const m=mock();m.setZoom(13.5);const statuses:any[]=[];const layer=new BuildingLayer(m.map,manifest as any,{minZoom:12.5,fetcher:async()=>new Response(text),onStatus:s=>statuses.push(s)});
+ await layer.refresh();assert.equal(m.sources.get('sg-buildings').data.features.length,1);assert.equal(m.layers.get('sg-buildings-extrusion').minzoom,12.5);assert.deepEqual(m.sources.get('sg-buildings').data.features[0],data.features[0]);
+ m.setZoom(12);await layer.refresh();assert.equal(m.sources.get('sg-buildings').data.features.length,0);assert.equal(statuses.at(-1).state,'overview');layer.dispose();
+});
+test('a wider viewport retains a deterministic bounded subset instead of clearing every building',async()=>{
+ const m=mock(),many={...manifest,featureCount:70,chunks:Array.from({length:70},(_,i)=>({...manifest.chunks[0],id:`c${String(i).padStart(3,'0')}`,url:`/geography/buildings-v1/c${String(i).padStart(3,'0')}.geojson`}))};let calls=0,active=0,peak=0;const states:any[]=[];
+ const layer=new BuildingLayer(m.map,many as any,{fetcher:async()=>{calls++;active++;peak=Math.max(peak,active);await new Promise(r=>setTimeout(r,1));active--;return new Response(text);},onStatus:s=>states.push(s)});await layer.refresh();
+ assert.equal(calls,64);assert.ok(peak<=3);assert.equal(m.sources.get('sg-buildings').data.features.length,1);assert.equal(states.at(-1).state,'ready');assert.equal(states.at(-1).limited,true);assert.equal(states.at(-1).candidateChunks,70);assert.match(states.at(-1).message,/64 of 70/);layer.dispose();
+});
+
+test('application detail cutoff hides overview, restores original geometry at 14.5 and reuses cached viewport chunks',async()=>{
+ const m=mock();m.setZoom(14.49);let calls=0;const statuses:string[]=[];
+ const layer=new BuildingLayer(m.map,manifest as any,{minZoom:BUILDING_DISPLAY_LIMITS.minZoom,fetcher:async()=>{calls++;return new Response(text);},onStatus:s=>statuses.push(s.state)});
+ await layer.refresh();assert.equal(m.sources.get('sg-buildings').data.features.length,0);assert.equal(calls,0);assert.equal(statuses.at(-1),'overview');assert.equal(m.layers.get('sg-buildings-extrusion').minzoom,14.5);
+ m.setZoom(14.5);await layer.refresh();assert.deepEqual(m.sources.get('sg-buildings').data.features,data.features);assert.equal(statuses.at(-1),'ready');
+ m.setZoom(14.49);await layer.refresh();assert.equal(m.sources.get('sg-buildings').data.features.length,0);
+ m.setZoom(15);await layer.refresh();assert.deepEqual(m.sources.get('sg-buildings').data.features,data.features);assert.equal(calls,1);assert.equal(m.sources.size,1);assert.equal(m.layers.size,1);layer.dispose();
 });

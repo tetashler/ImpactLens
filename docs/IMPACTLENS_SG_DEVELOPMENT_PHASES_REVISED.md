@@ -520,3 +520,15 @@ Implementation note: `docs/DYNAMIC_SCENARIO_GENERATION.md`. Leave all changes un
 - [ ] Verified entity/evidence resolution, factual/legal validation, population-grounded behaviour, scenario-responsive trajectories and quantitative policy forecasting remain future work. Preserve Phase 4 trajectory, AAC proxy/unlocated/capacity and internal-local-review building restrictions.
 
 Evidence, exact files, safe ledger/screenshot references, reproduced failures and rebuild commands: `docs/DYNAMIC_SCENARIO_LIVE_ACCEPTANCE.md`.
+
+## Map-first UI simplification ? 29 October 2026
+
+- [x] Root opens directly on Map. Primary navigation is Map / Knowledge Graph / Report; landing and Simulation surfaces, redundant setup/demo controls and top-level Experiment Lab buttons are removed from the normal journey. Existing engines, records and contracts remain.
+- [x] One question plus Plot Tools / Explore. Plotting controls start hidden, preserve exact geometry on dismissal and resume pending strokes. Ordinary coordinate values/manual entry are removed; map dragging, station anchors and model confirmations remain.
+- [x] Explore runs the unchanged dynamic pipeline while staying on Map. Current-result links require matching question, geometry and revision; partial runs are labelled separately. Graph/report/history navigation preserves the single map and makes no inference request.
+- [x] Compact visible source credits plus one Sources & licences dialog replace duplicate attribution; OSM/SODL/source links and local-review restrictions remain. Native zoom/compass and illustrative pedestrian controls are hidden; gestures, Fit Singapore, 2D/3D and data remain.
+- [x] **669 Node tests**, application/strict TypeScript, production build, six model CLIs and whitespace checks pass. Mocked production-browser flow, delay/cancel/A?B?A recovery, real MRT/AAC calculations, fresh touch placement and four viewport sizes pass. GIS could not load missing Shapely; no GIS pass claimed. No paid inference.
+- [x] Browser/review fixes include CSS cascade isolation, non-overlapping native editors/results, advanced MRT provenance rebinding and plotting-toolbar clearance above attribution.
+- [ ] Existing geographic, source/licence, proxy/unlocated, synthetic dialogue and forecasting limits remain. No new entity verification, population-grounded trajectories or predictive policy model is claimed.
+
+See `docs/MAP_FIRST_UI_UX_REFACTOR.md` for exact paths, attribution review, browser evidence and reproduction. Changes remain unstaged/uncommitted on main at baseline `c8148c5`; the unused secondary directory is untouched.

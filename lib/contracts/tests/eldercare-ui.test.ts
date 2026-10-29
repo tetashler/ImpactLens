@@ -6,6 +6,49 @@ import { buildAacRequest, createAacDraft, demonstrationAacDraft, draftKey, valid
 import type { AacDraft } from '../../eldercare/editor.ts';
 import { geodesicCircle, toLngLat } from '../../eldercare/geometry.ts';
 
+function renderAacPanel(exportName: string, state: unknown) {
+  const component = new URL('../../../components/eldercare-panel.tsx', import.meta.url).href;
+  const script = `
+    import {registerHooks} from 'node:module';import {readFileSync,existsSync} from 'node:fs';
+    import babel from 'next/dist/compiled/babel/core.js';import typescript from 'next/dist/compiled/babel/preset-typescript.js';import react from 'next/dist/compiled/babel/preset-react.js';
+    import {createElement} from 'react';import {renderToStaticMarkup} from 'react-dom/server';
+    registerHooks({resolve(s,c,n){if(s.startsWith('.')&&c.parentURL){for(const suffix of ['.tsx','.ts']){const u=new URL(s+suffix,c.parentURL);if(existsSync(u))return n(u.href,c);}}return n(s,c);},load(u,c,n){if(u.endsWith('.css'))return {format:'module',source:'',shortCircuit:true};if(u.endsWith('.tsx'))return {format:'module',source:babel.transformSync(readFileSync(new URL(u),'utf8'),{filename:new URL(u).pathname,presets:[[typescript,{isTSX:true,allExtensions:true}],[react,{runtime:'automatic'}]],babelrc:false,configFile:false}).code,shortCircuit:true};return n(u,c);}});
+    const mod=await import(${JSON.stringify(component)}),state=JSON.parse(readFileSync(0,'utf8'));
+    process.stdout.write(renderToStaticMarkup(createElement(mod[${JSON.stringify(exportName)}],{state,hidden:false})));
+  `;
+  const result = spawnSync(process.execPath, ['--input-type=module', '--eval', script], { input: JSON.stringify(state), encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout;
+}
+
+test('AAC editor uses map placement without manual coordinate entry and preserves model settings', () => {
+  const html = renderAacPanel('AacEditor', { draft: demonstrationAacDraft(), facilities: null, selectedFacility: null, placing: false, facilityError: '', facilityBusy: false, validation: '', busy: false });
+  assert.doesNotMatch(html, /AAC latitude|AAC longitude|edit coordinates|enter coordinates|1\.287|103\.824/);
+  assert.match(html, /Drag the HYP marker/);
+  assert.match(html, /Straight-line accessibility radius/);
+  assert.match(html, /AAC modelled age cutoff/);
+  assert.match(html, /Existing AAC availability/);
+  assert.match(html, /Calculate AAC Impact/);
+});
+
+test('AAC results identify the hypothetical site and landmark provenance without displaying raw locations', () => {
+  const request = createDefaultEldercareRequest('friendly-location-test');
+  const origin = { id: 'landmark', subzone: 'tiong-bahru-station', planningArea: 'bukit-merah', position: { lat: 1.286543, lon: 103.827654 }, provenance: { method: 'explicit-geographic-proxy', description: 'Public station landmark reference', sourceUrl: 'https://example.com/landmark', referenceDate: '2026-10-27', assumptionId: 'test-landmark' } };
+  const report = { version: 1, identity: { clientRequestId: request.clientRequestId, requestFingerprint: 'test-fingerprint', scenarioId: 'test-scenario' }, request, limitations: [], result: {
+    schemaVersion: 1, engineVersion: 'aac-haversine-v1', resultKind: 'illustrative-geographic-accessibility', scenarioId: 'test-scenario', intervention: request.intervention, options: request.options,
+    provenance: { facilitySource: { id: 'fixture', agency: 'Test agency', url: 'https://example.com/facilities', catalogueUpdated: '2026-10-27', accessedDate: '2026-10-27', licenceUrl: 'https://example.com/licence', scope: 'Test catalogue', rawSha256: '0'.repeat(64) }, corroborations: [], population: { kind: 'synthetic-fixture', datasetId: 'fixture', agency: 'Test agency', referenceYear: 2020, updated: '2020-01-01', sourceUrl: 'https://example.com/population', licenceUrl: 'https://example.com/licence', rawSha256: '0'.repeat(64), assumptionIds: [] }, populationSeed: 'test', populationMethod: 'test fixture', inputAgentCount: 0, representedPopulation: 0, originReferences: [origin], distanceMethod: 'WGS84-haversine-metres', coverage: 'limited-corroborated-subset-not-complete', eligibility: 'age-target-only-not-confirmed-service-eligibility' },
+    baselineFacilities: [], comparisons: [{ origin, status: 'no-facilities', baseline: null, scenario: null, distanceToProposedMetres: 400, reductionMetres: null, nearestChanged: false, distanceImproved: null, assumedStraightLineWalkingMinutes: null }], metrics: [], unlocatedGeographies: [], capacity: { existingTotal: null, existingUnknownCount: 0, proposedAssumedUsers: null, serviceAllocation: 'not-modelled' }, diagnostics: { inputFacilities: 0, compatibleFacilities: 0, excludedByType: 0, excludedByAvailability: 0, ageIneligibleAgents: 0, ageIneligiblePopulation: 0, distanceCalculations: 0 },
+  } };
+  const html = renderAacPanel('AacResults', { draft: demonstrationAacDraft(), report, error: '', busy: false });
+  assert.doesNotMatch(html, /1\.28700|103\.82400|1\.28654|103\.82765/);
+  assert.match(html, /Hypothetical site/i);
+  assert.match(html, /tiong bahru station/);
+  assert.match(html, /Public station landmark reference/);
+  assert.match(html, /public landmark reference, not a home/);
+  assert.match(html, /href="https:\/\/example.com\/landmark"/);
+  assert.match(html, /test-fingerprint/);
+});
+
 test('editor and display geometry import without Node modules or the accessibility engine', () => {
   const editorUrl = new URL('../../eldercare/editor.ts', import.meta.url).href;
   const geometryUrl = new URL('../../eldercare/geometry.ts', import.meta.url).href;
