@@ -2,7 +2,7 @@
 
 Implemented on main `master` from actual HEAD `c8148c5a8a2b512ffa9a638789882b4226016cbf`. The earlier dynamic implementation/live acceptance was already committed at this checkpoint; it was retained. This refactor is unstaged and uncommitted.
 
-Current building detail threshold: **zoom 14.5**. The closer-range adjustment below supersedes the earlier zoom-12.5 experiment; the 300 m scale is a visual reference, not a clipping radius.
+Fresh-session building detail threshold: **zoom 14.5**. Render Distance now adjusts it between 16 (Near) and 12.5 (Far); the scale bar has been removed. The historical 300 m reference below is not a clipping radius. See the latest slider section for current behaviour.
 
 ## User flow
 
@@ -207,3 +207,63 @@ Before/after screenshots were visually inspected under ignored `tmp/building-clo
 Regression: **680 Node tests passed**, zero failures; 25 focused building/selection/session tests passed. The new test first failed against the old cutoff, then passed after the change, checking hide/show boundaries, original geometry, cache reuse and one source/layer. Application TypeScript, strict affected-module/test TypeScript, production build and diff checks passed. GIS and model CLIs were not rerun for this display-only adjustment; their preceding results and GIS dependency limitation remain recorded above.
 
 Exact files changed in this adjustment: `lib/buildings/display-policy.ts`, `lib/buildings/layer.ts`, `components/singapore-map.tsx`, `lib/contracts/tests/building-layer.test.ts`, and this document. All earlier uncommitted work was preserved. No source data, private environment, inference path, secondary directory or Git index was modified.
+
+## Render Distance slider and scale-free control layout
+
+This change starts from clean main HEAD `af2da92`, which already committed the preceding refactor and closer-range adjustment. Its own changes remain unstaged and uncommitted.
+
+### Control layout
+
+Removed the actual `ScaleControl` registration, rather than hiding its element. There is no scale-control lifecycle or scale measurement left in the map UI. Map Layers sits 10 px above the frame/footer boundary when tools are closed. With Plot Tools open, the toolbar sits 10 px above the measured footer, and Map Layers sits 10 px above the actual toolbar. ResizeObserver still measures frame/footer and toolbar wrapping; the expanded layers panel's available height accounts for the top controls. Deleted scale clearance is no longer reserved. Source/licence credits and their dialog remain unchanged.
+
+**Render Distance** is immediately after Fit Singapore in the same dark control bar. The native range has a visible label, keyboard input, Near/Far endpoints, qualitative current-value text, visible focus and screen-reader help. Controls can wrap within the map width. No metre distances or clipping radii are implied.
+
+### Mapping and live updates
+
+The browser-safe display policy defines eight rightward positions:
+
+| Slider position | Minimum building zoom |
+|---:|---:|
+| 0 — Near | 16 |
+| 1 | 15.5 |
+| 2 | 15 |
+| 3 — Default | 14.5 |
+| 4 | 14 |
+| 5 | 13.5 |
+| 6 | 13 |
+| 7 — Far | 12.5 |
+
+Mapping: `16 - position / 2`. Invalid, fractional or out-of-range positions are rejected. The displayed value updates immediately; effective layer changes are debounced by 180 ms. Five rapid test inputs ending at Default produced one applied update, about 183 ms after the final input. One Far update was observed at 232 ms under load.
+
+`BuildingLayer.setMinZoom()` changes the existing extrusion's zoom range and refreshes the existing viewport source. It uses [MapLibre's layer zoom-range API](https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/#setlayerzoomrange), **not the map camera's minimum zoom**. Cache, checksums, three fetch workers, 64-chunk / 12 MB unified active-selection budget, revision guards and abort behaviour remain. No footprints, heights or geographic clipping rules changed. Existing limited-detail disclosure remains at Far.
+
+`BuildingCatalogueSession.setMinZoom()` retains the latest value during pending manifest requests and hide/show transitions. Its layer factory receives the current threshold as a third argument. Existing handles expose the setter without replacing the layer. HDB creation and existing HDB extrusions use the same effective threshold.
+
+The slider and applied threshold live in the persistent SingaporeMap component, separate from question, plotting and execution state. A fresh application load defaults to 14.5. Plot Tools, Map Layers, question edits, completed runs and Map/Graph/Report navigation do not reset it. No local storage or new persistence infrastructure was introduced. The debounce timer is cleared on cleanup, and disposed layer/session setters cannot revive rendering.
+
+### Actual browser acceptance
+
+Real local map assets and the existing network-blocked inference preload were used on owned loopback port 3155. No paid requests occurred.
+
+- At fixed zoom 13.5: Default loaded zero unified features; Far loaded 12,610 source footprints and rendered 9,082 distinct IDs in the sampled frame; Near cleared them to zero. The camera stayed at 13.5 throughout. Near rendered buildings again at zoom 16.1 (1,274 rendered rows in the sample).
+- The same MapLibre object, canvas and unified source survived threshold changes. The camera's minimum zoom remained 9. Threshold edits changed neither geometry nor height properties; focused tests compare original data and paint settings.
+- HDB at fixed zoom 13.5 rendered zero rows at Default, 1,825 at Far, and zero at Near. Its effective threshold matched the hidden unified layer in all three cases.
+- A point survived slider changes and a full mocked exploration: one mock planning call plus eight mock action calls completed. Question, point, completed result and Far value survived Map → Knowledge Graph → Report → Map. Navigation and later render-distance changes left the mock ledger at nine calls; this is not live-provider acceptance evidence.
+- Mouse panning and Plan/3D switching remained functional (pitch 0° / 48°).
+- 1920×1080, 1440×900, 1024×900 and 390×844 all had zero scale elements and no horizontal document overflow. Closed layers/footer gap and open toolbar/footer + layers/toolbar gaps were approximately 10 px. Toolbar heights changed from about 90 px to 135 px when wrapped at 1024; mobile used the existing horizontally scrollable plotting row. Controls did not overlap. Fresh final-build checks recorded no console/page errors and one canvas.
+
+A 3.06-second in-page Far-loading sample reached ready state, recording 49 timer samples, a maximum interval of 348 ms, three long tasks and a longest task of 327 ms. Brief loading hitches remain; this short observation establishes neither sustained FPS nor a guarantee for low-end hardware. No extra background rendering loop or unbounded Far loading was added.
+
+Visually inspected ignored local screenshots: `tmp/render-distance/far-z13.5.png`, `near-z13.5.png`, `tools-{1920,1440,1024,390}.png`, and final-build `final-{1920,1440,1024,390}.png`. They remain local review artifacts and are not staged or published.
+
+### Validation and file inventory
+
+**685 Node tests passed**, zero failures, including 38 focused building/session/layout/source/slider checks. New tests first failed before implementation and now cover mapping/default, invalid positions, in-place source/layer updates, unchanged camera/data/paint, cached restoration, delayed-load rejection and pending-manifest threshold retention. Updated layout tests remove all scale assumptions; SSR checks the accessible default slider. Application TypeScript, strict affected-module/test TypeScript, production build and `git diff --check` passed.
+
+Numerical model code was not changed; six model CLIs and GIS were not rerun for this display-only adjustment. The previously documented missing-Shapely limitation is unchanged; no GIS pass is claimed.
+
+New files: `components/render-distance-control.tsx`, `lib/contracts/tests/render-distance.test.ts`.
+
+Modified files: `components/singapore-map.tsx`, `components/map-control-layout.ts`, `components/map-first.css`, `lib/buildings/display-policy.ts`, `lib/buildings/layer.ts`, `lib/buildings/session.ts`, `lib/contracts/tests/building-layer.test.ts`, `lib/contracts/tests/building-session.test.ts`, `lib/contracts/tests/map-control-layout.test.ts`, `lib/contracts/tests/map-surface-ui.test.ts`, and this document.
+
+Rebuild and use the same sequential commands/mock server procedure above. Environment and unified-manifest checksums remain unchanged. No inference semantics, simulation formulas, Graph/Report implementation, raw datasets, licences, dependencies or secondary directory were modified. No Git staging, commit, push or deployment occurred.

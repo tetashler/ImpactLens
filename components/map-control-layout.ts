@@ -2,13 +2,12 @@ type MapControlMeasurements={
   panelBottom:number;
   frameTop:number;
   frameBottom:number;
-  scaleTop?:number;
   toolbarHeight:number;
   topControlsBottom:number;
 };
 
-export function mapControlLayout({panelBottom,frameTop,frameBottom,scaleTop,toolbarHeight,topControlsBottom}:MapControlMeasurements){
-  const clearance=Math.max(10,scaleTop===undefined?0:frameBottom-scaleTop+10);
+export function mapControlLayout({panelBottom,frameTop,frameBottom,toolbarHeight,topControlsBottom}:MapControlMeasurements){
+  const clearance=10;
   const layersBottom=clearance+(toolbarHeight>0?toolbarHeight+10:0);
   return {
     toolbarBottom:Math.max(0,panelBottom-frameBottom)+clearance,
@@ -30,10 +29,9 @@ export function observeMapControlLayout(panel:HTMLElement){
     const frame=panel.querySelector<HTMLElement>('.map-frame');
     if(!frame)return;
     const toolbar=panel.querySelector<HTMLElement>('#map-plot-controls');
-    const scale=frame.querySelector<HTMLElement>('.maplibregl-ctrl-scale');
     const topControls=frame.querySelector<HTMLElement>('.map-toolbar');
     const credits=panel.querySelector<HTMLElement>('.building-credit-strip');
-    const elements=new Set<Element>([panel,frame,...[toolbar,scale,topControls,credits].filter((element):element is HTMLElement=>!!element)]);
+    const elements=new Set<Element>([panel,frame,...[toolbar,topControls,credits].filter((element):element is HTMLElement=>!!element)]);
     for(const element of observed)if(!elements.has(element)){resize.unobserve(element);observed.delete(element);}
     for(const element of elements)if(!observed.has(element)){resize.observe(element);observed.add(element);}
     const frameBounds=frame.getBoundingClientRect();
@@ -41,7 +39,6 @@ export function observeMapControlLayout(panel:HTMLElement){
       panelBottom:panel.getBoundingClientRect().bottom,
       frameTop:frameBounds.top,
       frameBottom:frameBounds.bottom,
-      scaleTop:scale?.getBoundingClientRect().top,
       toolbarHeight:toolbar?.getBoundingClientRect().height??0,
       topControlsBottom:topControls?.getBoundingClientRect().bottom??frameBounds.top,
     });

@@ -6,13 +6,14 @@ import type { BuildingStatus } from '../../buildings/layer.ts';
 const source=(id:string)=>({id,datasetId:id,title:id,publisher:id,url:'https://data.gov.sg/',licenceUrl:'https://data.gov.sg/open-data-licence',referenceDate:'2026',accessedDate:'2026-10-28',rawSha256:'a'.repeat(64),attribution:`${id} source`});
 const manifest={version:1,source:source('unified'),sources:['hdb','ura','overture'].map(source),distribution:'local-review-only',featureCount:0,minZoom:14,chunks:[],heightPolicy:'Mixed source and illustrative heights'};
 function setup(fetcher:typeof fetch=async()=>Response.json(manifest),isCurrent=()=>true,hostname='127.0.0.1'){
-  const statuses:BuildingStatus[]=[],visibility:boolean[]=[],layers:{disposed:boolean}[]=[];
+  const statuses:BuildingStatus[]=[],visibility:boolean[]=[],layers:{disposed:boolean}[]=[],initialZooms:number[]=[],zoomChanges:number[]=[];
   let refreshes=0;
-  const session=new BuildingCatalogueSession({fetcher,isCurrent,hostname,onStatus:s=>statuses.push(s),createLayer:(_manifest,onStatus)=>{
+  const session=new BuildingCatalogueSession({fetcher,isCurrent,hostname,onStatus:s=>statuses.push(s),createLayer:(_manifest,onStatus,minZoom)=>{
+    initialZooms.push(minZoom);
     const layer={disposed:false};layers.push(layer);
-    return {setVisible(v){visibility.push(v);onStatus({state:v?'ready':'hidden',features:0,chunks:0,message:'Fixture'});},async refresh(){refreshes++;},dispose(){layer.disposed=true;onStatus({state:'disposed',features:0,chunks:0,message:'Fixture'});}};
+    return {async setMinZoom(value){zoomChanges.push(value);},setVisible(v){visibility.push(v);onStatus({state:v?'ready':'hidden',features:0,chunks:0,message:'Fixture'});},async refresh(){refreshes++;},dispose(){layer.disposed=true;onStatus({state:'disposed',features:0,chunks:0,message:'Fixture'});}};
   }});
-  return {session,statuses,visibility,layers,refreshes:()=>refreshes};
+  return {session,statuses,visibility,layers,initialZooms,zoomChanges,refreshes:()=>refreshes};
 }
 test('one catalogue layer survives hide/show and retry without duplicate registration',async()=>{
   let calls=0;const s=setup(async()=>{calls++;return Response.json(manifest);});
@@ -52,4 +53,11 @@ test('non-loopback preview is rejected before fetching any internal assets',asyn
 });
 test('disposed layer status callbacks cannot revive React-facing state',async()=>{
   const s=setup();await s.session.setVisible(true);const count=s.statuses.length;s.session.dispose();assert.equal(s.statuses.length,count);
+});
+
+test('latest render distance survives a pending manifest and hide/show without replacing its layer',async()=>{
+ let release!:(r:Response)=>void,calls=0;const s=setup(async()=>{calls++;return new Promise(r=>{release=r;});});
+ const pending=s.session.setVisible(true);await s.session.setMinZoom(12.5);release(Response.json(manifest));await pending;
+ assert.deepEqual(s.initialZooms,[12.5]);await s.session.setMinZoom(16);await s.session.setMinZoom(16);await s.session.setVisible(false);await s.session.setVisible(true);
+ assert.equal(calls,1);assert.equal(s.layers.length,1);assert.deepEqual(s.zoomChanges,[16]);s.session.dispose();await s.session.setMinZoom(14.5);assert.deepEqual(s.zoomChanges,[16]);
 });

@@ -1,9 +1,11 @@
 import { parseBuildingManifest, type BuildingManifest } from './contract.ts';
 import type { BuildingStatus } from './layer.ts';
+import {BUILDING_DISPLAY_LIMITS,validateBuildingDisplayZoom} from './display-policy.ts';
 
-export interface BuildingHandle { setVisible(visible:boolean):void; refresh():Promise<void>; dispose():void }
+export interface BuildingHandle { setVisible(visible:boolean):void; setMinZoom(minZoom:number):Promise<void>; refresh():Promise<void>; dispose():void }
 interface Options {
-  createLayer:(manifest:BuildingManifest,onStatus:(status:BuildingStatus)=>void)=>BuildingHandle;
+  createLayer:(manifest:BuildingManifest,onStatus:(status:BuildingStatus)=>void,minZoom:number)=>BuildingHandle;
+  minZoom?:number;
   onStatus?:(status:BuildingStatus)=>void;
   onManifest?:(manifest:BuildingManifest)=>void;
   fetcher?:typeof fetch;
@@ -15,9 +17,15 @@ export class BuildingCatalogueSession {
   private visible=false;private disposed=false;private revision=0;
   private controller?:AbortController;private pending?:Promise<void>;private layer?:BuildingHandle;
   private options:Options;
-  constructor(options:Options){this.options=options;}
+  private minZoom:number;
+  constructor(options:Options){this.options=options;this.minZoom=options.minZoom??BUILDING_DISPLAY_LIMITS.minZoom;validateBuildingDisplayZoom(this.minZoom);}
   private current(){return !this.disposed&&(this.options.isCurrent?.()??true);}
   private emit(status:BuildingStatus){if(this.current())this.options.onStatus?.(status);}
+  setMinZoom(minZoom:number):Promise<void>{
+    if(!this.current())return Promise.resolve();validateBuildingDisplayZoom(minZoom);
+    if(this.minZoom===minZoom)return Promise.resolve();this.minZoom=minZoom;
+    return this.layer?.setMinZoom(minZoom)??Promise.resolve();
+  }
   setVisible(visible:boolean):Promise<void>{
     if(!this.current())return Promise.resolve();this.visible=visible;
     if(!visible){this.revision++;this.controller?.abort();this.pending=undefined;this.layer?.setVisible(false);this.emit({state:'hidden',features:0,chunks:0,message:'3D buildings are off.'});return Promise.resolve();}
@@ -45,7 +53,7 @@ export class BuildingCatalogueSession {
         const handle=this.options.createLayer(manifest,status=>{
           if(!this.current()||status.state==='disposed'||(owned&&this.layer!==owned)||(!this.visible&&status.state!=='hidden'))return;
           this.emit(status);
-        });
+        },this.minZoom);
         owned=handle;this.layer=handle;this.options.onManifest?.(manifest);handle.setVisible(this.visible);
       }catch{
         if(accepts())this.emit({state:'error',features:0,chunks:0,message:'Unified buildings unavailable. Retry or select Existing HDB; map tools remain usable.'});

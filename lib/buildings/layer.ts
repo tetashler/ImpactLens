@@ -1,4 +1,4 @@
-import {selectBuildingChunks} from './display-policy.ts';
+import {selectBuildingChunks,validateBuildingDisplayZoom} from './display-policy.ts';
 import type { Map as LibreMap, GeoJSONSource, FillExtrusionLayerSpecification } from 'maplibre-gl';
 import { parseBuildingManifest,validateBuilding,intersects,geometryBounds,ensure,type BuildingManifest,type BuildingCollection,type BuildingChunk,type Bounds } from './contract.ts';
 export interface BuildingStatus {state:'waiting-for-map'|'loading'|'ready'|'hidden'|'overview'|'error'|'disposed';features:number;chunks:number;message:string;limited?:boolean;candidateChunks?:number}
@@ -17,7 +17,7 @@ export class BuildingLayer {
   constructor(map:LibreMap,manifest:BuildingManifest,options:BuildingLayerOptions={}){
     this.map=map;this.manifest=parseBuildingManifest(manifest);this.options=options;this.minZoom=options.minZoom??this.manifest.minZoom;
     // Preserve legacy display overrides; a stricter camera gate may exceed preparation metadata.
-    ensure(Number.isFinite(this.minZoom)&&this.minZoom>=12.5&&this.minZoom<=20,'Invalid building display zoom');
+    validateBuildingDisplayZoom(this.minZoom);
     // A technical preview guard, not a legal clearance for public localhost demos.
     if(this.manifest.distribution==='local-review-only'&&typeof location!=='undefined')ensure(['localhost','127.0.0.1','[::1]'].includes(location.hostname),'Combined building licence review required before public use');
     ensure(!map.getSource(SOURCE)&&!map.getLayer(LAYER),'A building adapter is already registered');
@@ -69,6 +69,12 @@ export class BuildingLayer {
       const message=selection.limited?`Display budget: ${chunks.length} of ${selection.candidateChunks} viewport chunks selected; zoom in for detail. Coverage is incomplete.${failed?' Some selected chunks are unavailable.':''}`:failed?'Some building chunks are unavailable; coverage is incomplete.':undefined;
       this.status(failed?'error':'ready',data.features.length,chunks.length,message,{limited:selection.limited,candidateChunks:selection.candidateChunks});
     }catch{if(!this.disposed&&!signal.aborted)this.status('error',0,0,'Building layer unavailable; other map tools remain usable.');}
+  }
+  setMinZoom(minZoom:number):Promise<void> {
+    if(this.disposed)return Promise.resolve();validateBuildingDisplayZoom(minZoom);
+    if(this.minZoom===minZoom)return Promise.resolve();this.minZoom=minZoom;
+    if(this.map.getLayer(LAYER))this.map.setLayerZoomRange(LAYER,minZoom,this.map.getLayer(LAYER)!.maxzoom??24);
+    return this.refresh();
   }
   setVisible(visible:boolean):void {if(this.disposed)return;this.visible=visible;this.abort?.abort();if(this.map.getLayer(LAYER))this.map.setLayoutProperty(LAYER,'visibility',visible?'visible':'none');void this.refresh();}
   dispose():void {if(this.disposed)return;this.disposed=true;this.revision++;this.abort?.abort();this.map.off('moveend',this.changed);this.map.off('load',this.changed);this.map.off('style.load',this.changed);this.map.off('idle',this.readyChanged);this.cache.clear();this.cachedBytes=0;if(this.owned){if(this.map.getLayer(LAYER))this.map.removeLayer(LAYER);if(this.map.getSource(SOURCE))this.map.removeSource(SOURCE);}this.status('disposed');}

@@ -36,7 +36,14 @@
 .native-model-tools p { margin:10px 0; }
 .workspace-shell.scenario-experience.general-experience.map-first .workspace-grid>.editor-panel:not([hidden]),.workspace-shell.scenario-experience.general-experience.map-first .workspace-grid>.results-panel:not([hidden]) { position:absolute; z-index:6; top:12px; bottom:12px; left:12px; right:auto; width:min(320px,calc(100% - var(--composer-width) - 30px)); height:auto; max-height:calc(100% - 24px); overflow:auto; border:1px solid #39515c; border-radius:8px; }
 .workspace-shell.scenario-experience.general-experience.map-first .app-footer { display:none; }
-.workspace-shell.scenario-experience.general-experience.map-first .map-toolbar { left:14px; top:14px; }
+.workspace-shell.scenario-experience.general-experience.map-first .map-toolbar { left:14px; top:14px; max-width:calc(100% - 28px); flex-wrap:wrap; align-items:stretch; }
+.render-distance-control { display:flex; flex-direction:column; justify-content:center; gap:1px; flex:0 1 190px; min-width:170px; width:190px; padding:5px 9px; box-sizing:border-box; color:#d2e4e7; border-left:1px solid #38525d; }
+.render-distance-heading { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:10px; line-height:16px; }
+.render-distance-value { color:#9edace; font-size:10px; }
+.render-distance-track { display:flex; align-items:center; gap:7px; color:#9fb6be; font-size:9px; }
+.render-distance-track input { width:100%; min-width:0; height:26px; margin:0; padding:0; border:0; accent-color:#9edace; background:transparent; cursor:pointer; touch-action:pan-y; }
+.render-distance-track input:focus-visible { outline:2px solid #9edace; outline-offset:2px; }
+.render-distance-control:has(input:disabled) { opacity:.5; }
 .workspace-shell.scenario-experience.general-experience.map-first .map-frame { --building-panel-bottom:var(--map-layers-bottom,10px); }
 .workspace-shell.scenario-experience.general-experience.map-first .map-layers { left:14px; top:auto; bottom:var(--map-layers-bottom,10px); max-height:var(--map-layers-max-height,calc(100% - 70px)); box-sizing:border-box; overflow:auto; }
 .workspace-shell.scenario-experience.general-experience.map-first .map-layers>div { max-height:none; overflow:visible; }
@@ -61,7 +68,7 @@
  .map-scenario-panel textarea { min-height:105px; font-size:16px; }
  .map-exploration-status { margin-top:16px; }
  .map-scenario-panel details { margin-top:16px; }
- .workspace-shell.scenario-experience.general-experience.map-first .map-toolbar { left:10px; top:10px; }
+ .workspace-shell.scenario-experience.general-experience.map-first .map-toolbar { left:10px; top:10px; max-width:calc(100% - 20px); }
  .workspace-shell.scenario-experience.general-experience.map-first .map-layers { left:10px; }
  .workspace-shell.scenario-experience.general-experience.map-first #map-plot-controls { left:8px; right:8px; max-height:55%; }
  .workspace-shell.scenario-experience.general-experience.map-first .plot-toolbar { flex-wrap:nowrap; overflow-x:auto; }

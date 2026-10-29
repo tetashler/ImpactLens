@@ -12,6 +12,7 @@ const manifest={version:1 as const,source,featureCount:1,minZoom:14,chunks:[{id:
 function mock(){
   const sources=new Map<string,any>(),layers=new Map<string,any>(),events=new Map<string,Set<()=>void>>();let zoom=16,ready=true;
   const map={isStyleLoaded:()=>ready,getZoom:()=>zoom,getBounds:()=>({getWest:()=>103.79,getSouth:()=>1.29,getEast:()=>103.81,getNorth:()=>1.31}),getSource:(id:string)=>sources.get(id),getLayer:(id:string)=>layers.get(id),addSource:(id:string,s:any)=>sources.set(id,{...s,setData(d:any){this.data=d;}}),addLayer:(l:any)=>layers.set(l.id,l),removeLayer:(id:string)=>layers.delete(id),removeSource:(id:string)=>sources.delete(id),setLayoutProperty:(id:string,_k:string,v:string)=>layers.get(id).layout.visibility=v,on:(e:string,f:()=>void)=>{if(!events.has(e))events.set(e,new Set());events.get(e)!.add(f);},off:(e:string,f:()=>void)=>events.get(e)?.delete(f)};
+  Object.assign(map,{setLayerZoomRange:(id:string,minzoom:number,maxzoom:number)=>Object.assign(layers.get(id),{minzoom,maxzoom})});
   return {map:map as unknown as LibreMap,sources,layers,events,setZoom:(z:number)=>{zoom=z;},setReady:(v:boolean)=>{ready=v;}};
 }
 test('layer registers once, uses attributed height properties and cleans only owned resources',async()=>{
@@ -105,4 +106,22 @@ test('application detail cutoff hides overview, restores original geometry at 14
  m.setZoom(14.5);await layer.refresh();assert.deepEqual(m.sources.get('sg-buildings').data.features,data.features);assert.equal(statuses.at(-1),'ready');
  m.setZoom(14.49);await layer.refresh();assert.equal(m.sources.get('sg-buildings').data.features.length,0);
  m.setZoom(15);await layer.refresh();assert.deepEqual(m.sources.get('sg-buildings').data.features,data.features);assert.equal(calls,1);assert.equal(m.sources.size,1);assert.equal(m.layers.size,1);layer.dispose();
+});
+
+test('changing render distance updates the same layer and source without moving the camera or changing geometry',async()=>{
+ const m=mock();m.setZoom(14);let calls=0;const layer=new BuildingLayer(m.map,manifest as any,{minZoom:14.5,fetcher:async()=>{calls++;return new Response(text);}});
+ await layer.refresh();const originalSource=m.sources.get('sg-buildings'),originalLayer=m.layers.get('sg-buildings-extrusion'),paint=structuredClone(originalLayer.paint);
+ await layer.setMinZoom(12.5);assert.deepEqual(originalSource.data.features,data.features);assert.equal(originalLayer.minzoom,12.5);
+ await layer.setMinZoom(16);assert.equal(originalSource.data.features.length,0);assert.equal(originalLayer.minzoom,16);
+ await layer.setMinZoom(12.5);assert.deepEqual(originalSource.data.features,data.features);assert.equal(calls,1);assert.equal(m.map.getZoom(),14);
+ assert.equal(m.sources.get('sg-buildings'),originalSource);assert.equal(m.layers.get('sg-buildings-extrusion'),originalLayer);assert.deepEqual(originalLayer.paint,paint);layer.dispose();
+});
+
+test('a rapid stricter threshold rejects a delayed old building load and disposed updates do nothing',async()=>{
+ const m=mock();m.setZoom(14);let release!:(r:Response)=>void;let aborted=false;const states:string[]=[];
+ const layer=new BuildingLayer(m.map,manifest as any,{minZoom:14.5,fetcher:(_url,init)=>{init?.signal?.addEventListener('abort',()=>aborted=true);return new Promise(r=>{release=r;});},onStatus:s=>states.push(s.state)});
+ await layer.refresh();const old=layer.setMinZoom(12.5);await Promise.resolve();await layer.setMinZoom(16);release(new Response(text));await old;
+ assert.equal(aborted,true);assert.equal(m.sources.get('sg-buildings').data.features.length,0);assert.equal(states.at(-1),'overview');
+ for(const value of [NaN,Infinity,12.49,20.01])assert.throws(()=>layer.setMinZoom(value));
+ layer.dispose();const count=states.length;await layer.setMinZoom(12.5);assert.equal(states.length,count);assert.equal(m.sources.size,0);
 });

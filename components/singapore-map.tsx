@@ -7,7 +7,8 @@ import type { FeatureCollection, Feature, Geometry } from 'geojson';
 import type { NetworkCatalog, CompactComparison } from '../lib/map-contract';
 import type { EditorDraft } from '../lib/editor';
 import { CitizenLayer, type CitizenLayerOptions } from '../lib/citizens/layer';
-import {BUILDING_DISPLAY_LIMITS} from '../lib/buildings/display-policy';
+import {BUILDING_DISPLAY_LIMITS,RENDER_DISTANCE,renderDistanceMinZoom} from '../lib/buildings/display-policy';
+import RenderDistanceControl from './render-distance-control';
 import {syncCitizenPath} from '../lib/citizens/path-overlay';
 import { AacMapLayer,type AacMapOptions } from '../lib/eldercare/map-layer';
 import { PlotMapLayer,type PlotMapOptions } from '../lib/plots/map-layer';
@@ -52,6 +53,9 @@ export default function SingaporeMap(props: Props) {
   const [ready, setReady] = useState(false), [fatal, setFatal] = useState(false);
   const [streets, setStreets] = useState(true), [buildings, setBuildings] = useState(true), [notice, setNotice] = useState('Loading local geography…');
   const [pitch, setPitch] = useState(true);
+  const [renderDistance,setRenderDistance]=useState<number>(RENDER_DISTANCE.defaultValue);
+  const [buildingMinZoom,setBuildingMinZoom]=useState<number>(BUILDING_DISPLAY_LIMITS.minZoom);
+  useEffect(()=>{const timer=setTimeout(()=>setBuildingMinZoom(renderDistanceMinZoom(renderDistance)),RENDER_DISTANCE.debounceMs);return()=>clearTimeout(timer);},[renderDistance]);
   const [neighbourhood, setNeighbourhood] = useState(false);
   const [hdbStatus,setHdbStatus]=useState('Zoom in for limited HDB footprints · illustrative 12 m height');
   const [buildingView,setBuildingView]=useState<BuildingView>('unified'),[buildingManifest,setBuildingManifest]=useState<BuildingManifest|null>(null);
@@ -99,7 +103,6 @@ export default function SingaporeMap(props: Props) {
       mapRef.current = map;
       observer = new ResizeObserver(() => {map.resize();container.current?.parentElement?.style.setProperty('--geographic-canvas-height',`${container.current.clientHeight}px`);});
       observer.observe(container.current);
-      map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
       loadTimer = setTimeout(() => { setFatal(true); setNotice('Map could not initialise. Use the geographic plan view and station editor.'); }, 20000);
       map.on('load', () => {
         clearTimeout(loadTimer);
@@ -224,11 +227,16 @@ export default function SingaporeMap(props: Props) {
   useEffect(()=>{
     const map=mapRef.current;if(!ready||!map||loadedMap.current!==map)return;
     let current=true;const isCurrent=()=>current&&mapRef.current===map&&loadedMap.current===map;
-    const session=new BuildingCatalogueSession({isCurrent,onStatus:setUnifiedStatus,onManifest:setBuildingManifest,
-      createLayer:(manifest,onStatus)=>new BuildingLayer(map,manifest,{minZoom:BUILDING_DISPLAY_LIMITS.minZoom,beforeId:'network-lines',onStatus})});
+    const session=new BuildingCatalogueSession({isCurrent,minZoom:buildingMinZoom,onStatus:setUnifiedStatus,onManifest:setBuildingManifest,
+      createLayer:(manifest,onStatus,minZoom)=>new BuildingLayer(map,manifest,{minZoom,beforeId:'network-lines',onStatus})});
     buildingSession.current=session;void session.setVisible(buildingChoice.current.enabled&&buildingChoice.current.view==='unified');
     return()=>{current=false;if(buildingSession.current===session)buildingSession.current=null;session.dispose();};
   },[ready]);
+  useEffect(()=>{
+    const map=mapRef.current;if(!ready||!map||loadedMap.current!==map)return;
+    void buildingSession.current?.setMinZoom(buildingMinZoom);
+    const hdb=map.getLayer('hdb-buildings');if(hdb)map.setLayerZoomRange('hdb-buildings',buildingMinZoom,hdb.maxzoom??24);
+  },[buildingMinZoom,ready]);
   useEffect(()=>{
     const map=mapRef.current;if(!ready||!map||loadedMap.current!==map)return;
     if(buildingView==='unified'&&map.getLayer('hdb-buildings'))map.setLayoutProperty('hdb-buildings','visibility','none');
@@ -240,7 +248,7 @@ export default function SingaporeMap(props: Props) {
     if (visible && neighbourhood && !map.getSource('hdb')) {
       setHdbStatus('Loading limited HDB footprints…');
       map.addSource('hdb', { type: 'geojson', data: '/geography/buildings.geojson',attribution:`HDB supplied footprints · <a href="${HDB_SOURCE_URL}">Source</a> · <a href="${SODL_URL}">Singapore Open Data Licence</a>` });
-      map.addLayer({ id: 'hdb-buildings', type: 'fill-extrusion', source: 'hdb', minzoom: BUILDING_DISPLAY_LIMITS.minZoom,
+      map.addLayer({ id: 'hdb-buildings', type: 'fill-extrusion', source: 'hdb', minzoom: buildingMinZoom,
         paint: { 'fill-extrusion-color': '#69858b', 'fill-extrusion-height': 12, 'fill-extrusion-base': 0, 'fill-extrusion-opacity': 0.72 } }, 'network-lines');
     }
     if (map.getLayer('hdb-buildings')) map.setLayoutProperty('hdb-buildings', 'visibility', visible ? 'visible' : 'none');
@@ -255,6 +263,7 @@ export default function SingaporeMap(props: Props) {
     <div className="map-toolbar">
       <button onClick={() => { mapRef.current?.easeTo({ pitch: pitch ? 0 : 48, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 500 }); setPitch(!pitch); }} aria-pressed={pitch}>▱ {pitch ? '3D view' : 'Plan view'}</button>
       <button onClick={() => {if(mapRef.current)fitSingapore(mapRef.current,matchMedia('(prefers-reduced-motion: reduce)').matches);}}>Fit Singapore</button>
+      <RenderDistanceControl value={renderDistance} onChange={setRenderDistance} disabled={fatal}/>
       {props.exploring&&<button onClick={()=>mapRef.current?.easeTo({...LANDING_CAMERA,duration:matchMedia('(prefers-reduced-motion: reduce)').matches?0:650})}>Reset view</button>}
       {!props.exploring&&props.aac.active&&<><button onClick={props.aac.onFocus}>Focus AAC area</button>{!props.plotting?.active&&<button onClick={props.aac.placing?props.aac.onCancel:props.aac.onStartPlacement}>{props.aac.placing?'Cancel placement':'Place centre'}</button>}</>}
     </div>

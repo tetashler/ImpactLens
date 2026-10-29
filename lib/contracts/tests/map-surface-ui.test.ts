@@ -18,6 +18,9 @@ test('map surface keeps camera and layer actions without pedestrian controls or 
     assert.match(html,/>Fit Singapore<\/button>/);
     assert.match(html,/3D view<\/button>/);
     assert.match(html,/<summary>Map layers<\/summary>/);
+    assert.match(html,/Render Distance/);
+    assert.match(html,/<input[^>]*type="range"[^>]*value="3"/);
+    assert.match(html,/aria-valuetext="Default, 4 of 8"/);
     assert.doesNotMatch(html,/Focus pedestrians|Illustrative citizens|>Citizens<|citizen animation|map-top-card/);
   }
 });
