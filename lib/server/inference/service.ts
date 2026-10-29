@@ -9,7 +9,7 @@ export const LIVE_LIMITS={agents:4,rounds:2,calls:8,outputTokens:800,reservedTok
 const state=globalThis as typeof globalThis&{__liveInferenceAttemptsV1?:Map<string,number>};
 const attempts=state.__liveInferenceAttemptsV1??=new Map<string,number>();
 type Transport=ReturnType<typeof createDeepseekTransport>;
-export interface LiveDependencies {enabled?:boolean;key?:string;transport?:Transport;reservedTokens?:number}
+export interface LiveDependencies {enabled?:boolean;key?:string;transport?:Transport;reservedTokens?:number;initialCostUsd?:number|null}
 export function inferenceStatus(){return {version:1,model:MODEL,gateway:'OpenRouter',provider:PROVIDER,fallback:false,connection:process.env.OPENROUTER_API_KEY?.trim()?'configured':'not-configured',enabled:process.env.STAKEHOLDER_LIVE_ENABLED==='true',servingIdentityVerified:false,limits:LIVE_LIMITS};}
 export async function executeLiveRun(value:unknown,attemptId:string,overrides:LiveDependencies={},signal?:AbortSignal){
  const input=parseStakeholderInput(value);
@@ -29,7 +29,7 @@ export async function executeLiveRun(value:unknown,attemptId:string,overrides:Li
  const transport=overrides.transport??createDeepseekTransport({key,maxOutputTokens:LIVE_LIMITS.outputTokens,onRecord:record=>records.push(record)});
  const run=await runStakeholderSimulation(input,{attemptId,signal:controller.signal,provider:'openrouter',model:MODEL,generateTurn:async(context,s)=>{
    const reserve=new TextEncoder().encode(encodeTurnContext(context)).byteLength+LIVE_LIMITS.outputTokens+2000;
-   if(calls>=8||reservedTokens+reserve>(overrides.reservedTokens??LIVE_LIMITS.reservedTokens)||records.reduce((n,r)=>n+(r.costUsd??0),0)>=LIVE_LIMITS.costUsd)throw new AiError('Live run budget exhausted.','STAKEHOLDER_CALL_BUDGET',429);
+   if(calls>=8||reservedTokens+reserve>(overrides.reservedTokens??LIVE_LIMITS.reservedTokens)||(overrides.initialCostUsd??0)+records.reduce((n,r)=>n+(r.costUsd??0),0)>=LIVE_LIMITS.costUsd)throw new AiError('Live run budget exhausted.','STAKEHOLDER_CALL_BUDGET',429);
    reservedTokens+=reserve;calls++;
    try{const result=await transport.generate(context,s);if(overrides.transport&&transport.records.length===readRecords)records.push(result.record);return result.value;}finally{if(overrides.transport){records.push(...transport.records.slice(readRecords));readRecords=transport.records.length;}}
  }});
@@ -43,7 +43,7 @@ export async function handleLiveBody(value:unknown,signal?:AbortSignal,overrides
  try{
  const b=value as Record<string,unknown>;
  if(!b||Object.keys(b).sort().join(',')!=='attemptId,input,version'||b.version!==2||typeof b.attemptId!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/.test(b.attemptId))return json({error:'Supply version 2, attemptId and input.',code:'AI_INVALID_REQUEST'},400);
- let result;try{parseStakeholderInput(b.input);}catch{return json({error:'Invalid live input.',code:'AI_INVALID_REQUEST'},400);}
+ let result;try{const legacy=parseStakeholderInput(b.input);if(legacy.version!==1)throw new Error('Use the generated planning endpoint.');}catch{return json({error:'Invalid live input.',code:'AI_INVALID_REQUEST'},400);}
  result=await executeLiveRun(b.input,b.attemptId,overrides,signal);
  const response={version:2,attemptId:b.attemptId,...result};if(new TextEncoder().encode(JSON.stringify(response)).byteLength>524288)return json({error:'Result exceeds response budget.',code:'AI_RESPONSE_SIZE'},413);
  return json(response);

@@ -13,18 +13,18 @@ class RequestError extends Error {readonly status:number;readonly code:string;co
 const state=globalThis as typeof globalThis&{__stakeholderPendingV1?:Set<string>};
 const pending=state.__stakeholderPendingV1??=new Set<string>();
 const json=(value:unknown,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'no-store'}});
-async function readBody(request:Request):Promise<unknown>{
+export async function readBody(request:Request,signal:AbortSignal=request.signal):Promise<unknown>{
   const length=request.headers.get('content-length');
   if(length!==null){if(!/^\d+$/.test(length))throw new RequestError('Invalid content length.',400);if(Number(length)>STAKEHOLDER_API_LIMITS.requestBytes)throw new RequestError('Stakeholder request exceeds 96 KiB.',413);}
   if(!request.body)throw new RequestError('Supply a JSON request.',400);
   const reader=request.body.getReader(),chunks:Uint8Array[]=[];let size=0;
-  const cancel=()=>{void reader.cancel().catch(()=>{});};request.signal.addEventListener('abort',cancel,{once:true});
+  const cancel=()=>{void reader.cancel().catch(()=>{});};signal.addEventListener('abort',cancel,{once:true});
   try{
-    while(true){if(request.signal.aborted)throw new RequestError('Simulation request cancelled.',499,'STAKEHOLDER_CANCELLED');const next=await reader.read();if(next.done)break;size+=next.value.byteLength;if(size>STAKEHOLDER_API_LIMITS.requestBytes){void reader.cancel().catch(()=>{});throw new RequestError('Stakeholder request exceeds 96 KiB.',413);}chunks.push(next.value);}
-    if(request.signal.aborted)throw new RequestError('Simulation request cancelled.',499,'STAKEHOLDER_CANCELLED');
+    while(true){if(signal.aborted)throw new RequestError('Simulation request cancelled.',499,'STAKEHOLDER_CANCELLED');const next=await reader.read();if(next.done)break;size+=next.value.byteLength;if(size>STAKEHOLDER_API_LIMITS.requestBytes){void reader.cancel().catch(()=>{});throw new RequestError('Stakeholder request exceeds 96 KiB.',413);}chunks.push(next.value);}
+    if(signal.aborted)throw new RequestError('Simulation request cancelled.',499,'STAKEHOLDER_CANCELLED');
     const all=new Uint8Array(size);let offset=0;for(const chunk of chunks){all.set(chunk,offset);offset+=chunk.length;}
     try{return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(all));}catch{throw new RequestError('Supply valid UTF-8 JSON.',400);}
-  }finally{request.signal.removeEventListener('abort',cancel);reader.releaseLock();}
+  }finally{signal.removeEventListener('abort',cancel);reader.releaseLock();}
 }
 /** Live calls are deliberately not authorised in the exported route. Tests inject explicit permission and mocks. */
 export async function handleStakeholderRequest(request:Request,overrides:Partial<Dependencies>={}):Promise<Response>{
@@ -40,7 +40,7 @@ export async function handleStakeholderRequest(request:Request,overrides:Partial
     const body=value as Record<string,unknown>;
     if(body.version===2)return handleLiveBody(body,request.signal,overrides.live);
     if(Object.keys(body).length!==3||!['version','attemptId','input'].every(k=>Object.hasOwn(body,k))||body.version!==1||typeof body.attemptId!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/.test(body.attemptId))throw new RequestError('Supply version 1, an attempt identifier and simulation input.',400);
-    let input;try{input=parseStakeholderInput(body.input);}catch{throw new RequestError('Check the bounded scenario, fictional roles, evidence and simulation options.',400);}
+    let input;try{input=parseStakeholderInput(body.input);if(input.version!==1)throw new Error();}catch{throw new RequestError('Check the bounded scenario, fictional roles, evidence and simulation options.',400);}
     if(input.simulationOptions.mode==='llm-assisted'&&!overrides.allowLlm)throw new RequestError('Live LLM execution is not authorised in this prototype. Choose deterministic-demo; no provider call was made.',503,'STAKEHOLDER_LLM_UNAVAILABLE');
     if(pending.has(body.attemptId))throw new RequestError('This simulation attempt is already running.',409,'STAKEHOLDER_DUPLICATE');
     if(pending.size>=STAKEHOLDER_API_LIMITS.concurrentRuns)throw new RequestError('Two stakeholder runs are already executing. Wait and retry.',429,'STAKEHOLDER_BUSY');

@@ -453,9 +453,9 @@ This is a **target schedule**, not a commitment; adjust based on prototype findi
 
 ## 8. Immediate Next Action
 
-Review the uncommitted live-provider repair on main `master` at `e1bcf793df9153bccf343456b849493e6278f510`. Bounded real DeepSeek/DigitalOcean browser runs now complete for import-tax and ASEAN, with actual accepted interactions, graph/report lineage and safe usage diagnostics. See `docs/DEEPSEEK_LIVE_PROVIDER_ACCEPTANCE.md` for exact paths, failures, final acceptance and paid ledger. No Git operation or deployment is authorised.
+Review the uncommitted dynamic scenario-generation slice on main `master`, starting at `e466f16cfdbd630a6ff3037d39ff67b13f5e2fba`. The primary UI now uses AI planning rather than the three-preset gate, with a mock-validated question ? generated roles ? action engine ? graph/report pathway. See `docs/DYNAMIC_SCENARIO_GENERATION.md` for contracts, exact paths, results and limitations. No stage/commit/push or deployment is authorised.
 
-Continue the reliability/rebuild/pitch track after review. Preserve all geographic/scientific/licensing limits: the lab retains historical evidence; live participants are fictional qualitative model output, not validated economic/public-opinion forecasts. No full population trajectory, source-verified world-entity pipeline or public building demonstration is cleared.
+The separately authorised dynamic live acceptance is complete: real workweek and cross-border Malaysia water-export runs each generated four roles and eight accepted actions, with graph/report inspection. See `docs/DYNAMIC_SCENARIO_LIVE_ACCEPTANCE.md`. No further paid check is needed for this acceptance; later tests require their own authorisation. Keep the reliability/rebuild/pitch track and all geographic, scientific and local-review building restrictions. This is not a universal predictive engine or a population-grounded swarm.
 
 
 ## Phase 7H ? Question-first simulation UX (Terminal 1)
@@ -496,3 +496,27 @@ Traced the generic UI rejection through transport, live service, engine and vali
 - [ ] Future world entities, live evidence retrieval, demographic-grounded swarm behaviour and valid economic/diplomatic prediction remain unimplemented/unvalidated. Historical Phase 4 trajectory, AAC unlocated/proxy/capacity and local-review-only building restrictions remain. Full Phase 7 is not complete.
 
 Details: `docs/DEEPSEEK_ACTION_DIAGNOSTICS.md` and `docs/DEEPSEEK_LIVE_PROVIDER_ACCEPTANCE.md`. Leave the entire correction unstaged/uncommitted for user review.
+
+## Dynamic AI scenario generation ? implemented and mock-validated, 29 October 2026
+
+- [x] Primary Start uses one server-only generated plan for arbitrary reasonable questions, without preset-topic matching, mandatory forms or manual experiment saving. Old registered/scripted paths remain explicit compatibility mechanisms.
+- [x] Strict versioned generated-plan manifest; exact user-question/geometry identities, four fictional profiles, connected proposed opportunities, model-proposed assumptions, unknowns and unverified entity suggestions. Stakeholder input v2 binds profiles to this plan; legacy v1 still requires unchanged catalogue roles. Public legacy execution endpoints cannot bypass server planning with client-generated manifests.
+- [x] Existing DeepSeek/OpenRouter/DigitalOcean-only route, no reasoning, serving-identity verification and action validators shared intact. One planner call plus at most eight action completions; original action caps/memory, combined deadline and planning-aware soft cost check. No automatic script or provider fallback.
+- [x] Generic profiles, actual accepted-event lineage, proposed-versus-recorded relationships, source gaps and scoped reports are visible in existing Simulation/Map/Knowledge Graph/Report views. Native MRT/AAC confirmation/formulas stay separate. User-authored polyclinic coordinates remain hypothetical and never invoke an AAC health-access substitute.
+- [x] Mock HTTP and actual production-browser acceptance for workweek, Malaysia water exports and basic income: four different relevant roles, eight accepted events, graph/report. All five requested scenario categories have mocked transport-to-engine/projection tests. Desktop/mobile and three-level graph inspectors work; one map remains. Delayed-response cancellation and A?B?A are guarded.
+- [x] **644 Node tests pass**, including the 618 baseline and 26 new cases; application/strict TypeScript, production build, all six existing model CLIs and whitespace check pass. Optional GIS loader cannot import missing Shapely in main's Python; no GIS algorithm/data changed or dependency installed. The unused secondary worktree was not accessed.
+- [x] Separately authorised real dynamic acceptance: exact DeepSeek/DigitalOcean, one validated plan plus eight genuine actions for both workweek and cross-border Malaysia water exports; UBI planning-only also passed. Full graph/report and four-width browser checks passed. See the live acceptance report for initial semantic/scope failures, corrections and remaining unverified model content.
+- [ ] Verified entity resolution/evidence retrieval and cached numerical-output ingestion into planning remain future adapters. Current new plans use an empty verified evidence registry; actual native numerical results remain separately presented. No population-scale swarm, real individual journeys, economic/health/public-opinion forecast or full Phase 7 completion is claimed. Existing Phase 4 trajectory and building/AAC licensing/proxy/unlocated/capacity limits remain.
+
+Implementation note: `docs/DYNAMIC_SCENARIO_GENERATION.md`. Leave all changes unstaged and uncommitted for review; preserve credentials and raw source bytes.
+
+## Dynamic scenario live follow-up ? 29 October 2026
+
+- [x] Confirmed actual planner structured-output compatibility at the unchanged 3,000-token / 24 KB JSON cap; actions remain 800 tokens, reasoning none, DigitalOcean-only and serving identity verified.
+- [x] Question-first workweek and corrected cross-border Malaysia water-export browser runs each completed four generated roles, two rounds and eight accepted actions. Actual earlier-event references and bounded memories were retained; graphs had 12 and 16 event-reference edges respectively. Source registry remains empty; model entities and dialogue remain unverified/synthetic. UBI passed planning-only after one timeout.
+- [x] Focused generation fixes for affected roles, ID namespaces, unsupported quantities, finite role-reference slots and local-scope contradictions. Later actions receive explicit other-participant IDs. Archived contract interpretation remains compatible; current completed runs survive history inspection while pending work still cancels safely.
+- [x] Final **653 Node tests + two no-network guard tests**, application/strict TypeScript, production build, six model CLIs and whitespace check pass. Four report viewport widths have no horizontal overflow; mobile three-level graph inspectors work. Final archive recovery used explicit mocks and no additional paid request. Optional GIS fails to load missing Shapely in main Python; no GIS pass or dependency installation is claimed.
+- [x] New-task **49 paid attempts**; known reported USD **0.0171181024**, unknown charge reserved USD **0.02**, cumulative conservative accounting **USD 0.0371181024 / 0.50**. Historical ledger/private environment unchanged. No Git staging/commit/push, secondary-directory access or deployment.
+- [ ] Verified entity/evidence resolution, factual/legal validation, population-grounded behaviour, scenario-responsive trajectories and quantitative policy forecasting remain future work. Preserve Phase 4 trajectory, AAC proxy/unlocated/capacity and internal-local-review building restrictions.
+
+Evidence, exact files, safe ledger/screenshot references, reproduced failures and rebuild commands: `docs/DYNAMIC_SCENARIO_LIVE_ACCEPTANCE.md`.

@@ -1,0 +1,3 @@
+import {assumptionsForPlan,rolesForPlan,validateDynamicPlan,type DynamicScenarioPlan} from './plan.ts';
+import {parseStakeholderInput} from '../stakeholder-simulation/contract.ts';
+export async function createDynamicInput(value:DynamicScenarioPlan){const plan=await validateDynamicPlan(value);return parseStakeholderInput({version:2,scenarioIdentity:plan.requestIdentity,experimentId:`planned-${plan.planId.slice(-24)}`,configurationIdentity:plan.planId,question:plan.request.question,assumptions:assumptionsForPlan(plan),horizonYears:plan.draft.horizonYears,stakeholderRoles:rolesForPlan(plan),evidence:null,simulationOptions:{mode:'llm-assisted',rounds:2,seed:'dynamic-plan-v1',memoryEvents:6},scenarioPlan:plan});}

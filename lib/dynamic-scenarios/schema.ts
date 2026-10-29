@@ -1,0 +1,9 @@
+/** Finite JSON Schema for provider generation; runtime validation remains authoritative. */
+const str=(maxLength:number)=>({type:'string',minLength:1,maxLength});
+const enumOf=(values:string[])=>({type:'string',enum:values});
+const obj=(properties:Record<string,unknown>)=>({type:'object',additionalProperties:false,required:Object.keys(properties),properties});
+const arr=(items:unknown,maxItems:number,minItems=0)=>({type:'array',items,minItems,maxItems});
+const id={...str(70),pattern:'^[A-Za-z0-9][A-Za-z0-9._:-]*$'},nullableId={type:['string','null'],maxLength:70},phrases=arr(str(160),2,1);
+// Finite identity slots constrain references without prescribing stakeholder categories.
+const agentId=enumOf(['agent-1','agent-2','agent-3','agent-4']);
+export const dynamicDraftSchema=obj({description:str(400),trigger:str(300),scope:enumOf(['local','cross-border','international','undetermined']),jurisdictions:arr(obj({id,label:str(100)}),8),domains:arr(str(100),6),userConditions:arr(str(300),4),entities:arr(obj({id,name:str(120),kind:enumOf(['government','business','institution','infrastructure','community','industry','country']),jurisdictionId:nullableId,status:enumOf(['unverified-model-suggestion'])}),8),agents:arr(obj({id:agentId,label:str(100),category:str(100),jurisdictionId:nullableId,entityIds:arr(id,3),context:str(220),goals:phrases,incentives:phrases,concerns:phrases,initialPosition:enumOf(['concerned','conditional','information-seeking']),knowledgeLimits:phrases}),4,4),relationships:arr(obj({id,sourceAgentId:agentId,targetAgentId:agentId,opportunity:str(220)}),8,3),assumptions:arr(obj({id,text:str(300)}),6),uncertainties:arr(str(240),8,1),evidenceFindingIds:arr(id,0),spatialRequirement:enumOf(['none','geometry-for-quantitative-model','no-supported-quantitative-model']),unsupportedQuantities:arr(str(160),6,1),horizonYears:{type:'integer',minimum:1,maximum:10},progression:str(240)});

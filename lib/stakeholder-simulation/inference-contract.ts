@@ -43,16 +43,9 @@ export function parseInferenceStatus(value:unknown):InferenceStatusV1 {
  return freezeSnapshot(value) as InferenceStatusV1;
 }
 
-export function parseInferenceDiagnostics(value:unknown,runValue:StakeholderSimulationRunV1):InferenceDiagnosticsV1 {
- bounded(value);assertJsonData(runValue);const run=parseStakeholderRun(runValue),input=liveInput(run.inputSnapshot);
- ensure(run.execution.provider==='openrouter'&&run.execution.model===INFERENCE_MODEL,'Unexpected live execution identity.');
- const diagnostics=object(value,['version','requestedModel','requestedProvider','allowFallbacks','successfulCalls','failedCalls','retries','inputTokens','outputTokens','totalTokens','costUsd','reservedTokens','reservationBasis','durationMs','roundsCompleted','activeAgents','records','limits']);
- ensure(diagnostics.version===1&&diagnostics.requestedModel===INFERENCE_MODEL&&diagnostics.requestedProvider===INFERENCE_PROVIDER&&diagnostics.allowFallbacks===false&&diagnostics.retries===0,'Unexpected inference routing.');limits(diagnostics.limits,true);
- integer(diagnostics.successfulCalls,8);integer(diagnostics.failedCalls,1);integer(diagnostics.reservedTokens,(diagnostics.limits as Limits).reservedTokens);integer(diagnostics.durationMs,130000);integer(diagnostics.roundsCompleted,2);integer(diagnostics.activeAgents,4);
- ensure(diagnostics.activeAgents===input.stakeholderRoles.length&&diagnostics.roundsCompleted===Math.floor(run.events.length/input.stakeholderRoles.length),'Inference progress does not match recorded events.');
- ensure(diagnostics.reservationBasis===RESERVATION_BASIS);ensure(Array.isArray(diagnostics.records)&&diagnostics.records.length<=input.stakeholderRoles.length*input.simulationOptions.rounds,'Too many inference calls.');
- const records=diagnostics.records as unknown[];
- for(const value of records){
+export function parseInferenceCallRecord(value:unknown,outputLimit=1200):InferenceCallRecordV1 {
+ bounded(value,8192);ensure(outputLimit>=1&&outputLimit<=3000);
+
   const required=['requestedModel','requestedProvider','servingModel','servingProvider','identityVerification','generationId','inputTokens','outputTokens','totalTokens','costUsd','status','errorCode','durationMs'];
   const record=object(value,[...required,'termination'],required);
   if(record.termination!==undefined){
@@ -60,7 +53,7 @@ export function parseInferenceDiagnostics(value:unknown,runValue:StakeholderSimu
    if(info.httpStatus!==null){integer(info.httpStatus,599);ensure((info.httpStatus as number)>=100);}
    for(const field of ['finishReason','nativeFinishReason'])ensure(info[field]===null||['stop','length','content_filter','tool_calls','error','other'].includes(info[field] as string));
    if(info.reasoningTokens!==null)integer(info.reasoningTokens,1000000000);
-   integer(info.requestedOutputTokens,1200);ensure((info.requestedOutputTokens as number)>0);
+   integer(info.requestedOutputTokens,outputLimit);ensure((info.requestedOutputTokens as number)>0);
    for(const field of ['jsonValid','actionValid'])ensure(info[field]===null||typeof info[field]==='boolean');
    if(record.status==='accepted')ensure(info.finishReason==='stop'&&info.jsonValid===true&&info.actionValid===true,'Accepted call requires complete validated output.');
   }
@@ -74,7 +67,20 @@ export function parseInferenceDiagnostics(value:unknown,runValue:StakeholderSimu
   else ensure(typeof record.errorCode==='string'&&CALL_ERRORS.has(record.errorCode),'Unexpected inference error code.');
   for(const field of ['inputTokens','outputTokens','totalTokens'] as const)if(record[field]!==null)integer(record[field],field==='totalTokens'?2000000000:1000000000);
   if(record.costUsd!==null)amount(record.costUsd);integer(record.durationMs,130000);
- }
+
+ return freezeSnapshot(value) as InferenceCallRecordV1;
+}
+
+export function parseInferenceDiagnostics(value:unknown,runValue:StakeholderSimulationRunV1):InferenceDiagnosticsV1 {
+ bounded(value);assertJsonData(runValue);const run=parseStakeholderRun(runValue),input=liveInput(run.inputSnapshot);
+ ensure(run.execution.provider==='openrouter'&&run.execution.model===INFERENCE_MODEL,'Unexpected live execution identity.');
+ const diagnostics=object(value,['version','requestedModel','requestedProvider','allowFallbacks','successfulCalls','failedCalls','retries','inputTokens','outputTokens','totalTokens','costUsd','reservedTokens','reservationBasis','durationMs','roundsCompleted','activeAgents','records','limits']);
+ ensure(diagnostics.version===1&&diagnostics.requestedModel===INFERENCE_MODEL&&diagnostics.requestedProvider===INFERENCE_PROVIDER&&diagnostics.allowFallbacks===false&&diagnostics.retries===0,'Unexpected inference routing.');limits(diagnostics.limits,true);
+ integer(diagnostics.successfulCalls,8);integer(diagnostics.failedCalls,1);integer(diagnostics.reservedTokens,(diagnostics.limits as Limits).reservedTokens);integer(diagnostics.durationMs,130000);integer(diagnostics.roundsCompleted,2);integer(diagnostics.activeAgents,4);
+ ensure(diagnostics.activeAgents===input.stakeholderRoles.length&&diagnostics.roundsCompleted===Math.floor(run.events.length/input.stakeholderRoles.length),'Inference progress does not match recorded events.');
+ ensure(diagnostics.reservationBasis===RESERVATION_BASIS);ensure(Array.isArray(diagnostics.records)&&diagnostics.records.length<=input.stakeholderRoles.length*input.simulationOptions.rounds,'Too many inference calls.');
+ const records=diagnostics.records as unknown[];
+ for(const value of records)parseInferenceCallRecord(value);
  const typedRecords=records as InferenceCallRecordV1[];
  const accepted=typedRecords.filter(record=>record.status==='accepted').length,failed=typedRecords.length-accepted;
  ensure(diagnostics.successfulCalls===accepted&&diagnostics.failedCalls===failed,'Inference counts do not match call records.');
