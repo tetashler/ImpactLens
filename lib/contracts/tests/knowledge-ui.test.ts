@@ -74,9 +74,9 @@ test('actual React markup exposes labelled search, category checkboxes and keybo
 
 test('empty graph renders an honest recovery action and hidden tab keeps semantic hidden state',()=>{
   const html=renderKnowledge(null);
-  assert.match(html,/Give your question a context\./);
+  assert.match(html,/World entities are not available/);
   assert.match(html,/No matching entities\. Adjust your search or filters\./);
-  assert.match(html,/>Open Map<\/button>/);
+  assert.match(html,/>Back to Map<\/button>/);
   assert.match(html,/This view does not retrieve documents or execute stakeholder turns\./);
   assert.doesNotMatch(html,/GraphRAG.*(?:completed|executed|operational)/i);
   const hidden=renderKnowledge(graph,false);

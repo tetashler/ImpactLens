@@ -40,3 +40,10 @@
   .kg-expanded{top:65px;bottom:188px;max-height:none}
   .kg-inspector footer{flex-wrap:wrap}
 }
+
+/* Evidence remains inspectable without becoming graph nodes. */
+.kg-source-details,.kg-interaction-details,.kg-assumptions,.kg-provenance-details{margin:16px 0;border-top:1px solid #2c3e53;padding-top:12px}
+.kg-inspector summary,.kg-full-dialog summary{cursor:pointer;font-size:12px;font-weight:600;color:#c1d8e5}
+.kg-inspector blockquote,.kg-full-dialog blockquote{margin:10px 0;padding:10px 12px;border-left:2px solid #719caa;background:#0b1725;color:#c1d3e0;overflow-wrap:anywhere}
+.kg-source-url,.kg-interaction-details small{font-size:10px;color:#8ca5b8;overflow-wrap:anywhere}
+.kg-demographic-profile{overflow-x:auto;margin-top:12px}.kg-demographic-profile table{width:100%;border-collapse:collapse;font-size:11px}.kg-demographic-profile th,.kg-demographic-profile td{text-align:left;padding:6px;border-bottom:1px solid #2c3e53}

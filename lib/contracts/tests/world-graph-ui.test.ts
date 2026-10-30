@@ -47,7 +47,7 @@ test('workspace legend reflects only actual entity types, with counts and readab
 test('empty workspace has no invented entity types',async()=>{
   const html=await render(null),legend=html.match(/<details class="kg-filters"[\s\S]*?<\/details>/)?.[0]??'';
   assert.equal((legend.match(/type="checkbox"/g)??[]).length,0);
-  assert.match(html,/Give your question a context/);
+  assert.match(html,/World entities are not available/);
 });
 
 test('layout, view, fit and labels are distinct accessible controls',async()=>{

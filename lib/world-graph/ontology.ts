@@ -1,27 +1,35 @@
 /** Model-proposed ontology. Type names confer neither execution permission nor verification. */
-import {assertJsonData,ensure,freezeSnapshot,identifier,object,text} from '../experiments/validation.ts';
+import {assertJsonData,freezeSnapshot} from '../experiments/validation.ts';
 import {parseGroundingSupport,type GroundingBundle,type GroundingSupport} from '../grounding/contract.ts';
+import {checkPlan,planGuard,planObject,planText,planId,planList,planUnique} from '../dynamic-scenarios/diagnostics.ts';
 export interface WorldType {id:string;name:string;description:string}
 export interface WorldOntologyV1 {
  version:1;entityTypes:WorldType[];relationshipTypes:WorldType[];
+ /** support is a proposed literal association, not proof; consumers must assess attribution. */
  entities:{id:string;name:string;typeId:string;jurisdictionId:string|null;support:GroundingSupport|null}[];
  relationships:{id:string;source:string;target:string;typeId:string;statement:string;support:GroundingSupport|null}[];
 }
 export const WORLD_LIMITS={entityTypes:16,relationshipTypes:16,entities:24,relationships:48,bytes:24000} as const;
-const id=(v:unknown)=>{const s=identifier(v);ensure(s.length<=70);return s;};
-const prose=(v:unknown,max:number)=>{const s=text(v,max);ensure(!/[<>]|https?:\/\/|www\./i.test(s),'Ontology text must be plain data without citations.');ensure(!/\d[\d.,]*\s*(?:%|percent\b)|[$£€]\s*\d|\d[\d,]*\s+(?:jobs|workers|households|residents|people)\b/i.test(s),'Unsupported quantitative ontology claim.');return s;};
-const list=(v:unknown,max:number)=>{ensure(Array.isArray(v)&&v.length<=max);return v;};
-const unique=(v:string[])=>{ensure(new Set(v).size===v.length,'Duplicate ontology identity or name.');return new Set(v);};
 export function parseWorldOntology(value:unknown,context:{jurisdictions:{id:string}[];agents:{id:string}[]},grounding?:GroundingBundle):WorldOntologyV1 {
- assertJsonData(value);ensure(new TextEncoder().encode(JSON.stringify(value)).byteLength<=WORLD_LIMITS.bytes);
- const o=object(value,['version','entityTypes','relationshipTypes','entities','relationships']);ensure(o.version===1,'Unsupported world ontology version.');
- const types=(v:unknown,max:number)=>{const values=list(v,max);ensure(values.length>0);for(const v of values){const t=object(v,['id','name','description']);id(t.id);prose(t.name,80);prose(t.description,180);}unique(values.map(t=>(t as WorldType).name.toLocaleLowerCase('en-SG')));return unique(values.map(t=>id((t as WorldType).id)));};
- const entityTypes=types(o.entityTypes,WORLD_LIMITS.entityTypes),relationshipTypes=types(o.relationshipTypes,WORLD_LIMITS.relationshipTypes),jurisdictions=new Set(context.jurisdictions.map(j=>j.id));
- const entities=list(o.entities,WORLD_LIMITS.entities);const entityIds=unique(entities.map(v=>id(object(v,['id','name','typeId','jurisdictionId','support']).id)));
- unique(entities.map(v=>{const e=v as WorldOntologyV1['entities'][number];return `${String(e.name).trim().toLocaleLowerCase('en-SG')}|${e.typeId}|${e.jurisdictionId}`;}));
- for(const v of entities){const e=v as WorldOntologyV1['entities'][number];prose(e.name,120);ensure(entityTypes.has(e.typeId));ensure(e.jurisdictionId===null||jurisdictions.has(e.jurisdictionId));if(e.support!==null){ensure(grounding,'No source registry supplied.');const s=parseGroundingSupport(e.support,grounding);ensure(s.quote.toLocaleLowerCase('en-SG').includes(e.name.toLocaleLowerCase('en-SG')),'An entity support passage must actually mention its name.');}}
- const agents=new Set(context.agents.map(a=>a.id));ensure([...entityIds].every(e=>!agents.has(e)),'World entity and agent IDs must be distinct.');const endpoints=new Set([...agents,...entityIds]);
- const relationships=list(o.relationships,WORLD_LIMITS.relationships);unique(relationships.map(v=>id(object(v,['id','source','target','typeId','statement','support']).id)));
- for(const v of relationships){const r=v as WorldOntologyV1['relationships'][number];ensure(endpoints.has(r.source)&&endpoints.has(r.target),'Unknown ontology relationship endpoint.');ensure(relationshipTypes.has(r.typeId));prose(r.statement,240);if(r.support!==null){ensure(grounding,'No source registry supplied.');parseGroundingSupport(r.support,grounding);}}
+ const root='draft.ontology';planGuard(root,()=>assertJsonData(value));checkPlan(new TextEncoder().encode(JSON.stringify(value)).byteLength<=WORLD_LIMITS.bytes,'plan.output_size_exceeded',root,value);
+ const o=planObject(value,['version','entityTypes','relationshipTypes','entities','relationships'],root);checkPlan(o.version===1,'ontology.unsupported_version',`${root}.version`,o.version);
+ const prose=(v:unknown,max:number,path:string)=>{const s=planText(v,max,path);checkPlan(!/[<>]|https?:\/\/|www\./i.test(s),'plan.unsafe_text',path,v);checkPlan(!/\d[\d.,]*\s*(?:%|percent\b)|[$£€]\s*\d|\d[\d,]*\s+(?:jobs|workers|households|residents|people)\b/i.test(s),'plan.unsupported_numeric_claim',path,v);return s;};
+ const types=(field:'entityTypes'|'relationshipTypes')=>{
+  const path=`${root}.${field}`,values=planList(o[field],16,path,'ontology.type_count_exceeded'),rule=field==='entityTypes'?'ontology.entity_type_duplicate':'ontology.relationship_type_duplicate';checkPlan(values.length>0,'plan.invalid_value',path,values);
+  const parsed=values.map((v,i)=>{const p=`${path}[${i}]`,t=planObject(v,['id','name','description'],p);return {id:planId(t.id,`${p}.id`),name:prose(t.name,80,`${p}.name`),description:prose(t.description,180,`${p}.description`)};});
+  const ids=planUnique(parsed.map(t=>t.id),path,rule,'id');planUnique(parsed.map(t=>t.name.toLocaleLowerCase('en-SG')),path,rule,'name');return ids;
+ };
+ const entityTypes=types('entityTypes'),relationshipTypes=types('relationshipTypes');
+ const jurisdictions=new Set(context.jurisdictions.map(j=>j.id)),agents=new Set(context.agents.map(a=>a.id));
+ const entities=planList(o.entities,WORLD_LIMITS.entities,`${root}.entities`,'ontology.entity_count_exceeded').map((v,i)=>planObject(v,['id','name','typeId','jurisdictionId','support'],`${root}.entities[${i}]`));
+ const entityIds=planUnique(entities.map((e,i)=>planId(e.id,`${root}.entities[${i}].id`)),`${root}.entities`,'ontology.entity_id_duplicate','id');
+ entities.forEach((e,i)=>{const p=`${root}.entities[${i}]`;prose(e.name,120,`${p}.name`);checkPlan(entityTypes.has(e.typeId as string),'ontology.entity_type_unknown',`${p}.typeId`,e.typeId);checkPlan(e.jurisdictionId===null||jurisdictions.has(e.jurisdictionId as string),'ontology.jurisdiction_unknown',`${p}.jurisdictionId`,e.jurisdictionId);checkPlan(!agents.has(e.id as string),'ontology.entity_agent_id_collision',`${p}.id`,e.id);
+  if(e.support!==null){checkPlan(grounding,'ontology.source_registry_invalid',`${p}.support`);parseGroundingSupport(e.support,grounding,`${p}.support`);}
+ });
+ // Composite identity is computed only after every participating primitive is validated.
+ planUnique(entities.map(e=>`${(e.name as string).trim().toLocaleLowerCase('en-SG')}|${e.typeId as string}|${e.jurisdictionId as string|null}`),`${root}.entities`,'ontology.entity_duplicate');
+ const endpoints=new Set([...agents,...entityIds]),relationships=planList(o.relationships,WORLD_LIMITS.relationships,`${root}.relationships`,'ontology.relationship_count_exceeded').map((v,i)=>planObject(v,['id','source','target','typeId','statement','support'],`${root}.relationships[${i}]`));
+ planUnique(relationships.map((r,i)=>planId(r.id,`${root}.relationships[${i}].id`)),`${root}.relationships`,'ontology.relationship_id_duplicate','id');
+ relationships.forEach((r,i)=>{const p=`${root}.relationships[${i}]`;for(const field of ['source','target'])checkPlan(endpoints.has(r[field] as string),'ontology.relationship_endpoint_unknown',`${p}.${field}`,r[field]);checkPlan(relationshipTypes.has(r.typeId as string),'ontology.relationship_type_unknown',`${p}.typeId`,r.typeId);prose(r.statement,240,`${p}.statement`);if(r.support!==null){checkPlan(grounding,'ontology.source_registry_invalid',`${p}.support`);parseGroundingSupport(r.support,grounding,`${p}.support`);}});
  return freezeSnapshot(value) as WorldOntologyV1;
 }

@@ -1,8 +1,8 @@
 /** Finite JSON Schema for provider generation; runtime validation remains authoritative. */
 const str=(maxLength:number)=>({type:'string',minLength:1,maxLength});
 const enumOf=(values:string[])=>({type:'string',enum:values});
-const obj=(properties:Record<string,unknown>)=>({type:'object',additionalProperties:false,required:Object.keys(properties),properties});
-const arr=(items:unknown,maxItems:number,minItems=0)=>({type:'array',items,minItems,maxItems});
+const obj=<T extends Record<string,unknown>>(properties:T)=>({type:'object',additionalProperties:false,required:Object.keys(properties),properties});
+const arr=<T>(items:T,maxItems:number,minItems=0)=>({type:'array',items,minItems,maxItems,...((items as {type?:string})?.type==='string'?{uniqueItems:true}:{})});
 const id={...str(70),pattern:'^[A-Za-z0-9][A-Za-z0-9._:-]*$'},nullableId={type:['string','null'],maxLength:70},phrases=arr(str(160),2,1);
 // Finite identity slots constrain references without prescribing stakeholder categories.
 const agentId=enumOf(['agent-1','agent-2','agent-3','agent-4']);

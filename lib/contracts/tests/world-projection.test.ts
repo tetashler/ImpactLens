@@ -60,7 +60,8 @@ test('literal retrieved passages alone become source-backed; supported model pro
   assert.deepEqual(graph.nodes.filter(node => node.provenance.kind === 'source-backed').map(node => node.id), [passage.id]);
   assert.ok(graph.nodes.filter(node => node.properties.recordType === 'world-entity').every(node => node.provenance.kind === 'synthetic-exploratory'));
   const references = graph.edges.filter(edge => edge.relationshipLabel === 'QUOTES_EXCERPT');
-  assert.equal(references.length, 2); assert.ok(references.every(edge => edge.target === passage.id && /exact quote/i.test(edge.description) && /does not verify/i.test(edge.description)));
+  assert.equal(references.length, 1); assert.ok(references.every(edge => edge.target === passage.id && /exact quote/i.test(edge.description) && /does not verify/i.test(edge.description)));
+  assert.equal(graph.nodes.find(node=>node.properties.recordType==='world-relationship')?.properties.attributionStatus,'unverified-candidate');
   assert.ok(graph.edges.filter(edge => edge.relationshipLabel === 'CONSULTS_WITH').every(edge => edge.provenance.kind === 'synthetic-exploratory'));
 });
 

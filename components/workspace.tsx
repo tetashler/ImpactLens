@@ -1,7 +1,7 @@
 'use client';
 import {isArchivedGraphView} from '../lib/knowledge-graph/display';
 import {startQuestionWork} from '../lib/dynamic-scenarios/client';
-import {projectDynamicGraph} from '../lib/dynamic-scenarios/projection';
+import {projectPrimaryWorldGraph,legacyWorldEntities,worldRunLabel,type WorldInspectionV1} from '../lib/world-graph/projection';
 
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -92,7 +92,7 @@ export default function Workspace() {
   const planner={...rawPlanner,response:preparedResponse??(retainedQuestionPlan?.plan.request.question===rawPlanner.question?retainedQuestionPlan:rawPlanner.response)};
   const experiment=useExperimentLab({question:planner.question,intent:planner.response?.plan.interpretation.intent,geometry:plot.geometry,geometryRevision:plot.revision});
   const [labOpen,setLabOpen]=useState(false);
-  const [graphScope,setGraphScope]=useState<{kind:'current'}|{kind:'experiment';id:string}|{kind:'run';graph:KnowledgeGraph}>({kind:'current'});
+  const [graphScope,setGraphScope]=useState<{kind:'current'}|{kind:'experiment';id:string}|{kind:'run';graph:KnowledgeGraph;inspections?:Record<string,WorldInspectionV1>}>({kind:'current'});
   const [stakeholderOpen,setStakeholderOpen]=useState(false),[executionRecord,setExecutionRecord]=useState<ScenarioExperimentV1|null>(null),[simulationError,setSimulationError]=useState('');
   const graphAttempt=useRef(0),prepareAttempt=useRef(0);
   useEffect(()=>{graphAttempt.current++;setGraphScope({kind:'current'});},[flow.state.attemptId,flow.state.selectedArchiveId,flow.state.revision]);
@@ -292,7 +292,19 @@ export default function Workspace() {
   const archive=flow.state.history.find(h=>h.id===flow.state.selectedArchiveId);
   const displayedFlow=archive?{...flow.state,...archive}:flow.state;
   const editQuestion=(question:string)=>{setStage('general');invalidatePlot();rawPlanner.setQuestion(question);flow.controller.invalidate({question,geometry:plot.geometry,geometryRevision:plot.revision});};
-  const openQuestionGraph=async()=>{const chosen=archive??flow.state,selection=flow.state.selectedArchiveId,at=++graphAttempt.current,revision=flow.state.revision;try{const graph=chosen.dynamic?await projectDynamicGraph(chosen.dynamic.run):chosen.live?await projectQuestionLiveGraph(chosen.live):chosen.linked?await projectLinkedExperimentGraph(chosen.linked):selection&&chosen.record?appendExperimentGraph(null,{scenarioIdentity:chosen.record.scenarioIdentity,question:chosen.record.question,configuration:chosen.record.configuration,evidence:chosen.record.evidence,experiment:chosen.record,archived:true,executionAvailable:true}):null;const now=flow.controller.getSnapshot(),still=selection?now.history.find(h=>h.id===selection):now;if(at!==graphAttempt.current||now.selectedArchiveId!==selection||now.revision!==revision||still?.dynamic!==chosen.dynamic||still?.live!==chosen.live||still?.linked!==chosen.linked)return;if(graph)setGraphScope({kind:'run',graph});setTab('knowledge');}catch{setSimulationError('This accepted run could not be projected safely. Its recorded events remain available.');}};
+  const openQuestionGraph=async()=>{
+    const chosen=archive??flow.state,selection=flow.state.selectedArchiveId,at=++graphAttempt.current,revision=flow.state.revision;
+    try{
+      const run=chosen.dynamic?.run??chosen.run;
+      const world=run?await projectPrimaryWorldGraph(run):null;
+      const now=flow.controller.getSnapshot(),still=selection?now.history.find(h=>h.id===selection):now;
+      if(at!==graphAttempt.current||now.selectedArchiveId!==selection||now.revision!==revision||still?.dynamic!==chosen.dynamic||still?.run!==chosen.run)return;
+      setGraphScope(world?{kind:'run',graph:world.graph,inspections:world.inspections}:{kind:'current'});setTab('knowledge');
+    }catch{setGraphScope({kind:'current'});setTab('knowledge');setSimulationError('World entities could not be projected safely. Recorded events remain in Report.');}
+  };
+  const primaryGraph=useMemo(()=>experimentGraph?legacyWorldEntities(experimentGraph):null,[experimentGraph]);
+  const worldEmptyReason=displayedFlow.dynamicFailure||displayedFlow.phase==='error'?'World entities are not available because scenario planning did not complete. Return to Map to retry Explore.':displayedFlow.run?'This historical run does not contain a world-entity graph. Its original records remain in Report.':'World entities will appear after scenario planning completes. Ask a question and choose Explore on the Map.';
+
   const mapResult=mapResultFor(flow.state,{question:planner.question,geometry:plot.geometry,geometryRevision:plot.revision});
   const min = (value: number | null | undefined) => value == null ? '—' : value.toFixed(2);
 
@@ -369,7 +381,7 @@ export default function Workspace() {
     <StakeholderWorkspace open={stakeholderOpen&&!exploring} experiment={executionRecord} experiments={experiment.state.records} contextToken={stakeholderContext} question={planner.question} scenarioIdentity={experiment.state.scenarioIdentity??''} onClose={()=>{graphAttempt.current++;prepareAttempt.current++;setStakeholderOpen(false);}} onUseExample={()=>{}} onGraph={showStandaloneGraph} onLinkedGraph={showLinkedGraph}/>
     {tab==='knowledge'&&graphArchived&&<button className="archive-return" onClick={()=>setGraphScope({kind:'current'})}>Return to current scenario graph</button>}
     {tab==='knowledge'&&<p className="world-context-note">Entity types follow this scenario. Model suggestions and fictional interactions remain distinct from retrieved source passages; check each relationship's provenance. Missing evidence does not mean zero relevant entities.</p>}
-    <KnowledgeWorkspace graph={experimentGraph} archived={graphArchived} resultLabel={graphScope.kind==='run'?'Recorded synthetic stakeholder run':undefined} visible={tab==='knowledge'} onReturn={openMapView}/>
+    <KnowledgeWorkspace graph={primaryGraph} inspections={graphScope.kind==='run'?graphScope.inspections:undefined} emptyReason={worldEmptyReason} archived={graphArchived} resultLabel={graphScope.kind==='run'?worldRunLabel(displayedFlow.run,graphScope.graph.executionIdentity):undefined} visible={tab==='knowledge'} onReturn={openMapView}/>
     <footer className="app-footer"><span><span className="live-dot" /> Evidence-informed scenario modelling</span><span>Pre-hackathon prototype · Proposed infrastructure is hypothetical</span><span>ImpactLens SG / MRT + AAC</span></footer>
   </main>;
 }

@@ -11,6 +11,17 @@ export interface RendererSnapshot {
   physics:PhysicsSnapshot;
 }
 
+/** Match screen density without unbounded canvas allocation or invalid ratios. */
+export function graphPixelRatio(devicePixelRatio:unknown):number {
+  return typeof devicePixelRatio==='number'&&Number.isFinite(devicePixelRatio)&&devicePixelRatio>0
+    ?Math.min(2,Math.max(1,devicePixelRatio)):1;
+}
+
+function displayLabel(label:string):string {
+  const characters=Array.from(label);
+  return characters.length<=28?label:`${characters.slice(0,27).join('').trimEnd()}…`;
+}
+
 /** Display coordinates only: these are deterministic seeds, never geographic points. */
 export function graphElements(graph:KnowledgeGraph):ElementDefinition[]{
   const degree=new Map<string,number>();
@@ -21,7 +32,7 @@ export function graphElements(graph:KnowledgeGraph):ElementDefinition[]{
   return [
     ...nodes.map((n,i)=>{
       const angle=i*2.399963229728653,radius=55*Math.sqrt(i+1),connections=degree.get(n.id)??0;
-      return {data:{id:n.id,label:n.label,category:n.category,entityType:knowledgeEntityType(n),colour:entityTypeColour(knowledgeEntityType(n)),size:n.category==='scenario'?32:Math.min(27,10+Math.sqrt(connections)*2.7),degree:connections},
+      return {data:{id:n.id,label:n.label,displayLabel:displayLabel(n.label),category:n.category,entityType:knowledgeEntityType(n),colour:entityTypeColour(knowledgeEntityType(n)),size:n.category==='scenario'?14:12,degree:connections},
         position:{x:Math.cos(angle)*radius,y:Math.sin(angle)*radius},classes:n.category==='scenario'?'hub':''};
     }),
     ...graph.edges.map(e=>({data:{id:e.id,source:e.source,target:e.target,label:knowledgeRelationshipLabel(e),directed:e.directed},classes:edgeClasses.get(e.id)})),
@@ -29,8 +40,8 @@ export function graphElements(graph:KnowledgeGraph):ElementDefinition[]{
 }
 
 const stylesheet:StylesheetJson=[
-  {selector:'node',style:{'background-color':'data(colour)',width:'data(size)',height:'data(size)',label:'data(label)',color:'#cbd9e8','font-size':12,'font-family':'Arial, sans-serif','text-valign':'bottom','text-margin-y':7,'min-zoomed-font-size':8,'text-max-width':'135px','text-wrap':'ellipsis','border-width':1.5,'border-color':'#12202f','overlay-opacity':0}},
-  {selector:'node.hub',style:{'border-width':3,'border-color':'#b5eee7','font-size':16,'font-weight':'bold','min-zoomed-font-size':0}},
+  {selector:'node',style:{'background-color':'data(colour)',width:'data(size)',height:'data(size)',label:'data(displayLabel)',color:'#cbd9e8','font-size':12,'font-weight':400,'font-family':'Arial, sans-serif','text-valign':'bottom','text-margin-y':7,'min-zoomed-font-size':8,'text-max-width':'160px','text-wrap':'ellipsis','border-width':1,'border-color':'#12202f','overlay-opacity':0}},
+  {selector:'node.hub',style:{'border-width':1.5,'border-color':'#b5eee7','font-size':13,'font-weight':500}},
   {selector:'node.labels-hidden',style:{label:''}},
   {selector:'edge',style:{width:.8,'line-color':'#58738d',opacity:.42,'curve-style':'bezier','target-arrow-shape':'none','arrow-scale':.55,'overlay-padding':7,'overlay-opacity':0}},
   {selector:'edge.single',style:{'curve-style':'straight'}},
@@ -41,9 +52,9 @@ const stylesheet:StylesheetJson=[
   {selector:'edge[?directed]',style:{'target-arrow-shape':'triangle','target-arrow-color':'#58738d'}},
   {selector:'.dimmed',style:{opacity:.12}},
   {selector:'node.neighbour',style:{opacity:1,'border-width':2,'border-color':'#b6d8df'}},
-  {selector:'node.focused',style:{label:'data(label)',opacity:1,'border-width':4,'border-color':'#f4fbff','font-size':16,'font-weight':'bold','min-zoomed-font-size':0,'text-background-color':'#102231','text-background-opacity':.95,'text-background-padding':'4px','text-background-shape':'roundrectangle'}},
+  {selector:'node.focused',style:{label:'data(displayLabel)',opacity:1,'border-width':2,'border-color':'#f4fbff','font-size':13,'font-weight':500,'min-zoomed-font-size':0,'text-background-color':'#102231','text-background-opacity':.95,'text-background-padding':'4px','text-background-shape':'roundrectangle'}},
   {selector:'edge.focused',style:{opacity:.95,width:2,'line-color':'#96e6d8','target-arrow-color':'#96e6d8'}},
-  {selector:'node.hovered',style:{label:'data(label)','min-zoomed-font-size':0,'font-size':14,'border-width':3,'border-color':'#e7f4ff'}},
+  {selector:'node.hovered',style:{label:'data(displayLabel)','min-zoomed-font-size':0,'font-size':13,'font-weight':500,'border-width':2,'border-color':'#e7f4ff'}},
   {selector:'.kg-hidden',style:{display:'none'}},
 ];
 
@@ -52,7 +63,8 @@ export function createGraphCore(input:KnowledgeGraph,container?:HTMLElement):Cor
   const graph=parseKnowledgeGraph(input);
   const core=cytoscape({container,elements:graphElements(graph),headless:!container,styleEnabled:true,
     style:stylesheet,layout:{name:'preset'},minZoom:.08,maxZoom:4,
-    pixelRatio:1,boxSelectionEnabled:false,selectionType:'single',autounselectify:true,desktopTapThreshold:3,touchTapThreshold:3});
+    pixelRatio:container?graphPixelRatio(container.ownerDocument.defaultView?.devicePixelRatio):1,
+    motionBlur:false,textureOnViewport:false,boxSelectionEnabled:false,selectionType:'single',autounselectify:true,desktopTapThreshold:3,touchTapThreshold:3});
   return core;
 }
 

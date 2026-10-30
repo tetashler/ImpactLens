@@ -1,5 +1,7 @@
 # World Knowledge Graph — Phase 2
 
+Phase 2B follow-up: the ordinary graph now projects world entities and fictional agents only; audit/source/event records remain internal and in inspectors/Report. It adds sourced Census aggregate context, bounded high-DPI rendering and clearer planning diagnostics. The expanded planner deadline is now 45 seconds (action/overall limits remain 30/120 seconds). See [WORLD_KNOWLEDGE_GRAPH_PHASE2B_REFINEMENT.md](WORLD_KNOWLEDGE_GRAPH_PHASE2B_REFINEMENT.md) for the current implementation, 760-test validation and outstanding live-provider acceptance. The original Phase 2 findings below remain a historical record.
+
 Implemented on main `master`, starting from `0b91d5aed2018184d60e686b97ab66decaad6cfb`. Changes are unstaged and uncommitted. The secondary directory was not accessed. No paid OpenRouter or Tavily request was made.
 
 ## Research and implementation choice
@@ -198,3 +200,6 @@ node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3155
 Run Playwright MCP `browser_run_code_unsafe` with the absolute filename `scripts/testing/world-graph-browser-check.mjs`, then `world-graph-performance.mjs`. The first creates its own fresh browser context and leaves it available for inspection. Do not run the acceptance against a server lacking the mocked preload. Browser scripts are opt-in and are not imported by ordinary tests or the application.
 
 Skills/tools actually used: systematic debugging, brainstorming/implementation planning, frontend/UI guidance, test-driven development, parallel-agent delegation, independent code review and verification-before-completion; PowerShell/Node/TypeScript, official-source web research, Playwright MCP, and local screenshot inspection. No new rendering framework, database, research crawler, paid run or deployment was introduced.
+# Subsequent live acceptance
+
+The registered two-stage planner and source-passage selection pathway now has one completed real Tavily + DeepSeek/DigitalOcean acceptance (30 October 2026): four fictional agents, eight accepted actions, world-only graph, provenance inspectors and Report. See [the staged planner acceptance report](PHASE2B_STAGED_PLANNER_LIVE_ACCEPTANCE.md) for precise scope, seven diagnostic iterations, costs, screenshots and semantic limitations. The mocked measurements and earlier live failures documented elsewhere remain historical and are not reclassified.

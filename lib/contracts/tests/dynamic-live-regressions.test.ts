@@ -18,14 +18,14 @@ test('planning instructions select directly affected stakeholders and question-g
  assert.deepEqual(captured.reasoning,{effort:'none',exclude:true});assert.equal(captured.max_tokens,6000);
 });
 test('undeclared planner entity references remain rejected rather than being repaired or treated as jurisdictions',()=>{
- const f=dynamicFixtures()[0],draft=structuredClone(f.draft);draft.agents[0].entityIds=['sg'];assert.throws(()=>parseDynamicDraft(draft,f.request),/Unknown generated entity/);
+ const f=dynamicFixtures()[0],draft=structuredClone(f.draft);draft.agents[0].entityIds=['sg'];assert.throws(()=>parseDynamicDraft(draft,f.request),(e:any)=>e.diagnostic?.rule==='agent.cross_reference_invalid'&&e.diagnostic.path==='draft.agents[0].entityIds[0]');
  draft.agents[0].entityIds=[];assert.doesNotThrow(()=>parseDynamicDraft(draft,f.request));
 });
 
 test('planner proposals cannot introduce unsupported numerical targets even as assumptions or goals',()=>{
  const f=dynamicFixtures()[0],d=structuredClone(f.draft);
- d.assumptions[0].text='Productivity increases by 20 percent';assert.throws(()=>parseDynamicDraft(d,f.request),/quantitative claims/);
- d.assumptions[0].text='Productivity changes are unknown';d.agents[0].goals=['Save $500'];assert.throws(()=>parseDynamicDraft(d,f.request),/quantitative claims/);
+ d.assumptions[0].text='Productivity increases by 20 percent';assert.throws(()=>parseDynamicDraft(d,f.request),(e:any)=>e.diagnostic?.rule==='plan.unsupported_numeric_claim'&&e.diagnostic.path==='draft.assumptions[0].text');
+ d.assumptions[0].text='Productivity changes are unknown';d.agents[0].goals=['Save $500'];assert.throws(()=>parseDynamicDraft(d,f.request),(e:any)=>e.diagnostic?.rule==='plan.unsupported_numeric_claim'&&e.diagnostic.path==='draft.agents[0].goals[0]');
  d.agents[0].goals=['Maintain financial stability'];assert.doesNotThrow(()=>parseDynamicDraft(d,f.request));
 });
 
@@ -35,7 +35,7 @@ test('new planning schema bounds agent and relationship references to the same f
  assert.deepEqual(p.agents.items.properties.id.enum,['agent-1','agent-2','agent-3','agent-4']);
  assert.deepEqual(p.relationships.items.properties.sourceAgentId.enum,p.agents.items.properties.id.enum);
  assert.deepEqual(p.relationships.items.properties.targetAgentId.enum,p.agents.items.properties.id.enum);
- const d=structuredClone(f.draft);d.relationships[0].targetAgentId=d.relationships[0].sourceAgentId;assert.throws(()=>parseDynamicDraft(d,f.request),/Invalid generated relationship/);
+ const d=structuredClone(f.draft);d.relationships[0].targetAgentId=d.relationships[0].sourceAgentId;assert.throws(()=>parseDynamicDraft(d,f.request),(e:any)=>e.diagnostic?.rule==='agent.interaction_structure_invalid'&&e.diagnostic.path==='draft.relationships[0].targetAgentId');
 });
 
 test('new bounded identity slots and prior valid generated IDs both retain strict runtime compatibility',()=>{

@@ -1,4 +1,5 @@
 /** Browser-safe retrieval data. Neither retrieval nor exact quotation verifies a claim. */
+import {checkPlan,planGuard,planObject,planText} from '../dynamic-scenarios/diagnostics.ts';
 export const GROUNDING_LIMITS = { query: 500, sources: 5, passagesPerSource: 1, passage: 800, title: 240, url: 2048, limitations: 8 } as const;
 export interface GroundingPassage { id: string; text: string }
 export interface GroundingSource { id: string; title: string; url: string; publisher: string; publishedAt: string | null; retrievedAt: string; passages: GroundingPassage[] }
@@ -102,11 +103,16 @@ export function parseGroundingBundle(input: unknown): GroundingBundle {
 }
 
 /** Exact quotation checks provenance only; it does not establish truth or semantic entailment. */
-export function parseGroundingSupport(input: unknown, inputBundle: GroundingBundle): GroundingSupport {
-  const bundle = parseGroundingBundle(inputBundle);
-  const data = exact(input, ['sourceId', 'passageId', 'quote']);
-  const support = { sourceId: id(data.sourceId), passageId: id(data.passageId), quote: text(data.quote, GROUNDING_LIMITS.passage) };
-  const passage = bundle.sources.find(source => source.id === support.sourceId)?.passages.find(candidate => candidate.id === support.passageId);
-  if (!passage || !passage.text.includes(support.quote)) return invalid();
+export function parseGroundingSupport(input: unknown, inputBundle: GroundingBundle, path='draft.ontology'): GroundingSupport {
+  const bundle = planGuard(path,()=>parseGroundingBundle(inputBundle));
+  const data = planObject(input, ['sourceId', 'passageId', 'quote'],path);
+  const readId=(field:'sourceId'|'passageId')=>{const v=planText(data[field],80,`${path}.${field}`);checkPlan(/^[a-z][a-z0-9_-]{0,79}$/i.test(v),'plan.invalid_identifier',`${path}.${field}`,v);return v;};
+  const quote=planText(data.quote,GROUNDING_LIMITS.passage,`${path}.quote`);checkPlan(!/\u007f/.test(quote),'plan.invalid_text',`${path}.quote`,quote);
+  const support={sourceId:readId('sourceId'),passageId:readId('passageId'),quote};
+  const source=bundle.sources.find(source=>source.id===support.sourceId);
+  checkPlan(source,'ontology.source_reference_unknown',`${path}.sourceId`,data.sourceId);
+  const passage=source.passages.find(candidate=>candidate.id===support.passageId);
+  checkPlan(passage,'ontology.source_passage_unknown',`${path}.passageId`,data.passageId);
+  checkPlan(passage.text.includes(support.quote),'ontology.source_quote_not_found',`${path}.quote`,quote);
   return support;
 }

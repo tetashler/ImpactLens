@@ -8,6 +8,25 @@ export const INFERENCE_REJECTION_MESSAGES={
  AI_ACTION_SEMANTICS:'The provider action violated interaction, position-change or qualitative-content rules.',
 } as const;
 export type InferenceRejectionCode=keyof typeof INFERENCE_REJECTION_MESSAGES;
+const ACTION_RULE_MESSAGES={
+ 'reference.role_unknown':'Unknown addressed role',
+ 'reference.event_unknown':'Unknown or unavailable previous event',
+ 'reference.evidence_unknown':'Unknown evidence finding',
+ 'reference.assumption_unknown':'Unknown scenario assumption',
+ 'interaction.other_reference_required':'Later turns must reference another recorded participant',
+ 'interaction.own_reference_required':'A revision must reference the participant previous event',
+ 'position.revision_required':'A changed position requires a recorded revision',
+ 'interaction.reference_required':'Interaction requires a prior event',
+ 'content.url_forbidden':'Cite evidence IDs instead of source URLs',
+ 'content.quantitative_claim_forbidden':'Quantitative societal claims are unsupported in stakeholder dialogue',
+} as const;
+const ACTION_FIELDS=['type','addressedRoleId','statement','previousEventIds','evidenceFindingIds','assumptionIds','reasoningSummary','uncertainties','position','topics'] as const;
+export type ActionValidationRule=`shape.missing_${typeof ACTION_FIELDS[number]}`|'shape.unexpected_property'|keyof typeof ACTION_RULE_MESSAGES|'shape.invalid';
+export const ACTION_VALIDATION_RULES:readonly ActionValidationRule[]=[...Object.keys(ACTION_RULE_MESSAGES) as (keyof typeof ACTION_RULE_MESSAGES)[],...ACTION_FIELDS.map(f=>`shape.missing_${f}` as const),'shape.unexpected_property','shape.invalid'];
+export function actionValidationRule(error:unknown,value?:unknown):ActionValidationRule{
+ const known=Object.entries(ACTION_RULE_MESSAGES).find(([,message])=>error instanceof Error&&error.message===message)?.[0] as ActionValidationRule|undefined;if(known)return known;
+ if(value&&typeof value==='object'&&!Array.isArray(value)){const missing=ACTION_FIELDS.find(k=>!Object.hasOwn(value,k));if(missing)return `shape.missing_${missing}`;if(Object.keys(value).some(k=>!ACTION_FIELDS.includes(k as any)))return 'shape.unexpected_property';}return 'shape.invalid';
+}
 /** Only finite labels and counts cross the server boundary; never provider prose. */
 export type FinishReason='stop'|'length'|'content_filter'|'tool_calls'|'error'|'other'|null;
 export interface InferenceTerminationV1 {

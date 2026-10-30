@@ -1,4 +1,5 @@
-import {type InferenceTerminationV1,INFERENCE_REJECTION_MESSAGES} from './inference-errors.ts';
+import {type InferenceTerminationV1,INFERENCE_REJECTION_MESSAGES,ACTION_VALIDATION_RULES,type ActionValidationRule} from './inference-errors.ts';
+import {parsePlannerDiagnostic,type PlannerDiagnostic} from '../dynamic-scenarios/diagnostics.ts';
 /** Browser-safe live inference records. Provider configuration stays on the server. */
 import {assertJsonData,ensure,object,freezeSnapshot,canonical} from '../experiments/validation.ts';
 import {parseStakeholderInput,parseStakeholderRun,type StakeholderSimulationInputV1,type StakeholderSimulationRunV1} from './contract.ts';
@@ -9,7 +10,7 @@ export const INFERENCE_PROVIDER='digitalocean' as const;
 export const INFERENCE_LIMITS=Object.freeze({agents:4,rounds:2,calls:8,outputTokens:800,reservedTokens:214400,runTimeoutMs:120000,costUsd:0.05} as const);
 export const INFERENCE_RESPONSE_BYTES=524288;
 const RESERVATION_BASIS='Conservative UTF-8 bytes plus bounded output; not billed usage.' as const;
-const CALL_ERRORS=new Set([...Object.keys(INFERENCE_REJECTION_MESSAGES),'AI_TIMEOUT','AI_CANCELLED','AI_REQUEST_TOO_LARGE','AI_INVALID_REQUEST','AI_INVALID_RESPONSE','AI_PROVIDER_IDENTITY','AI_CREDITS','AI_RATE_LIMIT','AI_UPSTREAM','AI_CONFIG','AI_UNSUPPORTED_MODEL']);
+const CALL_ERRORS=new Set([...Object.keys(INFERENCE_REJECTION_MESSAGES),'AI_PLAN_INVALID','AI_TIMEOUT','AI_CANCELLED','AI_REQUEST_TOO_LARGE','AI_INVALID_REQUEST','AI_INVALID_RESPONSE','AI_PROVIDER_IDENTITY','AI_CREDITS','AI_RATE_LIMIT','AI_UPSTREAM','AI_CONFIG','AI_UNSUPPORTED_MODEL']);
 type Limits=Omit<typeof INFERENCE_LIMITS,'reservedTokens'>&{reservedTokens:120000|214400};
 export interface InferenceCallRecordV1 {
  requestedModel:typeof INFERENCE_MODEL;requestedProvider:typeof INFERENCE_PROVIDER;
@@ -17,6 +18,7 @@ export interface InferenceCallRecordV1 {
  identityVerification:'completion'|'generation-details'|'unverified';generationId:string|null;
  inputTokens:number|null;outputTokens:number|null;totalTokens:number|null;costUsd:number|null;
  status:'accepted'|'failed';errorCode:string|null;durationMs:number;termination?:InferenceTerminationV1;
+ plannerValidation?:PlannerDiagnostic;actionValidationRule?:ActionValidationRule;
 }
 export interface InferenceDiagnosticsV1 {
  version:1;requestedModel:typeof INFERENCE_MODEL;requestedProvider:typeof INFERENCE_PROVIDER;allowFallbacks:false;
@@ -47,7 +49,10 @@ export function parseInferenceCallRecord(value:unknown,outputLimit=1200):Inferen
  bounded(value,8192);ensure(outputLimit>=1&&outputLimit<=6000);
 
   const required=['requestedModel','requestedProvider','servingModel','servingProvider','identityVerification','generationId','inputTokens','outputTokens','totalTokens','costUsd','status','errorCode','durationMs'];
-  const record=object(value,[...required,'termination'],required);
+  const record=object(value,[...required,'termination','plannerValidation','actionValidationRule'],required);
+  if(record.actionValidationRule!==undefined)ensure(record.status==='failed'&&outputLimit<=1200&&ACTION_VALIDATION_RULES.includes(record.actionValidationRule as ActionValidationRule),'Invalid action diagnostic.');
+  if(record.plannerValidation!==undefined){parsePlannerDiagnostic(record.plannerValidation);ensure(record.status==='failed'&&outputLimit===6000,'Planner validation is only valid for failed planning calls.');}
+  if(record.errorCode==='AI_PLAN_INVALID')ensure(outputLimit===6000,'Plan errors cannot be action-call errors.');
   if(record.termination!==undefined){
    const info=object(record.termination,['httpStatus','finishReason','nativeFinishReason','reasoningTokens','requestedOutputTokens','jsonValid','actionValid']);
    if(info.httpStatus!==null){integer(info.httpStatus,599);ensure((info.httpStatus as number)>=100);}

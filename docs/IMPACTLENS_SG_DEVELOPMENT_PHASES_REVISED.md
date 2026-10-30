@@ -542,3 +542,25 @@ See `docs/MAP_FIRST_UI_UX_REFACTOR.md` for exact paths, attribution review, brow
 - [ ] Expanded planner schema/output cap and Tavily retrieval need separately authorised live acceptance. Full factual entity resolution, semantic corroboration, GraphRAG, population-grounded behaviour and quantitative policy forecasting remain future work.
 
 See `docs/WORLD_KNOWLEDGE_GRAPH_PHASE2.md` for exact contracts, measured limitations, browser artifacts, final validation totals and rebuild instructions. No paid API requests, staging, commits, pushes, deployment or secondary-directory access occurred.
+
+## World Knowledge Graph — Phase 2B refinement
+
+- [x] Offline flexible entity grounding: valid entity/name-quote mismatches no longer reject a scenario. Such associations are retained as explicitly unverified candidates, excluded from source-backed graph/Report displays, and bound into new immutable plans with a versioned policy marker. Source IDs, exact quotes, structural validation, old hashes and four-agent/eight-action limits remain strict. 847 Node tests, TypeScript/strict checks/build, six model CLIs and mocked browser acceptance pass; see `docs/PHASE2B_FLEXIBLE_ENTITY_GROUNDING.md`.
+- [ ] Two real Phase 2B acceptance attempts failed planning (the second identified full-name quotation association). Their historical FAIL reports remain unchanged. This offline correction still needs a separately authorised single real acceptance attempt; no factual corroboration or Phase 3 completion is claimed.
+
+- [x] Separate world-only graph projection removes audit, source, assumption, result and event nodes from the ordinary graph. Meaningful world entities and fictional roles remain; accepted dialogue becomes edges and inspectable history. Failed planning has an explicit empty state, with historic runs preserved.
+- [x] Optional immutable Census 2020 aggregate age context informs Singapore-affiliated fictional roles, with source vintage, rounded-count discrepancy and planning-area limits. Foreign/unresolved roles receive no Singapore counts. No personal demographic assignment or representative four-agent sample is claimed.
+- [x] Smaller consistent nodes, bounded high-DPI backing resolution, shortened captions/full inspectors, retained D3 physics and mixed edges. Source quotations and demographic/interaction details remain inspectable. Artificial Research horizon presentation is removed; explicit user dates are preserved.
+- [x] Compact planning context, specific 45-second expanded-planner deadline, unchanged 30-second action/120-second overall limits, safe failure-stage diagnostics and distinct timeout/cancellation handling. Mocked timeout/history/retry, two complete scenario flows, four viewports and DPR1/DPR2 checked. 760 Node tests, TypeScript/build and six model CLIs pass; GIS remains unavailable without Shapely.
+- [ ] Real combined Tavily/expanded-planner acceptance still needs separate paid authorisation. Independent factual corroboration, demographic-grounded population-scale simulation and Phase 3 remain future work.
+
+See `docs/WORLD_KNOWLEDGE_GRAPH_PHASE2B_REFINEMENT.md`. Phase 2B work remains unstaged/uncommitted; no paid calls or secondary-directory access occurred.
+
+## Phase 2B — registered staged planner live acceptance (30 October 2026)
+
+- [x] Two bounded planning stages replace the production single-shot cross-reference draft. Application-owned canonical registries and endpoint enums; legacy summary registry empty for new plans. Model selects source/passage pairs; literal text comes from the frozen retrieved snapshot. Invalid references/quotes remain rejected, with historical hashes preserved.
+- [x] First qualifying real run on new-task attempt seven: Tavily five candidates, four fictional roles, eight accepted DeepSeek/DigitalOcean actions, 16 world/agent nodes, 31 graph edges and consistent Report. Desktop/mobile provenance, connected-node dragging, settling and navigation checked; paid testing stopped.
+- [x] 872 Node tests, application/strict TypeScript, production build and six numerical CLIs pass. Seven Tavily credits; OpenRouter USD 0.0170091222 reported, USD 0.0570091222 conservative including two unknown-call reservations. GIS remains unavailable without Shapely.
+- [ ] Model-selected ontology granularity/classification, independent factual corroboration, broader reliability and existing 300-node performance limits remain. No Phase 3 population simulation or policy forecasting is claimed.
+
+See `docs/PHASE2B_STAGED_PLANNER_LIVE_ACCEPTANCE.md` for architecture research, every iteration, exact file inventory, costs and real screenshots. Earlier FAIL reports remain historical. All changes remain unstaged/uncommitted; private environment files and the secondary directory were untouched.
