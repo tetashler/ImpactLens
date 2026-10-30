@@ -25,6 +25,8 @@
     "../../scripts/testing/phase4d-live-audit.ts",
     "../../scripts/testing/phase4d1-memory-evaluate.ts",
     "../../scripts/testing/phase4d1-offline-audit.ts",
+    "../../scripts/testing/phase4d2-benchmark.ts",
+    "../../scripts/testing/phase4d2-memory-evaluate.ts",
     "../../scripts/testing/storage-lifecycle.ts",
     "../../next-env.d.ts"
   ],

@@ -1,6 +1,7 @@
 import {experiencedMemories,experienced,applyIssue,rememberExperiences} from './episodic.ts';
 import {describeMemoryRetrieval,type MemoryRetrievalDiagnostics} from './memory-diagnostics.ts';
 import {isMenuPolicy} from './intelligence.ts';
+import {retrieveTopicMemories} from './retrieval.ts';
 import {conversationOpportunity} from './conversation.ts';
 import {buildDecisionMenu,menuSchema,decodeMenuDecision,replyMenuMetrics} from './decision-menu.ts';
 import {actionTargetSchema} from './decision-schema.ts';
@@ -28,9 +29,10 @@ export function buildDecisionContext(w:SocietyWorld,actorId:string,platform:Plat
  const memoryScore=(m:typeof eligible[number],index:number)=>{const words=w.items.find(i=>i.id===m.itemId)?.text.toLowerCase().match(/[a-z]{4,}/g)??[];if(!w.genesis.input.intelligence)return words.filter(t=>terms.has(t)).length+index/Math.max(1,eligible.length);const unique=[...new Set(words)],episode=a.episodic?.find(e=>e.eventId===m.eventId);return unique.filter(t=>terms.has(t)).length/Math.sqrt(Math.max(1,unique.length))+(episode?.importance??2)+(a.issues?.some(i=>i.status==='open'&&i.sourceEventId===m.itemId)?20:0)+index/Math.max(1,eligible.length);};
  const ranked=eligible.map((m,index)=>({m,index,score:memoryScore(m,index)})).sort((x,y)=>y.score-x.score||y.index-x.index);
  const chosen=new Set([latest,cross].filter(m=>m!==undefined));for(const {m}of ranked){if(chosen.size>=L.memories)break;chosen.add(m);}
- const selected=eligible.filter(m=>chosen.has(m));
+ const topicRetrieval=w.genesis.input.intelligence?.memory==='episodic-topic-v2'?retrieveTopicMemories(w,actorId,eligible):null;
+ const selected=topicRetrieval?.selected??eligible.filter(m=>chosen.has(m));
  const ids=[...new Set([...selected].reverse().flatMap(m=>m.exposedIds))];
- const boundedIds:string[]=[];for(const id of ids){const path=threadPath(w,id);if(!path.every(p=>(a.seen.includes(p)||w.genesis.input.intelligence&&experienced(w,actorId,p))&&canAccessItem(w,a.id,w.items.find(i=>i.id===p)!)))continue;const extra=path.filter(p=>!boundedIds.includes(p));if(boundedIds.length+extra.length<=L.items)boundedIds.push(...extra);}
+ const boundedIds:string[]=topicRetrieval?.itemIds??[];if(!topicRetrieval)for(const id of ids){const path=threadPath(w,id);if(!path.every(p=>(a.seen.includes(p)||w.genesis.input.intelligence&&experienced(w,actorId,p))&&canAccessItem(w,a.id,w.items.find(i=>i.id===p)!)))continue;const extra=path.filter(p=>!boundedIds.includes(p));if(boundedIds.length+extra.length<=L.items)boundedIds.push(...extra);}
  const items=boundedIds.map(id=>w.items.find(i=>i.id===id)).map(i=>({id:i!.id,actorId:i!.actorId,platform:i!.platform,parentId:i!.parentId,...(w.genesis.input.communication?{groupId:i!.groupId??null}:{}),text:i!.text,...(w.genesis.input.intelligence?{tick:i!.tick,counterpartyRole:w.agents.find(a=>a.id===i!.actorId)?.role?.label??'Fictional resident',modelAuthored:w.events.find(e=>e.id===i!.id)?.source==='social-model',directToActor:w.items.find(p=>p.id===i!.parentId)?.actorId===actorId,conversationWithActor:threadPath(w,i!.id).some(id=>w.items.find(p=>p.id===id)?.actorId===actorId)}:{}),media:i!.media==='synthetic-card'?'Fictional visual card about the scenario; no real photograph.':'Text discussion'}));
  const retained=new Set(items.map(i=>i.id));
  const memories=selected.map(m=>({eventId:m.eventId,...(['action-targets-v2','action-menu-v1','conversation-menu-v2'].includes(w.genesis.input.communication?.decisionPolicy??'')?{primaryItemId:m.itemId}:{}),itemIds:m.exposedIds.filter(id=>retained.has(id)),platform:m.platform,kind:m.kind,...(w.genesis.input.intelligence?{origin:a.memory.some(x=>x.eventId===m.eventId)?'short-term' as const:'episodic' as const,tick:w.events.find(e=>e.id===m.eventId)?.tick??0,importance:a.episodic?.find(e=>e.eventId===m.eventId)?.importance??2}:{}),text:(w.items.find(i=>i.id===m.itemId)?.text??'').slice(0,320)})).filter(m=>m.itemIds.length);
@@ -38,8 +40,9 @@ export function buildDecisionContext(w:SocietyWorld,actorId:string,platform:Plat
  if(result.policy==='conversation-menu-v2'){result.issues=(a.issues??[]).filter(i=>retained.has(i.sourceEventId)).slice(-4);result.stateHistory=w.events.filter(e=>e.actorId===actorId&&e.type==='opinion').slice(-3).map(e=>({eventId:e.id,tick:e.tick,from:e.previousPosition!,to:e.position!}));}
  if(isMenuPolicy(result.policy)){result.memories=result.memories.map(m=>({...m,text:''}));result.readableIds=items.filter(i=>visible(w,actorId,i.platform).some(root=>root.id===i.id||threadPath(w,i.id)[0]===root.id)).map(i=>i.id);if(result.communication)result.communication.canCreateGroup=(w.groups?.length??0)<8;result.menu=buildDecisionMenu(result);while(new TextEncoder().encode(canonical(result)).length>L.contextBytes&&result.menu.length>1){const index=result.menu.findLastIndex(m=>m.action!=='inactive');if(index<0)break;result.menu.splice(index,1);}}
  if(result.policy==='conversation-menu-v2'){const metrics=replyMenuMetrics(result);result.diagnostics={...metrics,contextOmittedItems:Math.max(0,ids.length-boundedIds.length),omissionReasons:{menuCapacity:metrics.omittedPeerReplies,contextCapacity:Math.max(0,ids.length-boundedIds.length)}};}
+ if(topicRetrieval&&observe&&new TextEncoder().encode(canonical(result)).length>L.contextBytes){const diagnostic=describeMemoryRetrieval(w,actorId,result,topicRetrieval.scores,selected.map(m=>m.eventId),topicRetrieval.scores);observe({...diagnostic,contextByteLimitExceeded:true});}
  check(new TextEncoder().encode(canonical(result)).length<=L.contextBytes,'SOCIAL_SHAPE');
- if(observe)observe(describeMemoryRetrieval(w,actorId,result,ranked.map(({m,score})=>({eventId:m.eventId,score,lexicalMatches:[...new Set(w.items.find(i=>i.id===m.itemId)?.text.toLowerCase().match(/[a-z]{4,}/g)??[])].filter(t=>terms.has(t)).length})),selected.map(m=>m.eventId)));
+ if(observe)observe(describeMemoryRetrieval(w,actorId,result,topicRetrieval?.scores??ranked.map(({m,score})=>({eventId:m.eventId,score,lexicalMatches:[...new Set(w.items.find(i=>i.id===m.itemId)?.text.toLowerCase().match(/[a-z]{4,}/g)??[])].filter(t=>terms.has(t)).length})),selected.map(m=>m.eventId),topicRetrieval?.scores));
  return freezeSnapshot(result);
 }
 /** Advances rules once, then records a real encounter before offering one selected agent a decision. */

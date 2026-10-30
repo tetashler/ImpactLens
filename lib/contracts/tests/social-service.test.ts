@@ -15,6 +15,15 @@ test('real social route uses the existing verified gateway, authoritative sessio
   (globalThis as any).__socialSessions.clear();const reopened=await(await handleSocialRequest(request({operation:'start',run:source}),d)).json();assert.deepEqual(reopened.world,state.world);assert.equal(calls,8);
  }finally{rmSync(directory,{recursive:true,force:true});}
 });
+test('new communication sessions freeze topic retrieval while an indexed v1 session restores unchanged',async()=>{
+ const directory=mkdtempSync(join(tmpdir(),'social-topic-policy-'));let calls=0;
+ try{const {selectCommunication}=await import('../../society/communication.ts'),{createSociety}=await import('../../society/engine.ts');const source=await run(),d={directory,enabled:true,key:'offline',communication:selectCommunication([{id:'rd',name:'Reddit',typeId:'t'}],[{id:'t',name:'Communication platform'}],['Recorded concerns']),fetcher:async()=>{calls++;throw Error('No dispatch');}};
+ const s=await(await handleSocialRequest(request({operation:'start',run:source}),d)).json();assert.equal(s.world.genesis.input.intelligence.memory,'episodic-topic-v2');
+ const input=structuredClone(s.world.genesis.input);input.intelligence.memory='episodic-v1';const legacy=createSociety(input);
+ appendFileSync(join(directory,s.sessionId+'.jsonl'),JSON.stringify({id:s.sessionId,runId:source.runId,revision:1,input:legacy.genesis.input,tick:0,hybrid:legacy.hybrid,reservation:null})+'\n');(globalThis as any).__socialSessions.clear();
+ const recovered=await(await handleSocialRequest(request({operation:'start',run:source}),d)).json();assert.equal(recovered.sessionId,s.sessionId);assert.equal(recovered.world.genesis.input.intelligence.memory,'episodic-v1');assert.equal(calls,0);
+ }finally{rmSync(directory,{recursive:true,force:true});}
+});
 test('disabled social feature never reads a provider or calls inference',async()=>{let calls=0;const r=await handleSocialRequest(request({operation:'start',run:{}}),{enabled:false,fetcher:async()=>{calls++;throw Error();}});assert.equal(r.status,503);assert.equal(calls,0);});
 
 test('disabling model opt-in on an existing hybrid session skips opportunities without requests or invented billing',async()=>{const directory=mkdtempSync(join(tmpdir(),'social-disable-existing-'));let calls=0;const d={directory,enabled:true,key:'offline',fetcher:async()=>{calls++;throw Error('No dispatch authorised');}};try{let s=await(await handleSocialRequest(request({operation:'start',run:await run()}),d)).json();for(let i=0;i<80;i++)s=await(await handleSocialRequest(request({operation:'step',sessionId:s.sessionId,revision:s.revision}),{...d,ruleOnly:true})).json();assert.equal(calls,0);assert.equal(s.world.status,'complete');assert.ok(s.world.hybrid.records.every((r:any)=>r.status==='skipped'));assert.deepEqual(restoreSociety(saveSociety(s.world)),s.world);const summary=publicSociety(s.world);assert.equal(summary.usage.calls,0);assert.equal(summary.usage.costUsd,0);assert.equal(summary.usage.unknownReservedUsd,0);}finally{rmSync(directory,{recursive:true,force:true});}});
