@@ -16,7 +16,7 @@ if(process.env.IMPACTLENS_PHASE2B_MOCK==='true')for(const [index,f]of fixtures.e
  if(names){f.draft.ontology.entities=f.draft.ontology.entities.slice(0,3).map((e,i)=>({...e,name:names[i]}));f.draft.ontology.entityTypes.forEach((t,i)=>{t.name=(index===0?['Government agency','Labour organisation','Employer association']:['Public water agency','Government agency','Business group'])[i];});const ids=new Set([...f.draft.ontology.entities.map(e=>e.id),...f.draft.agents.map(a=>a.id)]);f.draft.ontology.relationships=f.draft.ontology.relationships.filter(r=>ids.has(r.source)&&ids.has(r.target));}
 }
 if(process.env.IMPACTLENS_PHASE4C_MOCK==='true'){const f=fixtures[0];f.draft.ontology.entityTypes.push({id:'communication',name:'Communication platform',description:'Scenario-relevant public and private communication environments.'});for(const name of ['Reddit','Instagram','WhatsApp','Telegram'])f.draft.ontology.entities.push({id:name.toLowerCase(),name,typeId:'communication',jurisdictionId:null,support:null});}
-const ledgerDirectory=process.env.IMPACTLENS_PHASE4D_MOCK==='true'?'../../tmp/phase4d/':'../../tmp/dynamic-scenarios/';
+const ledgerDirectory=process.env.IMPACTLENS_STORAGE_REPAIR_MOCK==='true'?'../../tmp/phase4d-storage/':process.env.IMPACTLENS_PHASE4D_MOCK==='true'?'../../tmp/phase4d/':'../../tmp/dynamic-scenarios/';
 mkdirSync(new URL(ledgerDirectory,import.meta.url),{recursive:true});
 const mockLedger=new URL(ledgerDirectory+(process.env.IMPACTLENS_PHASE4D_PREFLIGHT==='true'?'preflight-ledger.json':'mock-ledger.json'),import.meta.url);
 globalThis.fetch=async(url,init)=>{

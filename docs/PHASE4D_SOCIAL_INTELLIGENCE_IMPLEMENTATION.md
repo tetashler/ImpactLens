@@ -212,3 +212,8 @@ For desktop acceptance, start `scripts/testing/phase4d-mock-server.ps1` in a ded
 - `scripts/testing/phase4d-mock-server.ps1`
 - `scripts/testing/social-decision-fixture.ts`
 - `scripts/testing/tsconfig.phase4d.json`
+
+
+## Subsequent storage reliability verification (30 October 2026)
+
+The earlier isolated-root limitation above has now been investigated directly. Identical durable probes fail under the restricted Codex account but pass at the original default paths under the normal Windows user. Default-path lifecycle/restart/replay/history and mocked desktop acceptance passed without ACL changes or migration; the restricted context remains blocked. Explore now checks both stores before provider dispatch, pending write/fsync failures clean up correctly, and continuation failure checkpoints are awaited. All 55 enumerated historical top-level records retain their hashes. See `docs/PHASE4D_STORAGE_RELIABILITY_REPAIR.md` for exact context-dependent readiness, evidence and reproduction; this is not paid Phase 4D behavioural acceptance.

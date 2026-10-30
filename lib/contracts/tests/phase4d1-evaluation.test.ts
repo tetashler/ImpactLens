@@ -1,0 +1,25 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {mkdirSync,mkdtempSync,readFileSync,writeFileSync,rmSync} from 'node:fs';import {resolve,join,sep} from 'node:path';import {spawnSync} from 'node:child_process';
+function workspace(){const base=resolve('tmp');mkdirSync(base,{recursive:true});return {base,dir:mkdtempSync(join(base,'memory-evaluation-'))};}
+function run(dir:string){return spawnSync(process.execPath,['scripts/testing/phase4d1-memory-evaluate.ts','offline'],{cwd:process.cwd(),encoding:'utf8',env:{...process.env,IMPACTLENS_PHASE4D1_DIRECTORY:dir}});}
+test('the isolated evaluation mock uses both authoritative arms, safely journals reservations and withholds content from diagnostics',()=>{
+ const {base,dir}=workspace();try{const r=run(dir);assert.equal(r.status,0,r.stderr);const result=JSON.parse(readFileSync(join(dir,'offline-evaluation.json'),'utf8'));assert.deepEqual(result.results.map((r:any)=>r.status),['accepted','accepted']);assert.deepEqual(result.results.map((r:any)=>r.oldEpisodeInContext),[true,false]);assert.ok(result.results[0].diagnostic.episodicOnlyPrimaryItemsIncluded>0);assert.ok(!readFileSync(join(dir,'offline-evaluation.json'),'utf8').includes('2800'));assert.ok(!r.stdout.includes('2800'));
+ const snapshots=readFileSync(join(dir,'offline-ledger.jsonl'),'utf8').trim().split('\n').map(s=>JSON.parse(s));assert.ok(snapshots.some(s=>s.requests.some((r:any)=>r.state==='reserved'&&r.reservedUsd===0.0135)));assert.equal(snapshots.at(-1).requests.length,2);assert.ok(!JSON.stringify(snapshots).includes('Payroll audit'));
+ }finally{assert.ok(resolve(dir).startsWith(base+sep));rmSync(dir,{recursive:true,force:true});}
+});
+test('an exhausted completion or monetary admission ledger stops before another gateway dispatch',()=>{
+ for(const requests of [Array.from({length:8},(_,i)=>({id:i+1,condition:'previous',contextHash:String(i),state:'accepted',reservedUsd:0.0135,costUsd:0.001,inputTokens:1,outputTokens:1,identity:'completion',error:null,durationMs:1})),[{id:1,condition:'previous',contextHash:'previous',state:'accepted',reservedUsd:0.0135,costUsd:0.149,inputTokens:1,outputTokens:1,identity:'completion',error:null,durationMs:1}]]){
+ const {base,dir}=workspace();try{const raw=JSON.stringify({version:1,task:'phase4d1-memory',requests,halted:false})+'\n';writeFileSync(join(dir,'offline-ledger.jsonl'),raw);const r=run(dir);assert.notEqual(r.status,0);assert.match(r.stderr,/MEMORY_PAIR_BUDGET/);assert.equal(readFileSync(join(dir,'offline-ledger.jsonl'),'utf8'),raw);}finally{assert.ok(resolve(dir).startsWith(base+sep));rmSync(dir,{recursive:true,force:true});}}
+});
+test('unknown provider usage remains conservatively reserved after unrelated completed mock calls',()=>{
+ const {base,dir}=workspace();try{writeFileSync(join(dir,'offline-ledger.jsonl'),JSON.stringify({version:1,task:'phase4d1-memory',halted:false,requests:[{id:1,condition:'earlier',contextHash:'earlier',state:'rejected',reservedUsd:0.0135,costUsd:null,inputTokens:null,outputTokens:null,identity:null,error:'AI_TIMEOUT',durationMs:1}]})+'\n');const r=run(dir);assert.equal(r.status,0,r.stderr);const result=JSON.parse(readFileSync(join(dir,'offline-evaluation.json'),'utf8'));assert.equal(result.totals.unknownCharges,1);assert.equal(result.totals.completions,3);assert.ok(Math.abs(result.totals.conservativeUsd-0.0137)<1e-10);}
+ finally{assert.ok(resolve(dir).startsWith(base+sep));rmSync(dir,{recursive:true,force:true});}
+});
+test('a repeated evaluation preserves accepted evidence and does not reserve another completion',()=>{
+ const {base,dir}=workspace();try{const first=run(dir);assert.equal(first.status,0,first.stderr);const paths=['offline-ledger.jsonl','private/offline-A.json','private/offline-B.json','offline-evaluation.json'];const before=paths.map(p=>readFileSync(join(dir,p),'utf8'));const second=run(dir);assert.notEqual(second.status,0);assert.match(second.stderr,/MEMORY_CONTEXT_DUPLICATE/);assert.deepEqual(paths.map(p=>readFileSync(join(dir,p),'utf8')),before);}finally{assert.ok(resolve(dir).startsWith(base+sep));rmSync(dir,{recursive:true,force:true});}
+});
+test('an existing exclusive ledger lock fails closed without deleting another process lock',()=>{
+ const {base,dir}=workspace();try{writeFileSync(join(dir,'offline-ledger.jsonl.lock'),'another-owner');const r=run(dir);assert.notEqual(r.status,0);assert.match(r.stderr,/MEMORY_LEDGER_LOCK/);assert.equal(readFileSync(join(dir,'offline-ledger.jsonl.lock'),'utf8'),'another-owner');assert.throws(()=>readFileSync(join(dir,'offline-ledger.jsonl'),'utf8'));}finally{assert.ok(resolve(dir).startsWith(base+sep));rmSync(dir,{recursive:true,force:true});}
+});
+test('malformed internal ledger details never enter the ordinary CLI error envelope',()=>{
+ const {base,dir}=workspace();try{writeFileSync(join(dir,'offline-ledger.jsonl'),'{RAW_PHASE4D1_ERROR_CANARY}\n');const r=run(dir);assert.notEqual(r.status,0);assert.match(r.stderr,/MEMORY_EVALUATION_FAILED/);assert.ok(!(r.stdout+r.stderr).includes('RAW_PHASE4D1_ERROR_CANARY'));}finally{assert.ok(resolve(dir).startsWith(base+sep));rmSync(dir,{recursive:true,force:true});}
+});

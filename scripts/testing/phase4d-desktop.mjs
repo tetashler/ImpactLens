@@ -1,7 +1,7 @@
 // Execute with Playwright MCP browser_run_code_unsafe(filename: absolute path).
 // Requires phase4d-mock-server.ps1: dummy credentials, fixture adapters, external-server fetch blocked.
-async (page) => {
- const out='C:/Users/tetas/OneDrive/Desktop/Kaplan/Hackathon/Hackathon2/ImpactLens/tmp/phase4d';
+async (page,configuration={}) => {
+ const out=configuration.output??'C:/Users/tetas/OneDrive/Desktop/Kaplan/Hackathon/Hackathon2/ImpactLens/tmp/phase4d';
  const context=await page.context().browser().newContext({viewport:{width:1440,height:900}}),p=await context.newPage();
  const errors=[],consoleErrors=[],payloadChecks=[],responseTasks=[];let latest=null,explores=0;
  p.on('pageerror',e=>errors.push(e.message));p.on('console',m=>{if(m.type()==='error')consoleErrors.push(m.text());});
@@ -19,7 +19,7 @@ async (page) => {
  });
  p.on('request',r=>{if(r.method()==='POST'&&r.url().endsWith('/api/scenario-simulate'))explores++;});
  const attach=()=>p.evaluate(()=>{const n=document.querySelector('.kg-canvas');let f=n?.[Object.keys(n).find(k=>k.startsWith('__reactFiber'))];for(let d=0;f&&d<40;d++,f=f.return)for(const t of [f,f.alternate]){let s=t?.memoizedState;for(let i=0;s&&i<100;i++,s=s.next){const r=s.memoizedState?.current;if(r?.core&&typeof r.snapshot==='function'&&!r.core.destroyed()){window.__phase4dRenderer=r;return {nodes:r.snapshot().nodes,edges:r.snapshot().edges};}}}throw Error('Graph renderer unavailable');});
- await p.goto('http://127.0.0.1:3196');
+ await p.goto(configuration.url??'http://127.0.0.1:3196');
  await p.getByRole('textbox',{name:'Your scenario question',exact:true}).fill('What if Singapore introduces a four-day workweek?');
  await p.getByRole('button',{name:'Explore',exact:true}).click();
  await p.waitForFunction(()=>document.body.innerText.includes('Background communication: completed'),{},{timeout:60000});

@@ -1,4 +1,5 @@
 import {experiencedMemories,experienced,applyIssue,rememberExperiences} from './episodic.ts';
+import {describeMemoryRetrieval,type MemoryRetrievalDiagnostics} from './memory-diagnostics.ts';
 import {isMenuPolicy} from './intelligence.ts';
 import {conversationOpportunity} from './conversation.ts';
 import {buildDecisionMenu,menuSchema,decodeMenuDecision,replyMenuMetrics} from './decision-menu.ts';
@@ -19,7 +20,7 @@ export function controlledIds(w:SocietyWorld){return w.genesis.input.hybrid?Obje
 export function decisionReservation(c:DecisionContext){return new TextEncoder().encode(canonical(c)).length+new TextEncoder().encode(canonical(decisionSchema(c))).length+3000+L.outputTokens;}
 export function hybridBudget(w:SocietyWorld){const c=w.genesis.input.hybrid,rs=w.hybrid?.records??[],modern=!!w.genesis.input.communication?.decisionPolicy;const tokens=rs.reduce((n,r)=>n+(modern&&r.usage?.inputTokens!=null&&r.usage.outputTokens!=null?r.usage.inputTokens+r.usage.outputTokens:r.reservedTokens),0),cost=rs.reduce((n,r)=>n+(r.usage?.costUsd??r.reservedCostUsd),0),next=modern&&w.hybrid?.pending?decisionReservation(w.hybrid.pending):L.contextBytes+10000+L.outputTokens;return {calls:rs.length,tokens,costUsd:cost,exhausted:!!w.hybrid?.tokenBudgetExhausted||!c||rs.length>=c.maxCalls||tokens+next>c.reservedTokens||cost+L.unknownCostUsd>c.costUsd};}
 function offer(w:SocietyWorld,pending:DecisionContext){const next=setHybrid(w,{records:w.hybrid!.records,pending});return !!pending.policy&&hybridBudget(next).exhausted?setHybrid(w,{records:w.hybrid!.records,pending:null,tokenBudgetExhausted:true}):next;}
-export function buildDecisionContext(w:SocietyWorld,actorId:string,platform:Platform):DecisionContext{
+export function buildDecisionContext(w:SocietyWorld,actorId:string,platform:Platform,observe?:(value:MemoryRetrievalDiagnostics)=>void):DecisionContext{
  const a=w.agents.find(a=>a.id===actorId)!;
  const eligible=(w.genesis.input.intelligence?experiencedMemories(w,actorId):a.memory).filter(m=>(m.kind==='exposure'||m.kind==='authored')&&(!w.genesis.input.communication||m.exposedIds.some(id=>{const item=w.items.find(i=>i.id===id);return item&&canAccessItem(w,a.id,item);})));
  const latest=eligible.findLast(m=>m.kind==='exposure'),cross=eligible.findLast(m=>m.kind==='exposure'&&m.platform!==platform);
@@ -37,7 +38,9 @@ export function buildDecisionContext(w:SocietyWorld,actorId:string,platform:Plat
  if(result.policy==='conversation-menu-v2'){result.issues=(a.issues??[]).filter(i=>retained.has(i.sourceEventId)).slice(-4);result.stateHistory=w.events.filter(e=>e.actorId===actorId&&e.type==='opinion').slice(-3).map(e=>({eventId:e.id,tick:e.tick,from:e.previousPosition!,to:e.position!}));}
  if(isMenuPolicy(result.policy)){result.memories=result.memories.map(m=>({...m,text:''}));result.readableIds=items.filter(i=>visible(w,actorId,i.platform).some(root=>root.id===i.id||threadPath(w,i.id)[0]===root.id)).map(i=>i.id);if(result.communication)result.communication.canCreateGroup=(w.groups?.length??0)<8;result.menu=buildDecisionMenu(result);while(new TextEncoder().encode(canonical(result)).length>L.contextBytes&&result.menu.length>1){const index=result.menu.findLastIndex(m=>m.action!=='inactive');if(index<0)break;result.menu.splice(index,1);}}
  if(result.policy==='conversation-menu-v2'){const metrics=replyMenuMetrics(result);result.diagnostics={...metrics,contextOmittedItems:Math.max(0,ids.length-boundedIds.length),omissionReasons:{menuCapacity:metrics.omittedPeerReplies,contextCapacity:Math.max(0,ids.length-boundedIds.length)}};}
- check(new TextEncoder().encode(canonical(result)).length<=L.contextBytes,'SOCIAL_SHAPE');return freezeSnapshot(result);
+ check(new TextEncoder().encode(canonical(result)).length<=L.contextBytes,'SOCIAL_SHAPE');
+ if(observe)observe(describeMemoryRetrieval(w,actorId,result,ranked.map(({m,score})=>({eventId:m.eventId,score,lexicalMatches:[...new Set(w.items.find(i=>i.id===m.itemId)?.text.toLowerCase().match(/[a-z]{4,}/g)??[])].filter(t=>terms.has(t)).length})),selected.map(m=>m.eventId)));
+ return freezeSnapshot(result);
 }
 /** Advances rules once, then records a real encounter before offering one selected agent a decision. */
 export function prepareHybridStep(original:SocietyWorld):SocietyWorld{
