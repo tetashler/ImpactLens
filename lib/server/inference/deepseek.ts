@@ -16,6 +16,7 @@ export interface InferenceCallRecord {
   termination?:InferenceTerminationV1;
   plannerValidation?:PlannerDiagnostic;
   actionValidationRule?:ActionValidationRule;
+  socialValidationRule?:string;
 }
 export interface DeepseekTransportOptions {key:string;fetcher?:typeof fetch;timeoutMs?:number;maxOutputTokens?:number;onRecord?:(record:InferenceCallRecord)=>void}
 const schema={type:'object',additionalProperties:false,required:['type','addressedRoleId','statement','previousEventIds','evidenceFindingIds','assumptionIds','reasoningSummary','uncertainties','position','topics'],properties:{type:{type:'string',enum:['argument','response','challenge-assumption','evidence-question','acknowledgement','revision']},addressedRoleId:{type:['string','null']},statement:{type:'string',maxLength:1600},previousEventIds:{type:'array',items:{type:'string'},maxItems:8},evidenceFindingIds:{type:'array',items:{type:'string'},maxItems:8},assumptionIds:{type:'array',items:{type:'string'},maxItems:12},reasoningSummary:{type:'string',maxLength:700},uncertainties:{type:'array',items:{type:'string'},minItems:1,maxItems:6},position:{type:'string',enum:['concerned','conditional','information-seeking']},topics:{type:'array',items:{type:'string'},minItems:1,maxItems:5}}};
@@ -54,7 +55,7 @@ const identityError=()=>new AiError('The required model/provider serving identit
 const cost=(v:unknown):number|null=>typeof v==='number'&&Number.isFinite(v)&&v>=0?v:null;
 const generationId=(v:unknown):string|null=>typeof v==='string'&&/^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/.test(v)?v:null;
 const digitalOcean=(v:unknown)=>typeof v==='string'&&v.toLowerCase()==='digitalocean';
-export interface StructuredSpec<C,T>{name:string;system:string;schema:(context:C)=>unknown;encode:(context:C)=>string;parse:(value:unknown,context:C)=>T;outputLimit:number;defaultOutput:number;contentBytes:number;timeoutLimit?:number;planner?:boolean}
+export interface StructuredSpec<C,T>{name:string;system:string;schema:(context:C)=>unknown;encode:(context:C)=>string;parse:(value:unknown,context:C)=>T;outputLimit:number;defaultOutput:number;contentBytes:number;timeoutLimit?:number;planner?:boolean;diagnose?:(error:unknown)=>string|undefined}
 export function createStructuredTransport<C,T>(options:DeepseekTransportOptions,spec:StructuredSpec<C,T>){
   if(typeof options.key!=='string'||!options.key.trim()||/[\r\n]/.test(options.key))throw new AiError('OPENROUTER_API_KEY is not configured.','AI_CONFIG',503);
   const timeoutMs=options.timeoutMs??30000,maxOutputTokens=options.maxOutputTokens??spec.defaultOutput;
@@ -92,7 +93,7 @@ export function createStructuredTransport<C,T>(options:DeepseekTransportOptions,
         let parsed:T|undefined,contentError:InferenceRejectionCode|undefined;
         if(typeof message.content==='string'&&Buffer.byteLength(message.content,'utf8')<=spec.contentBytes&&message.tool_calls===undefined){
           let action:unknown;try{action=JSON.parse(message.content);termination.jsonValid=true;}catch{termination.jsonValid=false;contentError='AI_RESPONSE_JSON';if(spec.planner)record.plannerValidation=plannerDiagnostic('plan.invalid_json','draft');}
-          if(termination.jsonValid){try{parsed=spec.parse(action,context);termination.actionValid=true;}catch(error){termination.actionValid=false;contentError=turnRejectionCode(error);if(!spec.planner)record.actionValidationRule=actionValidationRule(error,action);if(spec.planner)record.plannerValidation=error instanceof PlannerValidationError?error.diagnostic:plannerDiagnostic('plan.internal_validation','draft');}}
+          if(termination.jsonValid){try{parsed=spec.parse(action,context);termination.actionValid=true;}catch(error){termination.actionValid=false;if(spec.diagnose)record.socialValidationRule=spec.diagnose(error);contentError=turnRejectionCode(error);if(!spec.planner)record.actionValidationRule=actionValidationRule(error,action);if(spec.planner)record.plannerValidation=error instanceof PlannerValidationError?error.diagnostic:plannerDiagnostic('plan.internal_validation','draft');}}
         }else{termination.jsonValid=false;contentError='AI_RESPONSE_ENVELOPE';if(spec.planner)record.plannerValidation=plannerDiagnostic('plan.response_envelope','draft');}
         if(choice.finish_reason!=='stop'){if(spec.planner)record.plannerValidation=plannerDiagnostic('plan.incomplete_output','draft');throw new AiError(INFERENCE_REJECTION_MESSAGES.AI_RESPONSE_INCOMPLETE,'AI_RESPONSE_INCOMPLETE',502,record.plannerValidation);}
         if(contentError){if(spec.planner)throw new AiError('The generated plan failed validation.','AI_PLAN_INVALID',502,record.plannerValidation);throw rejection(contentError);}

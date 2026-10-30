@@ -1,0 +1,4 @@
+import type {SocietyWorld} from './contract.ts';
+/** Full ancestry is required; hidden/missing ancestors never become implicit knowledge. */
+export function threadPath(w:SocietyWorld,id:string):string[]{const path:string[]=[];let current=w.items.find(i=>i.id===id);while(current){if(current.hidden||current.tick>w.tick||path.includes(current.id)||path.length>=12)return [];path.unshift(current.id);if(!current.parentId)return path;current=w.items.find(i=>i.id===current!.parentId);}return [];}
+export function threadExposure(w:SocietyWorld,id:string):string[]{const path=threadPath(w,id);if(!path.length)return [];const root=path[0],result=[...path];for(const item of [...w.items].reverse()){if(result.length>=12)break;const ancestors=threadPath(w,item.id);if(ancestors[0]!==root)continue;const additions=ancestors.filter(id=>!result.includes(id));if(result.length+additions.length<=12)result.push(...additions);}return result;}
