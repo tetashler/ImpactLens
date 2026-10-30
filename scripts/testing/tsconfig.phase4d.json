@@ -1,0 +1,29 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "incremental": false,
+    "types": [
+      "node",
+      "react"
+    ],
+    "typeRoots": [
+      "../../node_modules/@types"
+    ]
+  },
+  "include": [
+    "../../lib/society/**/*.ts",
+    "../../lib/server/society/**/*.ts",
+    "../../lib/server/inference/social.ts",
+    "../../lib/question-simulation/public-session.ts",
+    "../../lib/contracts/tests/phase4d*.ts",
+    "../../components/discussion-summary.tsx",
+    "../../components/communication-report.tsx",
+    "../../components/knowledge-workspace.tsx",
+    "../../scripts/testing/phase4d-acceptance.ts",
+    "../../next-env.d.ts"
+  ],
+  "exclude": [
+    "../../node_modules"
+  ]
+}

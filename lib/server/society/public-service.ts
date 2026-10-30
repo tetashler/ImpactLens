@@ -1,4 +1,4 @@
-import {replacePrivateCheckpoint} from './storage.ts';
+import {replacePrivateCheckpoint,privateStoreDirectory} from './storage.ts';
 import {mkdirSync,existsSync,readFileSync,writeFileSync,readdirSync,statSync} from 'node:fs';import {join} from 'node:path';import {randomBytes,createHash,timingSafeEqual} from 'node:crypto';
 import {handleDynamicRequest,type DynamicDependencies} from '../inference/dynamic-service.ts';
 import {handleSocialRequest as internalRequest,type SocialDependencies} from './service.ts';
@@ -11,7 +11,7 @@ import type {PublicExplore,SocietySummary} from '../../society/public-contract.t
 import type {DynamicResponse} from '../../dynamic-scenarios/response.ts';
 export interface PublicDependencies extends SocialDependencies {storeDirectory?:string}
 interface Stored {baseGraph:import('../../knowledge-graph/contract.ts').KnowledgeGraph;version:1;token:string;execution:DynamicResponse;publicRun:PublicExplore;sessionId:string|null;revision:number}
-const root=(d:PublicDependencies)=>d.storeDirectory??join(process.cwd(),'data/derived/agents/accepted-private');
+const root=(d:PublicDependencies)=>privateStoreDirectory('accepted-private',d.storeDirectory);
 const response=(v:unknown,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const pathFor=(id:string,d:PublicDependencies)=>{ensure(typeof id==='string'&&id.length<=160,'PUBLIC_ID');return join(root(d),createHash('sha256').update(id).digest('hex')+'.json');};
 async function write(s:Stored,d:PublicDependencies){mkdirSync(root(d),{recursive:true});const path=pathFor(s.publicRun.runId,d);const content=JSON.stringify(s);ensure(Buffer.byteLength(content)<=3*1024*1024,'PUBLIC_STORAGE');await replacePrivateCheckpoint(path,content);}
@@ -34,7 +34,7 @@ export async function registerAcceptedExecution(value:DynamicResponse,d:PublicDe
  try{const r=await internalRequest(internal({operation:'start',run}),options(s,d));ensure(r.ok,'PUBLIC_SESSION');await refresh(s,await r.json(),d);}catch{s.publicRun.limitations=[...s.publicRun.limitations,'Background communication could not initialise. Accepted stakeholder records remain preserved.'];await write(s,d);}
  return s.publicRun;
 }
-export async function handlePublicExplore(request:Request,deps:DynamicDependencies={},social:PublicDependencies={}){const r=await handleDynamicRequest(request,deps),v=await r.json();if(v.kind!=='dynamic-execution')return response(v,r.status);try{return response(await registerAcceptedExecution(v,social));}catch{return response({error:'Accepted execution could not be projected safely; no conversation records were returned.',code:'PUBLIC_PROJECTION'},500);}}
+export async function handlePublicExplore(request:Request,deps:DynamicDependencies={},social:PublicDependencies={}){const r=await handleDynamicRequest(request,deps),v=await r.json();if(v.kind!=='dynamic-execution')return response(v,r.status);try{return response(await registerAcceptedExecution(v,social));}catch(error){const e=error as Error&{code?:string};const reason=/read only|read-only|not extensible|frozen/i.test(e.message??'')?'IMMUTABLE_MUTATION':/JSON-serialisable/i.test(e.message??'')?'SERIALISATION':['EPERM','EACCES','ENOENT','ENOSPC','EBUSY'].includes(e.code??'')?e.code:'VALIDATION';console.warn('PUBLIC_PROJECTION_SAFE',JSON.stringify({reason,kind:['Error','TypeError','RangeError'].includes(e.name)?e.name:'Error',locations:e.stack?.split('\n').slice(1,4).map(line=>line.replace(/.*?(\.next|lib)[\\/]/,'$1/').slice(0,220))}));return response({error:'Accepted execution could not be projected safely; no conversation records were returned.',code:'PUBLIC_PROJECTION'},500);}}
 /** Ordinary browser boundary: only summary DTOs. No raw switch, no executable client worlds. */
 export async function handlePublicSocial(request:Request,d:PublicDependencies={}){
  let owner:Stored|undefined;

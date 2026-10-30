@@ -1,3 +1,5 @@
+import {privateStoreDirectory} from './storage.ts';
+import {BALANCED_POLICY} from '../../society/intelligence.ts';
 /** Authoritative local sessions. Client worlds/costs are never executable inputs. */
 import {existsSync,mkdirSync,readFileSync,openSync,closeSync,writeSync,fsyncSync,statSync} from 'node:fs';
 import {join} from 'node:path';import {randomUUID,createHash} from 'node:crypto';
@@ -6,14 +8,14 @@ import type {StakeholderSimulationRunV1} from '../../stakeholder-simulation/cont
 import {createSociety,stepSociety,restoreSocietyForInput,type SocietyWorld,type SocietyInput} from '../../society/engine.ts';
 import {prepareHybridStep,finishDecision,hybridBudget,replayHybrid} from '../../society/hybrid.ts';
 import {HYBRID_DEFAULTS,type DecisionContext} from '../../society/decision-contract.ts';
-import {buildPopulation,populationView} from '../population/store.ts';import {buildSocietyGeography} from '../population/geography.ts';
+import {populationForActive} from './population.ts';import {buildSocietyGeography} from '../population/geography.ts';
 import {createSocialTransport} from '../inference/social.ts';import {acquireAiSlot} from '../ai/gate.ts';
 import {canonical,ensure,object} from '../../experiments/validation.ts';
 export interface SocialDependencies {ruleOnly?:boolean;communication?:import('../../society/communication.ts').CommunicationConfig;enabled?:boolean;key?:string;fetcher?:typeof fetch;directory?:string}
 interface Session {id:string;runId:string;world:SocietyWorld;revision:number;busy:boolean;reservation:DecisionContext|null}
 const globalState=globalThis as typeof globalThis&{__socialSessions?:Map<string,Session>};const sessions=globalState.__socialSessions??=new Map<string,Session>();
 const enabled=(d:SocialDependencies)=>d.enabled??(process.env.SOCIAL_LLM_ENABLED==='true'&&process.env.STAKEHOLDER_LIVE_ENABLED==='true');
-const directory=(d:SocialDependencies)=>d.directory??join(process.cwd(),'data/derived/agents/social-sessions');
+const directory=(d:SocialDependencies)=>privateStoreDirectory('social-sessions',d.directory);
 const response=(v:unknown,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
 export function socialStatus(d:SocialDependencies={}){return {version:1,enabled:enabled(d),configured:!!(d.key??process.env.OPENROUTER_API_KEY)?.trim(),limits:HYBRID_DEFAULTS,model:'deepseek/deepseek-v4-flash-0731',provider:'digitalocean',fallback:false};}
 function persist(s:Session,root:string){mkdirSync(root,{recursive:true});const path=join(root,s.id+'.jsonl');ensure(!existsSync(path)||statSync(path).size<64*1024*1024,'SOCIAL_STORAGE_LIMIT');const line=JSON.stringify({id:s.id,runId:s.runId,revision:s.revision,input:s.world.genesis.input,tick:s.world.tick,hybrid:s.world.hybrid,...(!s.world.hybrid?{world:s.world}:{}),reservation:s.reservation})+'\n';ensure(Buffer.byteLength(line)<2*1024*1024,'SOCIAL_STORAGE_LIMIT');const fd=openSync(path,'a');try{ensure(writeSync(fd,line)===Buffer.byteLength(line));fsyncSync(fd);}finally{closeSync(fd);}}
@@ -29,7 +31,7 @@ export async function handleSocialRequest(request:Request,d:SocialDependencies={
    mkdirSync(root,{recursive:true});const index=join(root,createHash('sha256').update(run.runId).digest('hex')+'.index');
    if(existsSync(index)){const s=load(readFileSync(index,'utf8'),root);return response({version:1,sessionId:s.id,revision:s.revision,world:s.world});}
    const fs=await import('node:fs');ensure(fs.readdirSync(root).filter(s=>s.endsWith('.index')).length<64,'SOCIAL_SESSION_LIMIT');
-   const input:SocietyInput={runId:run.runId,question:plan.request.question,seed:plan.requestIdentity.slice(-32),population:populationView(buildPopulation({size:10000,seed:'impactlens-society-v1'})),geography:buildSocietyGeography(),sharePolicy:'source-position-v1',socialPolicy:'memory-aware-v1',...(d.communication?{communication:d.communication}:{}),...(!d.ruleOnly?{hybrid:{...HYBRID_DEFAULTS,maxCalls:Number(process.env.SOCIAL_MAX_DECISIONS??HYBRID_DEFAULTS.maxCalls),selectedAgents:Number(process.env.SOCIAL_CONTROLLED_AGENTS??HYBRID_DEFAULTS.selectedAgents)}}:{}),config:{agents:Number(process.env.SOCIAL_ACTIVE_AGENTS??24)},briefing:{assumptions:plan.draft.assumptions.slice(0,4).map(a=>a.text.slice(0,300)),sources:(plan.grounding?.sources??[]).slice(0,2).map(s=>({id:s.id,title:s.title,url:s.url,retrievedAt:s.retrievedAt,publishedAt:s.publishedAt,passage:s.passages[0].text.slice(0,600)}))},roles:plan.draft.agents,jurisdictions:plan.draft.jurisdictions,acceptedActions:run.events.map(e=>({id:e.id,roleId:e.roleId,statement:e.statement,position:e.position}))};
+   const input:SocietyInput={runId:run.runId,question:plan.request.question,seed:plan.requestIdentity.slice(-32),population:populationForActive(Number(process.env.SOCIAL_ACTIVE_AGENTS??24)),geography:buildSocietyGeography(),sharePolicy:'source-position-v1',socialPolicy:'memory-aware-v1',...(d.communication?{communication:d.communication,intelligence:BALANCED_POLICY}:{}),...(!d.ruleOnly?{hybrid:{...HYBRID_DEFAULTS,maxCalls:Number(process.env.SOCIAL_MAX_DECISIONS??HYBRID_DEFAULTS.maxCalls),selectedAgents:Number(process.env.SOCIAL_CONTROLLED_AGENTS??HYBRID_DEFAULTS.selectedAgents)}}:{}),config:{agents:Number(process.env.SOCIAL_ACTIVE_AGENTS??24)},briefing:{assumptions:plan.draft.assumptions.slice(0,4).map(a=>a.text.slice(0,300)),sources:(plan.grounding?.sources??[]).slice(0,2).map(s=>({id:s.id,title:s.title,url:s.url,retrievedAt:s.retrievedAt,publishedAt:s.publishedAt,passage:s.passages[0].text.slice(0,600)}))},roles:plan.draft.agents,jurisdictions:plan.draft.jurisdictions,acceptedActions:run.events.map(e=>({id:e.id,roleId:e.roleId,statement:e.statement,position:e.position}))};
    const s:Session={id:randomUUID(),runId:run.runId,world:createSociety(input),revision:0,busy:false,reservation:null};persist(s,root);fs.writeFileSync(index,s.id,{flag:'wx'});if(sessions.size>=4){const entry=[...sessions.entries()].find(([,s])=>!s.busy);ensure(entry,'SOCIAL_BUSY');sessions.delete(entry[0]);}sessions.set(root+'/'+s.id,s);return response({version:1,sessionId:s.id,revision:0,world:s.world});
   }
   object(b,['operation','sessionId','revision']);ensure(b.operation==='step'&&Number.isSafeInteger(b.revision),'SOCIAL_REQUEST');const s=load(b.sessionId,root);ensure(!s.busy&&s.revision===b.revision,'SOCIAL_STALE');s.busy=true;

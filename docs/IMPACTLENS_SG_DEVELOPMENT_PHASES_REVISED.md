@@ -665,3 +665,16 @@ Final verification: **976 passing Node tests**, application and affected-module 
 New-task usage stopped at 15 Tavily searches/15 credits and 82 OpenRouter completions. Reported OpenRouter charges: USD 0.0420253974, plus USD 0.0135 reserved for one unknown-charge failed request. Tavily dollar billing is unknown. No automatic provider retries, paid summaries, credential edits, Git integration operations or deployment. Task-owned servers stopped; changes remain unstaged and uncommitted.
 
 Behavioural limits remain: only four selected agents receive eight early social opportunities; most events are rules. No qualifying social decision directly targeted another social-model item. Summaries use counts/tags, and profile-matched individual demographics are not implemented. Next: improve reply-target selection and topic summaries offline using the saved worlds. See `docs/PHASE4C_AUTONOMOUS_LIVE_DEBUGGING.md` for the full attempt/cost ledger, safe evidence, screenshots and limitations.
+
+
+## Phase 4D checkpoint - PASS offline only (30 October 2026)
+
+New sessions freeze conversation-windows-v1 / conversation-menu-v2 / episodic-v1 / attention-v1 policies. Eight social opportunities now span ticks 2,12,22,32,42,52,62,72. Bounded menus preserve eligible peer replies; an exposed A -> B -> A fixture validates and replays. Selected agents retain up to 32 episodic entries and eight explicit self-classified issues. Attention/cooldown/novelty rules reduce redundant activity and prevent repeated influence from unchanged items. Historical Phase 4B/4C trajectories remain unchanged.
+
+Shared decision-grain fact packs drive platform/group/agent Graph inspectors and Report summaries, including coverage, chronology, explicit issues and recorded transfers. Raw conversations and private memory remain server-side. Desktop-only policy and Map | Knowledge Graph | Report remain in force.
+
+Offline 24/50/100-agent runs each accepted eight mocked decisions with four selected agents and exact replay. Default remains 24; graph display selectively caps agent nodes at 48 above that size. The production adult-profile view expands deterministically when needed for 100 active agents, without increasing model calls. Matched rule-only duplicate actions fell from 43 to 0 and repeated influence from 23 to 0 in the fixed fixture; these are synthetic model results.
+
+Verification: 995 passing Node tests, application/strict TypeScript, build, whitespace check, historical replay and desktop 1440x900/1920x1080 browser/network acceptance. No paid requests, new packages, mobile work, credential edits, Git mutations, deployment or secondary-directory access. Numerical interfaces unchanged; standalone CLIs/GIS were not rerun. Default private archive writes were blocked by local EPERM; isolated desktop acceptance used a trusted SOCIAL_STORAGE_ROOT, with default paths unchanged. Verify archive writability before later live testing.
+
+Real-provider Phase 4D behavioural acceptance remains unperformed and requires separate authorisation. Fixture peer-reply counts do not establish voluntary DeepSeek conversations or human persuasion. See `docs/PHASE4D_SOCIAL_INTELLIGENCE_IMPLEMENTATION.md` for architecture, evidence, benchmarks, limits and reproduction.

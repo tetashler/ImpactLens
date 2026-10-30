@@ -16,7 +16,9 @@ if(process.env.IMPACTLENS_PHASE2B_MOCK==='true')for(const [index,f]of fixtures.e
  if(names){f.draft.ontology.entities=f.draft.ontology.entities.slice(0,3).map((e,i)=>({...e,name:names[i]}));f.draft.ontology.entityTypes.forEach((t,i)=>{t.name=(index===0?['Government agency','Labour organisation','Employer association']:['Public water agency','Government agency','Business group'])[i];});const ids=new Set([...f.draft.ontology.entities.map(e=>e.id),...f.draft.agents.map(a=>a.id)]);f.draft.ontology.relationships=f.draft.ontology.relationships.filter(r=>ids.has(r.source)&&ids.has(r.target));}
 }
 if(process.env.IMPACTLENS_PHASE4C_MOCK==='true'){const f=fixtures[0];f.draft.ontology.entityTypes.push({id:'communication',name:'Communication platform',description:'Scenario-relevant public and private communication environments.'});for(const name of ['Reddit','Instagram','WhatsApp','Telegram'])f.draft.ontology.entities.push({id:name.toLowerCase(),name,typeId:'communication',jurisdictionId:null,support:null});}
-mkdirSync(new URL('../../tmp/dynamic-scenarios/',import.meta.url),{recursive:true});
+const ledgerDirectory=process.env.IMPACTLENS_PHASE4D_MOCK==='true'?'../../tmp/phase4d/':'../../tmp/dynamic-scenarios/';
+mkdirSync(new URL(ledgerDirectory,import.meta.url),{recursive:true});
+const mockLedger=new URL(ledgerDirectory+(process.env.IMPACTLENS_PHASE4D_PREFLIGHT==='true'?'preflight-ledger.json':'mock-ledger.json'),import.meta.url);
 globalThis.fetch=async(url,init)=>{
  const address=typeof url==='string'?url:url instanceof URL?url.href:url.url;
  init??={};if(typeof url!=='string'&&typeof url.clone==='function'&&!init.body)init={...init,body:await url.clone().text()};
@@ -30,7 +32,7 @@ globalThis.fetch=async(url,init)=>{
   if(b.model!=='deepseek/deepseek-v4-flash-0731'||JSON.stringify(b.provider)!==JSON.stringify({only:['digitalocean'],allow_fallbacks:false,require_parameters:true})||b.reasoning?.effort!=='none')throw Error('Mock routing mismatch');
   const c=JSON.parse(b.messages[1].content),planning=b.response_format.json_schema.name.startsWith('dynamic_'),stage=b.response_format.json_schema.name;
   if(planning&&c.question==='What if planning takes too long?')return new Promise((_,reject)=>{init.signal?.addEventListener('abort',()=>reject(new DOMException('Mock planning timeout','AbortError')),{once:true});});
-  if(stage==='social_decision_v1'){calls.push({purpose:'social',turn:c.tick});writeFileSync(new URL('../../tmp/dynamic-scenarios/mock-ledger.json',import.meta.url),JSON.stringify(calls));return Response.json({id:`mock-social-${calls.length}`,model:b.model,provider:'DigitalOcean',choices:[{finish_reason:'stop',message:{content:JSON.stringify(socialProviderFixture(c))}}],usage:{prompt_tokens:450,completion_tokens:120,total_tokens:570,cost:0.0001,completion_tokens_details:{reasoning_tokens:0}}});}
+  if(stage==='social_decision_v1'){calls.push({purpose:'social',turn:c.tick});writeFileSync(mockLedger,JSON.stringify(calls));return Response.json({id:`mock-social-${calls.length}`,model:b.model,provider:'DigitalOcean',choices:[{finish_reason:'stop',message:{content:JSON.stringify(socialProviderFixture(c))}}],usage:{prompt_tokens:450,completion_tokens:120,total_tokens:570,cost:0.0001,completion_tokens_details:{reasoning_tokens:0}}});}
   const f=fixtures.find(f=>f.request.question===fixtureQuestion(planning?c.question:c.input.question));if(!f)throw Error('No development fixture for this question');
   const other=[...(c.previousEvents??[])].reverse().find(e=>e.roleId!==c.role?.id);
   const proposed=structuredClone(f.draft),source=(c.retrievalCandidates?.sources??c.retrievalCandidates)?.[0];if(planning&&source){const p=source.passages[0],support={sourceId:source.id,passageId:p.id,quote:p.text};proposed.ontology.entities[0].support=support;proposed.ontology.relationships[0].support=support;}
@@ -46,9 +48,16 @@ globalThis.fetch=async(url,init)=>{
   if(planning&&stage==='dynamic_entities_v2'&&process.env.IMPACTLENS_FLEXIBLE_GROUNDING_MOCK==='true'&&c.question===invalidQuoteQuestion)value.ontology.entities[0].support.quote='Forbidden model-authored quote property.';
   if(stage==='dynamic_entities_v2')value=entityDeclarationFixture(value);else if(stage==='dynamic_relationships_v2')value.relationships=value.relationships.map(({id,...r})=>r);
   if(!planning)value=stakeholderProviderFixture(c,value);
-  calls.push({fixture:fixtures.indexOf(f),purpose:planning?stage:'action',turn:planning?null:c.turnIndex});writeFileSync(new URL('../../tmp/dynamic-scenarios/mock-ledger.json',import.meta.url),JSON.stringify(calls));
+  calls.push({fixture:fixtures.indexOf(f),purpose:planning?stage:'action',turn:planning?null:c.turnIndex});writeFileSync(mockLedger,JSON.stringify(calls));
   return Response.json({id:`mock-browser-${calls.length}`,model:b.model,provider:'DigitalOcean',choices:[{finish_reason:'stop',native_finish_reason:'stop',message:{content:JSON.stringify(value)}}],usage:{prompt_tokens:planning?500:100,completion_tokens:planning?1000:50,total_tokens:planning?1500:150,cost:planning?0.001:0.0001,completion_tokens_details:{reasoning_tokens:0}}});
  }
  if(!/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(address))throw Error('External server inference/network disabled in mock acceptance');
  return nativeFetch(url,init);
 };
+
+if(process.env.IMPACTLENS_PHASE4D_MOCK==='true'){
+ const dummyKeys=process.env.OPENROUTER_API_KEY==='sk-or-v1-'+'0'.repeat(64)&&process.env.TAVILY_API_KEY==='tvly-'+'0'.repeat(32);
+ const nativeExternalBlocked=nativeFetch.toString().includes('OFFLINE_EXTERNAL_FETCH_BLOCKED');
+ if(!dummyKeys||!nativeExternalBlocked||process.env.IMPACTLENS_PHASE2B_MOCK!=='true'||process.env.IMPACTLENS_SOCIAL_MOCK!=='true')throw Error('PHASE4D_OFFLINE_PREFLIGHT_REQUIRED');
+ console.info('PHASE4D_OFFLINE_GUARD_READY',JSON.stringify({dummyKeys,nativeExternalBlocked,fixtureAdapters:true,paidDispatch:false}));
+}

@@ -1,0 +1,9 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {mkdtempSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';
+import {handleSocialRequest} from '../../server/society/service.ts';
+import {worldFixtures} from '../../world-graph/fixtures.ts';import {createDynamicPlan} from '../../dynamic-scenarios/plan.ts';import {createDynamicInput} from '../../dynamic-scenarios/execution.ts';import {runStakeholderSimulation,deterministicTurn} from '../../stakeholder-simulation/engine.ts';
+import {selectCommunication} from '../../society/communication.ts';
+test('the actual server supplies enough bounded adult strata for 100 active agents with no inference',async()=>{
+ const f=worldFixtures()[0],source=await runStakeholderSimulation(await createDynamicInput(await createDynamicPlan(f.request,f.draft)),{attemptId:'phase4d-capacity',provider:'offline',model:'fixture',generateTurn:async c=>deterministicTurn(c)}),directory=mkdtempSync(join(tmpdir(),'phase4d-capacity-')),prior=process.env.SOCIAL_ACTIVE_AGENTS;
+ let calls=0;try{process.env.SOCIAL_ACTIVE_AGENTS='100';const r=await handleSocialRequest(new Request('http://localhost/api/social-simulate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({operation:'start',run:source})}),{directory,enabled:true,ruleOnly:true,communication:selectCommunication([],[],[]),fetcher:async()=>{calls++;throw Error('No dispatch');}});assert.equal(r.status,200);const s=await r.json();assert.equal(s.world.agents.length,100);assert.ok(s.world.genesis.input.population.residents.length<=256);assert.equal(calls,0);}finally{if(prior===undefined)delete process.env.SOCIAL_ACTIVE_AGENTS;else process.env.SOCIAL_ACTIVE_AGENTS=prior;rmSync(directory,{recursive:true,force:true});}
+});

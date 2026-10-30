@@ -1,5 +1,8 @@
 import {openSync,writeFileSync,fsyncSync,closeSync,renameSync,unlinkSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
+import {join,resolve} from 'node:path';
+/** Trusted server configuration only. HTTP clients cannot choose a storage path. */
+export function privateStoreDirectory(kind:'accepted-private'|'social-sessions',override?:string){return override??join(process.env.SOCIAL_STORAGE_ROOT?resolve(process.env.SOCIAL_STORAGE_ROOT):join(process.cwd(),'data/derived/agents'),kind);}
 /** Retry the atomic filesystem replacement only. Never repeats a reducer or provider call. */
 export async function replacePrivateCheckpoint(path:string,content:string,replace:typeof renameSync=renameSync){
  const pending=path+'.'+randomUUID()+'.pending',fd=openSync(pending,'wx');
