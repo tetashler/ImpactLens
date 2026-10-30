@@ -17,7 +17,7 @@ test('real social route uses the existing verified gateway, authoritative sessio
 });
 test('new communication sessions freeze topic retrieval while an indexed v1 session restores unchanged',async()=>{
  const directory=mkdtempSync(join(tmpdir(),'social-topic-policy-'));let calls=0;
- try{const {selectCommunication}=await import('../../society/communication.ts'),{createSociety}=await import('../../society/engine.ts');const source=await run(),d={directory,enabled:true,key:'offline',communication:selectCommunication([{id:'rd',name:'Reddit',typeId:'t'}],[{id:'t',name:'Communication platform'}],['Recorded concerns']),fetcher:async()=>{calls++;throw Error('No dispatch');}};
+ try{const {selectCommunication}=await import('../../society/communication.ts'),{createSociety}=await import('../../society/engine.ts');const source=await run(),d={swarm:false as const,directory,enabled:true,key:'offline',communication:selectCommunication([{id:'rd',name:'Reddit',typeId:'t'}],[{id:'t',name:'Communication platform'}],['Recorded concerns']),fetcher:async()=>{calls++;throw Error('No dispatch');}};
  const s=await(await handleSocialRequest(request({operation:'start',run:source}),d)).json();assert.equal(s.world.genesis.input.intelligence.memory,'episodic-topic-v2');
  const input=structuredClone(s.world.genesis.input);input.intelligence.memory='episodic-v1';const legacy=createSociety(input);
  appendFileSync(join(directory,s.sessionId+'.jsonl'),JSON.stringify({id:s.sessionId,runId:source.runId,revision:1,input:legacy.genesis.input,tick:0,hybrid:legacy.hybrid,reservation:null})+'\n');(globalThis as any).__socialSessions.clear();

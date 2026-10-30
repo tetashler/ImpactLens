@@ -17,9 +17,9 @@ export function graphPixelRatio(devicePixelRatio:unknown):number {
     ?Math.min(2,Math.max(1,devicePixelRatio)):1;
 }
 
-function displayLabel(label:string):string {
+function displayLabel(label:string,limit=28):string {
   const characters=Array.from(label);
-  return characters.length<=28?label:`${characters.slice(0,27).join('').trimEnd()}…`;
+  return characters.length<=limit?label:`${characters.slice(0,limit-1).join('').trimEnd()}…`;
 }
 
 /** Display coordinates only: these are deterministic seeds, never geographic points. */
@@ -32,8 +32,11 @@ export function graphElements(graph:KnowledgeGraph):ElementDefinition[]{
   return [
     ...nodes.map((n,i)=>{
       const angle=i*2.399963229728653,radius=55*Math.sqrt(i+1),connections=degree.get(n.id)??0;
-      return {data:{id:n.id,label:n.label,displayLabel:displayLabel(n.label),category:n.category,entityType:knowledgeEntityType(n),colour:entityTypeColour(knowledgeEntityType(n)),size:n.category==='scenario'?14:12,degree:connections},
-        position:{x:Math.cos(angle)*radius,y:Math.sin(angle)*radius},classes:n.category==='scenario'?'hub':''};
+      const presentation=n.properties.presentationCategory;
+      const hierarchy=presentation==='entity'||presentation==='role'||presentation==='person'||presentation==='aggregate'?presentation:'legacy';
+      const size=hierarchy==='entity'?28+Math.min(8,connections):hierarchy==='role'?23:hierarchy==='aggregate'?31:hierarchy==='person'?12:n.category==='scenario'?14:12;
+      return {data:{id:n.id,label:n.label,displayLabel:displayLabel(n.label,hierarchy==='entity'||hierarchy==='role'||hierarchy==='aggregate'?72:28),category:n.category,entityType:knowledgeEntityType(n),colour:entityTypeColour(knowledgeEntityType(n)),size,degree:connections},
+        position:{x:Math.cos(angle)*radius,y:Math.sin(angle)*radius},classes:`${n.category==='scenario'?'hub ':''}presentation-${hierarchy}`};
     }),
     ...graph.edges.map(e=>({data:{id:e.id,source:e.source,target:e.target,label:knowledgeRelationshipLabel(e),directed:e.directed},classes:edgeClasses.get(e.id)})),
   ];
@@ -42,6 +45,11 @@ export function graphElements(graph:KnowledgeGraph):ElementDefinition[]{
 const stylesheet:StylesheetJson=[
   {selector:'node',style:{'background-color':'data(colour)',width:'data(size)',height:'data(size)',label:'data(displayLabel)',color:'#cbd9e8','font-size':12,'font-weight':400,'font-family':'Arial, sans-serif','text-valign':'bottom','text-margin-y':7,'min-zoomed-font-size':8,'text-max-width':'160px','text-wrap':'ellipsis','border-width':1,'border-color':'#12202f','overlay-opacity':0}},
   {selector:'node.hub',style:{'border-width':1.5,'border-color':'#b5eee7','font-size':13,'font-weight':500}},
+  {selector:'node.presentation-entity',style:{shape:'round-rectangle','border-width':1.5,'border-color':'#d4e7ef','font-size':13,'font-weight':600,'text-margin-y':9}},
+  {selector:'node.presentation-role',style:{shape:'diamond','border-width':1.5,'border-color':'#b8c8e8','font-size':12,'font-weight':500}},
+  {selector:'node.presentation-person',style:{shape:'ellipse','font-size':10,'text-opacity':.85,'border-color':'#8babc0'}},
+  {selector:'node.presentation-aggregate',style:{shape:'hexagon','border-width':2,'border-style':'dashed','border-color':'#bed3df','font-size':12,'font-weight':500}},
+  {selector:'node.presentation-entity, node.presentation-role, node.presentation-aggregate',style:{'text-wrap':'wrap','min-zoomed-font-size':0,'text-background-color':'#0c1827','text-background-opacity':.82,'text-background-shape':'roundrectangle',color:'#d7e6f0'}},
   {selector:'node.labels-hidden',style:{label:''}},
   {selector:'edge',style:{width:.8,'line-color':'#58738d',opacity:.42,'curve-style':'bezier','target-arrow-shape':'none','arrow-scale':.55,'overlay-padding':7,'overlay-opacity':0}},
   {selector:'edge.single',style:{'curve-style':'straight'}},
@@ -88,10 +96,14 @@ export class GraphRenderer {
   private dragged=false;
   private suppressTapUntil=0;
   private labels=false;
+  private presentationIds:ReadonlySet<string>;
+  private allowedCategories:{values:Set<string>;mode:'category'|'entity-type'}|null=null;
   private cleanup:(()=>void)[]=[];
   constructor(container:HTMLElement|undefined,graph:KnowledgeGraph,onSelect:(selection:GraphSelection)=>void){
     this.onSelect=onSelect;
     const start=performance.now();this.core=createGraphCore(graph,container);this.automatic=!!container;
+    this.presentationIds=new Set(graph.nodes.filter(node=>node.properties.presentationPrimary!==false).map(node=>node.id));
+    this.applyVisibility();
     const coreNodes=this.core.nodes();
     this.seeds=coreNodes.map(n=>({id:n.id(),x:n.position('x'),y:n.position('y')}));
     this.cacheKey=JSON.stringify([graph.scenarioIdentity,graph.executionIdentity??null,this.seeds.map(n=>n.id).sort(),
@@ -156,15 +168,24 @@ export class GraphRenderer {
     this.select(id);this.core.center(item);this.core.zoom({level:Math.max(this.core.zoom(),.8),position:item.position()});
   }
   filter(categories:readonly string[],mode:'category'|'entity-type'='category'):void {
-    if(this.disposed)return;const allowed=new Set(categories);
+    if(this.disposed)return;
+    this.allowedCategories={values:new Set(categories),mode};this.applyVisibility();
+    this.select(this.chosen);this.updateLabelDensity();
+  }
+  /** Candidate nodes stay in the same core, preserving layout through discovery. */
+  setPresentationVisibility(ids:ReadonlySet<string>):void {
+    if(this.disposed)return;
+    this.presentationIds=new Set(ids);this.applyVisibility();
+    this.select(this.chosen);this.updateLabelDensity();
+  }
+  private applyVisibility():void {
+    const filter=this.allowedCategories;
     this.core.batch(()=>{
-      this.core.nodes().forEach(node=>{node.toggleClass('kg-hidden',!allowed.has(node.data(mode==='entity-type'?'entityType':'category')));});
+      this.core.nodes().forEach(node=>{node.toggleClass('kg-hidden',!this.presentationIds.has(node.id())||!!filter&&!filter.values.has(node.data(filter.mode==='entity-type'?'entityType':'category')));});
       this.core.edges().forEach(edge=>{edge.toggleClass('kg-hidden',edge.source().hasClass('kg-hidden')||edge.target().hasClass('kg-hidden'));});
     });
-    this.select(this.chosen);
-    this.updateLabelDensity();
   }
-  fit():void {if(!this.disposed&&this.core.nodes().not('.kg-hidden').length){this.core.resize();this.core.fit(this.core.elements().not('.kg-hidden'),55);}}
+  fit():void {if(!this.disposed&&this.core.nodes().not('.kg-hidden').length){this.core.resize();this.core.fit(this.core.elements().not('.kg-hidden'),75);}}
   zoomBy(factor:number):void {if(!this.disposed&&Number.isFinite(factor)&&factor>0)this.core.zoom(Math.min(4,Math.max(.08,this.core.zoom()*factor)));}
   resize():void {if(!this.disposed)this.core.resize();}
   setVisible(visible:boolean):void {
@@ -193,9 +214,16 @@ export class GraphRenderer {
   private updateLabelDensity():void {
     if(this.disposed)return;
     // Dense, zoomed-out graphs keep labels available without painting a wall of text.
-    const lowZoom=this.core.zoom()<.8;
+    const zoom=Math.max(.08,this.core.zoom()),lowZoom=zoom<.8;
     this.core.batch(()=>{
-      this.core.nodes().toggleClass('labels-hidden',this.core.nodes().not('.kg-hidden').length>=100&&lowZoom);
+      const dense=this.core.nodes().not('.kg-hidden').length>=100&&lowZoom;
+      this.core.nodes().forEach(node=>{
+        const entity=node.hasClass('presentation-entity'),role=node.hasClass('presentation-role'),aggregate=node.hasClass('presentation-aggregate');
+        node.toggleClass('labels-hidden',dense&&!entity&&!role&&!aggregate);
+        // Only label styling changes with the camera. Existing force positions,
+        // drag reheating and the relative sizes of the node tiers stay intact.
+        if(entity||role||aggregate)node.style({'font-size':Math.max(entity?13:12,(role?9.5:11)/zoom),'text-max-width':Math.max(160,180/zoom),'text-margin-y':Math.max(9,6/zoom),'text-background-padding':2/zoom});
+      });
       this.core.edges().toggleClass('labels-hidden',this.labels&&this.core.edges().length>120&&lowZoom);
     });
   }

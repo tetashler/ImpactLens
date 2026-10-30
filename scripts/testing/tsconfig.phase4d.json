@@ -16,7 +16,10 @@
     "../../lib/server/society/**/*.ts",
     "../../lib/server/inference/social.ts",
     "../../lib/question-simulation/public-session.ts",
+    "../../lib/question-simulation/continuation.ts",
+    "../../components/use-society.ts",
     "../../lib/contracts/tests/phase4d*.ts",
+    "../../lib/contracts/tests/phase4e*.ts",
     "../../lib/contracts/tests/storage-reliability.test.ts",
     "../../components/discussion-summary.tsx",
     "../../components/communication-report.tsx",
@@ -28,6 +31,8 @@
     "../../scripts/testing/phase4d2-benchmark.ts",
     "../../scripts/testing/phase4d2-memory-evaluate.ts",
     "../../scripts/testing/storage-lifecycle.ts",
+    "../../scripts/testing/phase4e-benchmark.ts",
+    "../../scripts/testing/phase4e-historical.ts",
     "../../next-env.d.ts"
   ],
   "exclude": [

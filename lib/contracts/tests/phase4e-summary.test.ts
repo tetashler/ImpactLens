@@ -1,0 +1,9 @@
+import '../../../scripts/testing/offline-network.mjs';import test from 'node:test';import assert from 'node:assert/strict';
+import {phase4dWorld,fixtureDecision} from './phase4d-fixture.ts';import {swarmPolicy,swarmHybrid} from '../../society/swarm.ts';import {createSociety} from '../../society/engine.ts';import {prepareHybridStep,finishDecision} from '../../society/hybrid.ts';import {publicSociety,summaryGraph} from '../../server/society/summary.ts';import {parsePublicExplore} from '../../question-simulation/public-session.ts';
+test('the browser allowlist accepts bounded majority-cohort summaries while rejecting raw metadata extensions',()=>{
+ const input=structuredClone(phase4dWorld(50).genesis.input);input.intelligence!.memory='episodic-topic-v2';input.swarm=swarmPolicy();input.hybrid=swarmHybrid(input.swarm);let w=createSociety(input);for(let i=0;i<300&&w.tick<80;i++){w=prepareHybridStep(w);if(w.hybrid!.pending)w=finishDecision(w,{decision:fixtureDecision(w.hybrid!.pending),usage:null,error:null});}
+ const society=publicSociety(w),graph=summaryGraph({version:1,scenarioIdentity:'phase4e',executionIdentity:input.runId,nodes:[],edges:[],limitations:[]},society),safe:any={version:3,kind:'summary-execution',attemptId:'offline',requestIdentity:'offline',runId:input.runId,planId:null,question:input.question,status:'completed',request:null,graph,inspections:{},roles:[],initialActions:[],assumptions:[],limitations:[],sources:[],accounting:{},demographics:null,session:null,society};
+ assert.doesNotThrow(()=>parsePublicExplore(safe));assert.equal(society.swarm!.llmCapableAgents,35);assert.equal(society.swarm!.acceptedDecisions,64);
+ const bad=structuredClone(safe);bad.society.swarm.memoryText='RAW_PRIVATE_SWARM_CANARY';assert.throws(()=>parsePublicExplore(bad));
+ const actor=structuredClone(safe);actor.society.agents[0].memory='RAW_PRIVATE_AGENT_CANARY';assert.throws(()=>parsePublicExplore(actor));
+});

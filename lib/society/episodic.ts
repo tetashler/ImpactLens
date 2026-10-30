@@ -1,3 +1,4 @@
+import {cohortIds} from './swarm.ts';
 import {freezeSnapshot} from '../experiments/validation.ts';
 import {canAccessItem} from './communication.ts';
 import type {Memory,SocietyWorld} from './contract.ts';
@@ -5,7 +6,7 @@ import type {Memory,SocietyWorld} from './contract.ts';
 export interface Episode extends Memory {tick:number;counterparty:string;topicIds:string[];importance:number;access:'recheck-current-membership'}
 export interface SocialIssue {id:string;kind:'question'|'condition'|'disagreement'|'commitment';topicId:string;sourceEventId:string;createdTick:number;status:'open'|'resolved'|'withdrawn';changedEventId:string|null}
 export interface IssueUpdate {kind:SocialIssue['kind']|'resolve'|'withdraw';topicId:string;issueId:string|null}
-export function selectedAgents(w:SocietyWorld){return Object.values(w.genesis.bindings).slice(0,w.genesis.input.hybrid?.selectedAgents??4);}
+export function selectedAgents(w:SocietyWorld){return w.genesis.input.swarm?cohortIds(w):Object.values(w.genesis.bindings).slice(0,w.genesis.input.hybrid?.selectedAgents??4);}
 /** Only genuine reducer experiences enter the index. Content remains in private item records. */
 export function rememberExperiences(w:SocietyWorld):SocietyWorld{
  if(!w.genesis.input.intelligence)return w;

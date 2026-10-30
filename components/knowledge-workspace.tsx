@@ -5,6 +5,7 @@ import type {WorldInspectionV1} from '../lib/world-graph/projection';
 import type {GraphRenderer} from '../lib/knowledge-graph/renderer';
 import {entityTypeColour,graphEntityTypes,knowledgeEntityType,knowledgeRelationshipLabel} from '../lib/knowledge-graph/display';
 import {searchKnowledgeNodes} from '../lib/knowledge-graph/selectors';
+import {visibleGraphNodeIds} from '../lib/knowledge-graph/societal-presentation';
 import './knowledge-workspace.css';
 type Selection={kind:'node'|'edge';id:string};
 const title=(s:string)=>s.replace(/([a-z])([A-Z])/g,'$1 $2').replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -18,7 +19,7 @@ const inspectionLabels:Record<WorldInspectionV1['kind'],string>={
   'source-reported-relationship':'Source-reported relationship · Not independently corroborated',
   'recorded-interaction':'Recorded fictional interaction',
 };
-const secondaryProperties=new Set(['recordType','worldRecordVersion','entityId','roleId','runId','planId','scenarioIdentity','configurationIdentity','horizonYears','horizon','discussionSummary','themes','arguments','viewpoints','membershipPolicy','historyPolicy','sharingPolicy','discussionTimeline','classificationCoverage']);
+const secondaryProperties=new Set(['recordType','worldRecordVersion','entityId','roleId','runId','planId','scenarioIdentity','configurationIdentity','horizonYears','horizon','discussionSummary','themes','arguments','viewpoints','membershipPolicy','historyPolicy','sharingPolicy','discussionTimeline','classificationCoverage','presentationCategory','presentationPrimary']);
 function sourceHref(url:string):string|undefined {try{const parsed=new URL(url);return parsed.protocol==='https:'&&!parsed.username&&!parsed.password?url:undefined;}catch{return undefined;}}
 const ageLabel=(age:string)=>age==='90andOver'?'90+':age.replace('_','–');
 
@@ -78,6 +79,14 @@ export default function KnowledgeWorkspace({graph,visible,onReturn,archived=fals
   const builtGraph=useRef<string|null>(null);
   const selectedGraph=useRef<string|null>(null);
   const currentIdentity=useRef(graphIdentity);
+  const presentationIds=useMemo(()=>{
+    if(!graph)return new Set<string>();
+    const active=selectedGraph.current===graphIdentity?selection:null;
+    const edge=active?.kind==='edge'?graph.edges.find(e=>e.id===active.id):undefined;
+    return visibleGraphNodeIds(graph,{query,focusedNodeId:active?.kind==='node'?active.id:null,revealedNodeIds:edge?[edge.source,edge.target]:[]});
+  },[graph,graphIdentity,query,selection]);
+  const latestPresentation=useRef(presentationIds);latestPresentation.current=presentationIds;
+  const latestSelection=useRef(selection);latestSelection.current=selection;
   useEffect(()=>{
     if(currentIdentity.current===graphIdentity)return;
     currentIdentity.current=graphIdentity;selectedGraph.current=null;
@@ -91,7 +100,8 @@ export default function KnowledgeWorkspace({graph,visible,onReturn,archived=fals
     let disposed=false;setStatus('Arranging connected entities…');
     void import('../lib/knowledge-graph/renderer').then(({GraphRenderer})=>{
       if(disposed||!container.current)return;
-      const r=new GraphRenderer(container.current,graph,s=>{selectedGraph.current=graphIdentity;setSelection(s);});renderer.current=r;builtGraph.current=graphContents;r.filter(latestCategories.current,'entity-type');r.setEdgeLabels(latestEdgeLabels.current);r.setVisible(true);
+      const r=new GraphRenderer(container.current,graph,s=>{selectedGraph.current=graphIdentity;setSelection(s);});renderer.current=r;builtGraph.current=graphContents;r.setPresentationVisibility(latestPresentation.current);r.filter(latestCategories.current,'entity-type');r.setEdgeLabels(latestEdgeLabels.current);r.setVisible(true);
+      if(selectedGraph.current===graphIdentity&&latestSelection.current)r.select(latestSelection.current.id);
       setLayoutMs(r.snapshot().layoutMs);setStatus(`${graph.nodes.length} entities · ${graph.edges.length} relationships`);
     }).catch(()=>{if(!disposed)setStatus('Visual network unavailable. The entity index and details remain usable.');});
     return()=>{disposed=true;};
@@ -100,14 +110,23 @@ export default function KnowledgeWorkspace({graph,visible,onReturn,archived=fals
   useEffect(()=>{if(!container.current||!visible)return;const observer=new ResizeObserver(()=>renderer.current?.resize());observer.observe(container.current);return()=>observer.disconnect();},[visible]);
   useEffect(()=>{if(visible)renderer.current?.resize();},[visible,graph]);
   useEffect(()=>{renderer.current?.filter(categories,'entity-type');},[categories,graph]);
+  useEffect(()=>{renderer.current?.setPresentationVisibility(presentationIds);},[presentationIds]);
   useEffect(()=>{renderer.current?.setEdgeLabels(edgeLabels);},[edgeLabels]);
   useEffect(()=>{if(size==='full'&&selection&&visible)dialog.current?.showModal();else if(dialog.current?.open)dialog.current.close();},[size,selection,visible]);
   useEffect(()=>{if(!visible)return;const key=(e:KeyboardEvent)=>{if(e.key==='Escape'&&size!=='full'){setSelection(null);renderer.current?.select(null);}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);},[visible,size]);
-  const results=useMemo(()=>graph?searchKnowledgeNodes(graph,query).filter(n=>categories.includes(knowledgeEntityType(n))).slice(0,60):[],[graph,query,categories]);
+  // Search includes safe background candidates and filtered types. Selecting a
+  // result restores its type and reveals its immediate context in the same core.
+  const indexCandidates=useMemo(()=>graph?searchKnowledgeNodes(graph,query).filter(n=>query.trim()||categories.includes(knowledgeEntityType(n))&&n.properties.presentationPrimary!==false):[],[graph,query,categories]);
+  const results=indexCandidates.slice(0,60);
+  const backgroundPeople=graph?.nodes.filter(n=>n.properties.presentationCategory==='person'&&n.properties.presentationPrimary===false).length??0;
+  const hasHierarchy=graph?.nodes.some(n=>typeof n.properties.presentationCategory==='string');
+  const visibleNodes=graph?.nodes.filter(n=>presentationIds.has(n.id)&&categories.includes(knowledgeEntityType(n)))??[];
+  const visibleIds=new Set(visibleNodes.map(n=>n.id));
+  const visibleEdges=graph?.edges.filter(e=>visibleIds.has(e.source)&&visibleIds.has(e.target)).length??0;
   const node=selectedGraph.current===graphIdentity&&selection?.kind==='node'?graph?.nodes.find(n=>n.id===selection.id):undefined;
   const edge=selectedGraph.current===graphIdentity&&selection?.kind==='edge'?graph?.edges.find(e=>e.id===selection.id):undefined;
   const selected=node??edge,relationships=node?graph?.edges.filter(e=>e.source===node.id||e.target===node.id)??[]:[];
-  function focus(id:string){const n=graph?.nodes.find(n=>n.id===id);if(!n)return;const type=knowledgeEntityType(n);if(!categories.includes(type)){renderer.current?.filter([...categories,type],'entity-type');setHiddenTypes(v=>v.filter(t=>t!==type));}selectedGraph.current=graphIdentity;setSelection({kind:'node',id});renderer.current?.focus(id);}
+  function focus(id:string){const n=graph?.nodes.find(n=>n.id===id);if(!n||!graph)return;renderer.current?.setPresentationVisibility(visibleGraphNodeIds(graph,{query,focusedNodeId:id}));const type=knowledgeEntityType(n);if(!categories.includes(type)){renderer.current?.filter([...categories,type],'entity-type');setHiddenTypes(v=>v.filter(t=>t!==type));}selectedGraph.current=graphIdentity;setSelection({kind:'node',id});renderer.current?.focus(id);}
   useEffect(()=>{if(visible&&focusAgentId&&renderer.current&&graph?.nodes.some(n=>n.id===focusAgentId))focus(focusAgentId);},[focusAgentId,visible,layoutMs,graphIdentity]);
   function close(){setSelection(null);setSize('popup');renderer.current?.select(null);}
   function back(){setSize('expanded');requestAnimationFrame(()=>launch.current?.focus());}
@@ -116,16 +135,18 @@ export default function KnowledgeWorkspace({graph,visible,onReturn,archived=fals
   return <section className="kg-workspace" hidden={!visible} aria-label="Knowledge Graph">
     <header className="kg-header"><div><h1>Knowledge Graph <span>Relationship explorer</span></h1><p>{archived?'Archived experiment snapshot context; unrelated current simulation results are not attached.':'Explore the entities and interactions in this scenario.'}</p></div><button onClick={onReturn}>Back to Map</button></header>
     <div className="kg-stage"><aside className="kg-explorer" aria-label="Graph exploration">
-      <label className="kg-search">Search graph<input type="search" placeholder="Find an entity or source…" value={query} onChange={e=>setQuery(e.target.value)}/></label>
+      <label className="kg-search">Search graph<input type="search" placeholder="Find an entity, role or person…" value={query} onChange={e=>setQuery(e.target.value)}/></label>
+      {backgroundPeople>0&&<p className="kg-discovery-note">{backgroundPeople} background {backgroundPeople===1?'person':'people'} available through search or connected relationships.</p>}
       <details className="kg-filters" open><summary>Entity types <span>{categories.length}/{entityTypes.length}</span></summary><div>{entityTypes.map(t=><label key={t.name}><input type="checkbox" checked={categories.includes(t.name)} onChange={e=>setHiddenTypes(v=>e.target.checked?v.filter(name=>name!==t.name):[...v,t.name])}/><i style={{background:t.colour}}/><span>{t.name}</span><small>{t.count}</small></label>)}</div></details>
-      <div className="kg-entity-index"><h2>{query?'Search results':'Entity index'} <span>{results.length}{results.length===60?'+':''}</span></h2><div className="kg-search-results">{results.map(n=><button key={n.id} onClick={()=>focus(n.id)} aria-pressed={node?.id===n.id}><i style={{background:entityTypeColour(knowledgeEntityType(n))}}/><span>{n.label}<small>{knowledgeEntityType(n)}</small></span></button>)}{!results.length&&<p>No matching entities. Adjust your search or filters.</p>}</div></div>
+      <div className="kg-entity-index"><h2>{query?'Search results':'Entity index'} <span>{indexCandidates.length}</span></h2><div className="kg-search-results">{results.map(n=><button key={n.id} data-entity-id={n.id} onClick={()=>focus(n.id)} aria-pressed={node?.id===n.id}><i style={{background:entityTypeColour(knowledgeEntityType(n))}}/><span>{n.label}<small>{knowledgeEntityType(n)}</small>{query&&n.properties.presentationPrimary===false&&<small className="kg-result-context">Reveal person and connections</small>}{query&&!categories.includes(knowledgeEntityType(n))&&<small className="kg-result-context">Hidden by type filter · select to reveal</small>}</span></button>)}{!results.length&&<p>No matching entities. Adjust your search or filters.</p>}{indexCandidates.length>60&&<p className="kg-index-note">Showing 60 of {indexCandidates.length}. Refine your search to find a specific entity.</p>}</div></div>
       <p className="kg-source-note">{archived?'Archived immutable context. Only its linked records are attached; no unrelated current calculation.':graph?.nodes.some(n=>n.id.startsWith('experiment-lab:')&&n.category==='source')?'Historical evidence replay attached. This view does not retrieve documents or execute stakeholder turns.':'Built from current structured inputs. This view does not retrieve documents or execute stakeholder turns.'}</p>
     </aside><div className="kg-canvas-wrap">
       <div className="kg-canvas" ref={container} role="img" aria-label="Interactive relationship network. Use the entity index for keyboard selection." data-layout-ms={layoutMs??''}/>
       <div className="kg-canvas-heading"><span aria-hidden="true">✧</span><div><strong>World entities</strong><small>{graph?.executionIdentity?resultLabel:'No generated world available'}</small></div></div>
+      {hasHierarchy&&<div className="kg-presentation-key" aria-label="Graph node shapes"><span><i className="kg-shape-entity"/>Entity</span><span><i className="kg-shape-role"/>Role</span><span><i className="kg-shape-person"/>Person</span><span><i className="kg-shape-aggregate"/>Aggregate</span></div>}
       <div className="kg-map-controls" aria-label="Graph view controls"><button aria-label="Zoom graph in" onClick={()=>renderer.current?.zoomBy(1.3)}>+</button><button aria-label="Zoom graph out" onClick={()=>renderer.current?.zoomBy(1/1.3)}>−</button><button onClick={()=>renderer.current?.fit()} title="Fit all visible entities into the canvas">Fit Graph</button><button onClick={()=>{renderer.current?.resetLayout();setLayoutMs(renderer.current?.snapshot().layoutMs??null);}} title="Recompute entity positions with the force layout">Reset Layout</button><button onClick={()=>renderer.current?.resetView()} title="Reset pan and zoom while keeping entity positions and filters">Reset View</button><button onClick={close}>Reset Focus</button><label className="kg-edge-labels"><input type="checkbox" checked={edgeLabels} onChange={e=>setEdgeLabels(e.target.checked)}/>Edge labels</label></div>
       {(!graph||graph.nodes.length===0)&&<div className="kg-empty"><span>◇</span><h2>World entities are not available</h2><p>{emptyReason??'Choose Explore on the Map to generate a scenario world.'}</p><button onClick={onReturn}>Back to Map</button></div>}
-      <div className="kg-status" role="status">{status}<span>Motion settles after release. Drag nodes · Pan background · Scroll to zoom</span></div>
+      <div className="kg-status" role="status">{layoutMs===null?status:`${visibleNodes.length} of ${graph?.nodes.length??0} entities · ${visibleEdges} relationships shown`}<span>Motion settles after release. Drag nodes · Pan background · Scroll to zoom</span></div>
       {selected&&<aside className={`kg-inspector kg-${size==='full'?'expanded':size}`} aria-label={size==='popup'?'Node popup':'Expanded inspector'}><header><div><span>{node?knowledgeEntityType(node):'Relationship'}</span><h2>{node?.label??knowledgeRelationshipLabel(edge!)}</h2></div><button aria-label="Close inspector" onClick={close}>×</button></header>
         {size==='popup'?<>{details(false,true)}<button className="kg-primary" onClick={()=>setSize('expanded')}>Expand inspector</button></>:<><div className="kg-detail-scroll">{details(false)}</div><footer><button onClick={()=>setSize('popup')}>Compact popup</button><button className="kg-primary" ref={launch} onClick={()=>setSize('full')}>Full-window details</button></footer></>}
       </aside>}

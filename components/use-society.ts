@@ -3,6 +3,7 @@ import {rememberSummary} from '../lib/question-simulation/summary-history';
 import {useEffect,useRef,useState} from 'react';
 import type {PublicExplore} from '../lib/society/public-contract';
 import {parsePublicExplore} from '../lib/question-simulation/public-session';
+import {continuePublicSociety} from '../lib/question-simulation/continuation';
 /** Browser holds only allowlisted summaries. Continuation is owned by a newly accepted Explore, never navigation. */
 export function useSociety(run:PublicExplore|null|undefined,currentRunId:string|null,archived=false){
  const [result,setResult]=useState<PublicExplore|null>(null),[error,setError]=useState(''),[selected,setSelected]=useState<string|null>(null);const started=useRef(new Set<string>()),latest=useRef<PublicExplore|null>(null),explicitResume=useRef<string|null>(null),[resumeNonce,setResumeNonce]=useState(0),id=run?.runId??null;
@@ -10,7 +11,7 @@ export function useSociety(run:PublicExplore|null|undefined,currentRunId:string|
  const accept=(value:unknown)=>{const next=parsePublicExplore(value);if(stopped||next.runId!==initial.runId)return;latest.current=next;setResult(next);try{rememberSummary(localStorage,next);}catch{setError('Browser summary persistence is unavailable; server records remain retained.');}};
  async function load(){
   if(!initial.session)return;const fresh=forced||!archived&&currentRunId===initial.runId&&!started.current.has(initial.runId);if(!fresh){const r=await fetch('/api/social-simulate?runId='+encodeURIComponent(initial.runId)+'&token='+initial.session.token,{signal:abort.signal,cache:'no-store'});if(r.ok)accept(await r.json());return;}started.current.add(initial.runId);
-  let next=initial;for(let batch=0;batch<100&&next.session&&next.society?.phase==='simulating';batch++){const response=await fetch('/api/social-simulate',{method:'POST',headers:{'Content-Type':'application/json'},signal:abort.signal,body:JSON.stringify({operation:'continue',runId:next.runId,token:next.session.token,revision:next.session.revision})});if(!response.ok)throw Error();const value=parsePublicExplore(await response.json());accept(value);if(value.session?.revision===next.session.revision&&value.society?.phase!=='completed')throw Error();next=value;await new Promise(resolve=>setTimeout(resolve,120));}
+  await continuePublicSociety(initial,{signal:abort.signal,accept});
  }
  void load().catch(()=>{if(!stopped){setResult(previous=>previous?.society?{...previous,society:{...previous.society,phase:'partial'}}:previous);setError('Background communication is partial. Accepted records are retained; no model retry was started.');}});return()=>{stopped=true;abort.abort();};
  // The accepted run owns work. Switching ordinary tabs cannot restart it.
