@@ -3,6 +3,7 @@ import {canonical} from '../experiments/validation.ts';
 
 /** Presentation gate only. Execution identities and authoritative validation remain in the existing controller. */
 export function mapResultFor(state:QuestionSimulationSnapshot,context:QuestionSimulationContext):'completed'|'partial'|null {
+ if(state.publicRun){const p=state.publicRun;if(!p.request||state.question!==context.question||p.request.question!==context.question||p.request.geometryRevision!==context.geometryRevision||canonical(p.request.geometry)!==canonical(context.geometry)||!['completed','partial','failed'].includes(state.phase))return null;return p.status==='completed'?'completed':p.initialActions.length?'partial':null;}
  if(state.question!==context.question||!state.run||!['completed','partial','failed'].includes(state.phase))return null;
  if(state.dynamic){
   const request=state.dynamic.plan.request;

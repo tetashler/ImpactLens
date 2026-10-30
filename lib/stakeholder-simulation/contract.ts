@@ -1,3 +1,4 @@
+import {QUANTITATIVE_DIALOGUE} from './qualitative.ts';
 import {parseDynamicPlan,rolesForPlan,assumptionsForPlan,type DynamicScenarioPlan} from '../dynamic-scenarios/plan.ts';
 import {canonical} from '../experiments/validation.ts';
 /** Browser-safe Phase 7D records. These types describe synthetic exploration only. */
@@ -51,7 +52,7 @@ export function parseStakeholderTurnOutput(value:unknown,context:TurnContext):St
   // is qualitative: supplied source statistics stay in the evidence inspector.
   const prose=[o.statement,o.reasoningSummary,...o.uncertainties].join(' ');
   ensure(!/https?:\/\/|www\./i.test(prose),'Cite evidence IDs instead of source URLs');
-  ensure(!/\d(?:[\d.,]*)\s*(?:%|percent\b)|[$£€]\s*\d|\d[\d,]*\s+(?:jobs|workers|households|residents|people)\b/i.test(prose),'Quantitative societal claims are unsupported in stakeholder dialogue');
+  ensure(!QUANTITATIVE_DIALOGUE.test(prose),'Quantitative societal claims are unsupported in stakeholder dialogue');
   ensure(o.addressedRoleId===null||context.input.stakeholderRoles.some(r=>r.id===o.addressedRoleId&&r.id!==context.role.id),'Unknown addressed role');ids(o.previousEventIds,8);ids(o.evidenceFindingIds,8);ids(o.assumptionIds,12);
   ensure(o.previousEventIds.every(v=>context.previousEvents.some(e=>e.id===v)),'Unknown or unavailable previous event');ensure(o.evidenceFindingIds.every(v=>context.input.evidence?.findings.some(f=>f.id===v)),'Unknown evidence finding');ensure(o.assumptionIds.every(v=>context.input.assumptions.some(a=>a.id===v)),'Unknown scenario assumption');
   if(context.round>1)ensure(o.previousEventIds.some(v=>context.previousEvents.some(e=>e.id===v&&e.roleId!==context.role.id)),'Later turns must reference another recorded participant');

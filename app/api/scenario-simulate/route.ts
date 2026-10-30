@@ -1,3 +1,3 @@
-import {handleDynamicRequest} from '../../../lib/server/inference/dynamic-service.ts';
+import {handlePublicExplore} from '../../../lib/server/society/public-service.ts';
 export const runtime='nodejs';
-export async function POST(request:Request){return handleDynamicRequest(request);}
+export async function POST(request:Request){return handlePublicExplore(request);}

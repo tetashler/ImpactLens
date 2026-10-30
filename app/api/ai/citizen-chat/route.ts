@@ -1,3 +1,2 @@
-import { handleAiRequest } from '../../../../lib/server/ai/service.ts';
 export const runtime='nodejs';
-export async function POST(request:Request){return handleAiRequest('citizen-chat',request);}
+export async function POST(_request:Request){return Response.json({error:'Synthetic conversation endpoints are no longer public. Use Knowledge Graph and Report summaries.'},{status:410});}

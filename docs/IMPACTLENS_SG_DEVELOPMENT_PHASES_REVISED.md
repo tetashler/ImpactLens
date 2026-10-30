@@ -629,3 +629,39 @@ The existing gateway now supports eight separately budgeted memory-aware social 
 The offline CLI passes eight seeds/eight new fixture decisions and exact replay. Desktop browser acceptance passes Map -> Explore -> Social Simulation -> Graph -> Report: 24 profiles, 80 steps, 751 events (8 seeds + 8 social decisions + 735 rule events), 32 graph nodes and 291 edges. Platform inspectors link recorded threads; graph dragging, settling, position retention, pause/resume and event/report totals work. Twenty tested background goals differ. The user specified desktop-only scope; no further mobile development is included.
 
 Final checks: 916 Node tests, application and affected-module strict TypeScript, production build and whitespace validation. No paid requests, credential-file changes, Git mutations, deployment or secondary-directory access. Numerical interfaces were unchanged; standalone model CLIs/GIS were not rerun. Real-provider evolving dialogue quality, schema compatibility, latency and billing require a separately authorized acceptance. Fixture semantic responses are not live behavioural evidence. See `docs/PHASE4B_MEMORY_AWARE_LLM_SOCIAL_AGENTS.md` for limits, evidence, screenshots, reproduction and exact files.
+
+
+## Permanent desktop-only prototype policy
+
+From Phase 4C onward, target 1920x1080 and 1440x900 desktop displays (1366x768 only when useful). Prioritise mouse/keyboard, map rendering, graph labels and desktop inspectors. Do not undertake mobile layouts, touch work or mobile browser acceptance. Prior mobile results above remain historical; ordinary desktop accessibility and security remain required.
+
+## Phase 4C checkpoint - PASS offline (30 October 2026)
+
+Ordinary navigation is Map | Knowledge Graph | Report. Accepted Explore executions register a server-owned society session and automatically advance bounded continuation batches. Social-model inference remains separately opt-in; rule-only mode works without it. Recovery, durable reservations, revisions and read-only status prevent navigation from spending again.
+
+Communication capabilities are selected from accepted ontology entities. Public discussions/feeds and invitation-controlled fictional messaging groups share the existing event engine. WhatsApp/Telegram fixtures exercise messages/replies, historical membership, exposure, sharing and exact replay. New access-aware scheduling is recorded in the immutable input; old worlds retain their original policy.
+
+Raw stakeholder/social statements, conversations, memories and decisions remain in Git-ignored server records. Versioned allowlisted summary DTOs feed graph, map and Report; no transcript UI or public raw-mode switch exists. Sentinels were absent from API/HTML/hydration, browser storage, graph/inspector and Report projections. Legacy browser worlds migrate only after exact server-side replay and acknowledgement; pre-existing external raw copies cannot be retroactively erased.
+
+Final desktop mock run: 24 profiles, 80 steps, 748 events (8 initial seeds + 8 social-model events + 732 rule events), four environments, two groups, 33 nodes and 235 graph edges. The intentionally interrupted request resumed the same run, with 2 planning + 8 initial + 8 social mock completions total. Reload and navigation added none. Graph dragging, settling and retained positions passed at desktop viewports. Summaries use event counts and explicit bounded topic/argument tags; untagged semantic arguments and causal scenario impact remain unavailable.
+
+Verification: 933 Node tests, application/strict affected-module TypeScript, production build, whitespace check and desktop/network privacy acceptance. No paid requests, mobile work, credential changes, Git mutations, deployment, new dependencies or secondary-directory access. Numerical interfaces remain unchanged; standalone CLIs/GIS were not rerun. Real-provider acceptance of the new group/tag schema and evolving dialogue quality still require separate authorisation. See `docs/PHASE4C_PRIVATE_MESSAGING_SUMMARY_GRAPH.md` for implementation, exact inventory, screenshots and reproduction.
+
+
+## Phase 4C two-run live acceptance - FAIL (30 October 2026)
+
+Exactly two real attempts: workweek accepted both plans/eight initial actions, then rejected its first social decision with SOCIAL_TARGET; eldercare rejected entity planning with plan.local_scope_invalid at draft.jurisdictions. No live private groups or accepted ongoing social decisions were demonstrated. Privacy/failure-state checks passed within observed scope; prior offline PASS remains historical, not live acceptance.
+
+A versioned action/target generation schema, known-token reservation release and corrected social diagnostic classification pass 938 tests, TypeScript/strict checks, build and an isolated mock desktop flow. The new schema remains unverified against a real social completion. Total real usage: 2 Tavily credits, 12 OpenRouter completions, USD 0.0056802984 reported. No third attempt, Git mutation or credential change. See `docs/PHASE4C_TWO_RUN_LIVE_ACCEPTANCE.md` for exact findings, limits, screenshots and the remaining scope/communication-selection work.
+
+## Phase 4C autonomous reliability acceptance - PASS (30 October 2026)
+
+Two later independent real-provider runs qualify: Sengkang eldercare (attempt 14, 29 nodes/242 edges) and four-day workweek (attempt 15, 34 nodes/228 edges). Each accepted two planning stages, eight initial stakeholder actions and eight ongoing social decisions, completed 80 steps, and exercised a real internal private group. Permission, summary-only browser/API, Report and exact replay checks passed. The previous two-run FAIL above remains historical and unchanged.
+
+Repairs use nested entity/type declarations, application-owned stakeholder/social interaction choices, compact generation, explicit communication capabilities, and aggregate-only demographic context for unmatched scenario roles. Runtime structural/source/privacy validation remains strict. Windows checkpoint replacement, saved-history ordering and task-ledger capacity were also repaired. Archived raw worlds and identities remain unchanged.
+
+Final verification: **976 passing Node tests**, application and affected-module strict TypeScript, production build, whitespace checks and desktop 1440×900/1920×1080 acceptance. Development remains desktop-only. Numerical interfaces were unchanged; standalone CLIs/GIS were not rerun, and no Shapely pass is claimed.
+
+New-task usage stopped at 15 Tavily searches/15 credits and 82 OpenRouter completions. Reported OpenRouter charges: USD 0.0420253974, plus USD 0.0135 reserved for one unknown-charge failed request. Tavily dollar billing is unknown. No automatic provider retries, paid summaries, credential edits, Git integration operations or deployment. Task-owned servers stopped; changes remain unstaged and uncommitted.
+
+Behavioural limits remain: only four selected agents receive eight early social opportunities; most events are rules. No qualifying social decision directly targeted another social-model item. Summaries use counts/tags, and profile-matched individual demographics are not implemented. Next: improve reply-target selection and topic summaries offline using the saved worlds. See `docs/PHASE4C_AUTONOMOUS_LIVE_DEBUGGING.md` for the full attempt/cost ledger, safe evidence, screenshots and limitations.

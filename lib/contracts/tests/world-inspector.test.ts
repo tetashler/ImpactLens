@@ -87,7 +87,7 @@ test('foreign roles show an explicit missing-demographics note while Singapore c
   assert.doesNotMatch(singapore,/&quot;ageGroups&quot;|"ageGroups"\s*:/);
 });
 
-test('relationship inspectors preserve direction and distinguish proposals, source reports and chronological recorded dialogue',async()=>{
+test('relationship inspectors preserve direction and distinguish proposals, source reports and chronological metadata without dialogue disclosure',async()=>{
   const proposed=await renderInspector({graph,edge,inspection:inspection('proposed-relationship'),compact:true});
   assert.match(proposed,/Proposed relationship/);
   assert.match(proposed,/Source[\s\S]*Supply organisation/);
@@ -99,7 +99,8 @@ test('relationship inspectors preserve direction and distinguish proposals, sour
   const recorded=await renderInspector({graph,edge,inspection:{...inspection('recorded-interaction'),interactions:[event(3,'Later statement.'),event(0,'Earlier statement.')]},full:true});
   assert.match(recorded,/Recorded fictional interaction/);
   assert.match(recorded,/<summary>Recorded interactions/);
-  assert.ok(recorded.indexOf('Earlier statement.')<recorded.indexOf('Later statement.'));
+  assert.doesNotMatch(recorded,/Earlier statement\.|Later statement\./);
+  assert.ok(recorded.indexOf('event-0')<recorded.indexOf('event-3'));
   assert.match(recorded,/event-0/);
   assert.match(recorded,/event-3/);
 });

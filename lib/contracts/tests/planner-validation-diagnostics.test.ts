@@ -1,3 +1,4 @@
+import {entityDeclarationFixture} from '../../../scripts/testing/entity-declaration-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseGeneratedDraft,createDynamicPlanner} from '../../server/inference/planner.ts';
@@ -44,12 +45,13 @@ test('minimal grounded v2 fixture preserves provenance and archive validation',a
  const f=plannerFixture();parseGeneratedDraft(f.draft,f.request,f.grounding);const p=await createDynamicPlan(f.request,f.draft,f.grounding);assert.equal(p.version,2);assert.equal(parseDynamicPlan(p).planId,p.planId);assert.equal(p.draft.entities[0].status,'unverified-model-suggestion');
  assert.throws(()=>parseDynamicPlan({...p,version:3}),(e:any)=>e.diagnostic?.rule==='plan.unsupported_version'&&e.diagnostic.path==='plan.version');
 });
+const entityWire=entityDeclarationFixture;
 const completion=(content:string)=>Response.json({model:MODEL,provider:'DigitalOcean',choices:[{finish_reason:'stop',message:{content}}],usage:{prompt_tokens:10,completion_tokens:10,total_tokens:20,cost:0.001}});
 test('planner failure envelope retains safe validation and retrieval diagnostics through the real route',async()=>{
  const f=plannerFixture(),d=structuredClone(f.draft);d.ontology!.entities[0].typeId='private-marker';d.ontology!.entities[0].support=null;
  const wire={version:1 as const,attemptId:`diagnostic-${crypto.randomUUID()}`,request:f.request};let calls=0;
- const response=await handleDynamicRequest(new Request('http://localhost/api/scenario-simulate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(wire)}),{enabled:true,key:'mock-only',groundingKey:'mock-only',groundingFetcher:async()=>Response.json({results:[{title:'Private excerpt title',url:'https://www.mom.gov.sg/',content:'private-source-content'}]}),fetcher:async()=>{calls++;return completion(JSON.stringify(d));}});
- const body:any=await validateDynamicResponse(await response.json(),wire);assert.equal(calls,1);assert.equal(body.error.code,'AI_PLAN_INVALID');assert.equal(body.error.validation.rule,'ontology.entity_type_unknown');assert.equal(body.error.validation.path,'draft.ontology.entities[0].typeId');assert.deepEqual(body.error.validation,body.planning.record.plannerValidation);
+ const response=await handleDynamicRequest(new Request('http://localhost/api/scenario-simulate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(wire)}),{enabled:true,key:'mock-only',groundingKey:'mock-only',groundingFetcher:async()=>Response.json({results:[{title:'Private excerpt title',url:'https://www.mom.gov.sg/',content:'private-source-content'}]}),fetcher:async()=>{calls++;return completion(JSON.stringify(entityWire(d)));}});
+ const body:any=await validateDynamicResponse(await response.json(),wire);assert.equal(calls,1);assert.equal(body.error.code,'AI_PLAN_INVALID');assert.equal(body.error.validation.rule,'plan.unexpected_property');assert.equal(body.error.validation.path,'draft.ontology.entityTypes[0].entities[0]');assert.deepEqual(body.error.validation,body.planning.record.plannerValidation);
  assert.equal(body.retrieval.status,'retrieved');assert.equal(body.retrieval.sourceCount,1);assert.equal(body.retrieval.credits,null);assert.equal(body.retrieval.searches,1);assert.match(body.retrieval.bundleId,/^g1_/);assert.ok(body.retrieval.durationMs>=0);
  for(const secret of ['private-marker','private-source-content','Private excerpt title','mock-only',f.request.question])assert.ok(!JSON.stringify(body).includes(secret));
 });
@@ -66,9 +68,9 @@ function research(f=plannerFixture()):typeof fetch{return async()=>Response.json
 
 for(const [name,mutate,rule,path]of cases)test(`full failure propagation: ${name}`,async()=>{
  const f=plannerFixture(),d=structuredClone(f.draft);mutate(d);for(const entity of d.ontology!.entities){if(entity.support&&name!=='quote missing'){const {sourceId,passageId}=entity.support;entity.support={sourceId,passageId} as any;}}const {request,wire}=post(f);let calls=0;
- const response=await handleDynamicRequest(request,{enabled:true,key:'mock-only',groundingKey:'mock-only',groundingFetcher:research(f),fetcher:async()=>{calls++;return completion(JSON.stringify(d));}});
+ const response=await handleDynamicRequest(request,{enabled:true,key:'mock-only',groundingKey:'mock-only',groundingFetcher:research(f),fetcher:async()=>{calls++;return completion(JSON.stringify(entityWire(d)));}});
  assert.equal(response.status,502);const b=await validateDynamicResponse(await response.json(),wire);assert.equal(b.kind,'planning-failed');if(b.kind!=='planning-failed')assert.fail('Invalid draft must not execute');
- assert.equal(calls,1);assert.equal(b.accounting.actionCalls,0);assert.equal(b.error.validation?.rule,name==='quote missing'?'plan.unexpected_property':rule);assert.equal(b.error.validation?.path,name==='quote missing'?'draft.ontology.entities[0].support':path);assert.equal(b.planning.record?.errorCode,'AI_PLAN_INVALID');assert.deepEqual(b.planning.record?.plannerValidation,b.error.validation);
+ assert.equal(calls,1);assert.equal(b.accounting.actionCalls,0);const changed:Record<string,[string,string]>={'unexpected verification':['plan.unexpected_property','draft.ontology.entityTypes[0].entities[0]'],'entity type reference':['plan.unexpected_property','draft.ontology.entityTypes[0].entities[0]'],'duplicate entity':['ontology.entity_duplicate','draft.ontology.entities[1]'],'duplicate type':['ontology.entity_type_duplicate','draft.ontology.entityTypes[1].name'],'duplicate relationship type':['ontology.relationship_type_duplicate','draft.ontology.relationshipTypes[1].name'],'entity bound':['ontology.entity_count_exceeded','draft.ontology.entityTypes[0].entities']};const expected=changed[name]??[name==='quote missing'?'plan.unexpected_property':rule,name==='quote missing'?'draft.ontology.entities[0].support':path];assert.equal(b.error.validation?.rule,expected[0]);assert.equal(b.error.validation?.path,expected[1]);assert.equal(b.planning.record?.errorCode,'AI_PLAN_INVALID');assert.deepEqual(b.planning.record?.plannerValidation,b.error.validation);
  for(const secret of ['private-marker',f.grounding.sources[0].passages[0].text,f.request.question,'mock-only'])assert.ok(!JSON.stringify(b).includes(secret));
 });
 

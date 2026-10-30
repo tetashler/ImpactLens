@@ -1,3 +1,5 @@
+import {PublicScenarioSession,parsePublicExplore} from './public-session.ts';
+import type {PublicExplore} from '../society/public-contract.ts';
 import {DynamicSession} from '../dynamic-scenarios/client.ts';
 import type {DynamicResponse,DynamicFailure} from '../dynamic-scenarios/response.ts';
 /** Browser-safe question -> local plan -> immutable research -> bounded execution. */
@@ -23,6 +25,7 @@ export type QuestionSimulationPhase = 'idle' | 'interpreting' | 'preparing' | 'e
 export type QuestionExecutionChoice='live'|'scripted'|'dynamic';
 export interface QuestionSimulationContext { question: string; geometry: ScenarioGeometry; geometryRevision: number }
 interface QuestionResult {
+  publicRun?:PublicExplore|null;
   question: string;
   scope: QuestionContextV1 | null;
   plan: ScenarioPlan | null;
@@ -49,7 +52,7 @@ export interface QuestionSimulationSnapshot extends QuestionResult {
   selectedArchiveId: string | null;
   inferenceStatus?:InferenceStatusV1|null;
 }
-export interface QuestionSimulationOptions { fetcher?: typeof fetch; timeoutMs?: number; execution?:QuestionExecutionChoice }
+export interface QuestionSimulationOptions { fetcher?: typeof fetch; timeoutMs?: number; execution?:QuestionExecutionChoice;publicOnly?:boolean }
 interface Attempt { id: string; revision: number; mode:QuestionExecutionChoice; geographicConfirmed:boolean; deadline:number; promise: Promise<void>; resolve: () => void; timer: ReturnType<typeof setTimeout> | null }
 class Superseded extends Error {}
 const SAFE_LIVE_ERRORS=new Set([
@@ -63,7 +66,7 @@ const SAFE_LIVE_ERRORS=new Set([
   'This attempt was already used. Start a new attempt.',
 ]);
 
-function emptyResult(question = ''): QuestionResult { return { question, scope: null, plan: null, record: null, run: null, linked: null,live:null,dynamic:null,dynamicFailure:null,executionMode:null }; }
+function emptyResult(question = ''): QuestionResult { return { question, scope: null, plan: null, record: null, run: null, linked: null,publicRun:null,live:null,dynamic:null,dynamicFailure:null,executionMode:null }; }
 function initial(history: QuestionSimulationArchive[] = [], revision = 0): QuestionSimulationSnapshot {
   return freezeSnapshot({ ...emptyResult(), phase: 'idle', revision, attemptId: null, error: null, history, selectedArchiveId: null,inferenceStatus:null });
 }
@@ -78,7 +81,7 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
   let active: Attempt | null = null;
   const session = new StakeholderRequestSession();
   const liveSession=new LiveInferenceSession();
-  const dynamicSession=new DynamicSession();
+  const dynamicSession=new DynamicSession(),publicSession=new PublicScenarioSession();
   let statusController:AbortController|null=null,statusEpoch=0;
   let statusPromise:Promise<InferenceStatusV1|null>|null=null;
   const listeners = new Set<() => void>();
@@ -91,7 +94,7 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
     const previous = active;
     active = null;
     session.cancel();
-    liveSession.cancel();dynamicSession.cancel();statusEpoch++;statusController?.abort();statusController=null;
+    liveSession.cancel();dynamicSession.cancel();publicSession.cancel();statusEpoch++;statusController?.abort();statusController=null;
     if (previous) { if (previous.timer !== null) clearTimeout(previous.timer); previous.resolve(); }
   }
   async function checked<T>(attempt: Attempt, work: Promise<T>): Promise<T> {
@@ -129,13 +132,14 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
   function finish(attempt: Attempt, result: QuestionResult, phase: QuestionSimulationArchive['phase']) {
     if (!owns(attempt)) return;
     const archive: QuestionSimulationArchive = {
-      ...result, id: result.run?.runId ?? result.record?.experimentId ?? `review-${attempt.id}`,
+      ...result, id: result.publicRun?.runId??result.run?.runId ?? result.record?.experimentId ?? `review-${attempt.id}`,
       attemptId: attempt.id, revision: attempt.revision, phase, createdAt: new Date().toISOString(),
     };
     publish({ ...result, phase, error: result.run?questionRunErrorMessage(result.run):null, history: [archive, ...state.history].slice(0, 4), selectedArchiveId: null });
   }
   async function prepare(attempt: Attempt, context: QuestionSimulationContext) {
     try {
+      if(attempt.mode==='dynamic'&&options.publicOnly){publish({phase:'preparing'});const response=await checked(attempt,publicSession.execute({version:1,question:context.question,geometry:context.geometry,geometryRevision:context.geometryRevision},`${attempt.id}:${attempt.revision}`,options.fetcher??fetch,Math.max(1,Math.min(125000,attempt.deadline-Date.now()))));if(!response)return;if(response.kind==='planning-failed'){publish({...emptyResult(context.question),executionMode:'dynamic',phase:'error',dynamicFailure:response,error:response.error.message});return;}finish(attempt,{...emptyResult(context.question),executionMode:'dynamic',publicRun:response},response.status==='completed'?'completed':response.initialActions.length?'partial':'failed');return;}
       if(attempt.mode==='dynamic'){
         publish({phase:'preparing'});
         const response=await checked(attempt,dynamicSession.execute({version:1,question:context.question,geometry:context.geometry,geometryRevision:context.geometryRevision},`${attempt.id}:${attempt.revision}`,options.fetcher??fetch,Math.max(1,Math.min(125000,attempt.deadline-Date.now()))));
@@ -200,7 +204,7 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
       result.run = run; result.linked = linked;
       finish(attempt, result, 'completed');
     } catch (error) {
-      if (owns(attempt) && !(error instanceof Superseded)) publish({ phase: 'error', run: null, linked: null,live:null,dynamic:null,dynamicFailure:null, error: attempt.mode!=='scripted'&&error instanceof Error&&SAFE_LIVE_ERRORS.has(error.message)?error.message:'This question could not be prepared or executed safely. Try again.' });
+      if (owns(attempt) && !(error instanceof Superseded)) publish({ phase: 'error', run: null, linked: null,publicRun:null,live:null,dynamic:null,dynamicFailure:null, error: attempt.mode!=='scripted'&&error instanceof Error&&SAFE_LIVE_ERRORS.has(error.message)?error.message:'This question could not be prepared or executed safely. Try again.' });
     } finally {
       if (active === attempt) { if (attempt.timer !== null) clearTimeout(attempt.timer); active = null; }
       attempt.resolve();
@@ -223,22 +227,22 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
     attempt.timer = setTimeout(() => {
       if (!owns(attempt)) return;
       stop();
-      publish({ phase: 'error', run: null, linked: null,live:null,dynamic:null,dynamicFailure:null, error: mode!=='scripted'?'Live inference attempt timed out. Start a new attempt.':'Simulation preparation timed out. Try again.' });
+      publish({ phase: 'error', run: null, linked: null,publicRun:null,live:null,dynamic:null,dynamicFailure:null, error: mode!=='scripted'?'Live inference attempt timed out. Start a new attempt.':'Simulation preparation timed out. Try again.' });
     }, timeoutMs);
     void prepare(attempt, input);
     return promise;
   }
-  function cancel() { stop(); publish({ phase: 'cancelled', run: null, linked: null,live:null,dynamic:null,dynamicFailure:null, error: null }); }
+  function cancel() { stop(); publish({ phase: 'cancelled', run: null, linked: null,publicRun:null,live:null,dynamic:null,dynamicFailure:null, error: null }); }
   function inspectArchive(id: string | null) {
     if (id !== null && !state.history.some(archive => archive.id === id)) return;
     if (id !== null) {
       const pending=active!==null;stop();
       // Inspecting history must not erase a completed current run. Pending work is still cancelled.
-      publish(pending?{ phase: 'cancelled', run: null, linked: null,live:null,dynamic:null,dynamicFailure:null, error: null, selectedArchiveId: id }:{selectedArchiveId:id});
+      publish(pending?{ phase: 'cancelled', run: null, linked: null,publicRun:null,live:null,dynamic:null,dynamicFailure:null, error: null, selectedArchiveId: id }:{selectedArchiveId:id});
     }
     else publish({ selectedArchiveId: null });
   }
-  return {
+  return {restorePublicHistory:(values:PublicExplore[])=>{const history=values.slice(0,4).map(value=>{const p=parsePublicExplore(value);return {...emptyResult(p.question),publicRun:p,id:p.runId,attemptId:p.attemptId,revision:0,phase:(p.status==='completed'?'completed':'partial') as 'completed'|'partial',createdAt:new Date().toISOString()};});publish({history});},
     getSnapshot: () => state,
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
     invalidate, start, cancel, inspectArchive,refreshInferenceStatus,

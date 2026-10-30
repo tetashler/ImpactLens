@@ -6,7 +6,7 @@ export interface WorldType {id:string;name:string;description:string}
 export interface WorldOntologyV1 {
  version:1;entityTypes:WorldType[];relationshipTypes:WorldType[];
  /** support is a proposed literal association, not proof; consumers must assess attribution. */
- entities:{id:string;name:string;typeId:string;jurisdictionId:string|null;support:GroundingSupport|null}[];
+ entities:{id:string;name:string;typeId:string;jurisdictionId:string|null;support:GroundingSupport|null;communication?:{version:1;style:'public-discussion'|'public-feed'|'private-group'}|null}[];
  relationships:{id:string;source:string;target:string;typeId:string;statement:string;support:GroundingSupport|null}[];
 }
 export const WORLD_LIMITS={entityTypes:16,relationshipTypes:16,entities:24,relationships:48,bytes:24000} as const;
@@ -21,9 +21,10 @@ export function parseWorldOntology(value:unknown,context:{jurisdictions:{id:stri
  };
  const entityTypes=types('entityTypes'),relationshipTypes=types('relationshipTypes');
  const jurisdictions=new Set(context.jurisdictions.map(j=>j.id)),agents=new Set(context.agents.map(a=>a.id));
- const entities=planList(o.entities,WORLD_LIMITS.entities,`${root}.entities`,'ontology.entity_count_exceeded').map((v,i)=>planObject(v,['id','name','typeId','jurisdictionId','support'],`${root}.entities[${i}]`));
+ const entities=planList(o.entities,WORLD_LIMITS.entities,`${root}.entities`,'ontology.entity_count_exceeded').map((v,i)=>planObject(v,['id','name','typeId','jurisdictionId','support','communication'],`${root}.entities[${i}]`,['id','name','typeId','jurisdictionId','support']));
  const entityIds=planUnique(entities.map((e,i)=>planId(e.id,`${root}.entities[${i}].id`)),`${root}.entities`,'ontology.entity_id_duplicate','id');
  entities.forEach((e,i)=>{const p=`${root}.entities[${i}]`;prose(e.name,120,`${p}.name`);checkPlan(entityTypes.has(e.typeId as string),'ontology.entity_type_unknown',`${p}.typeId`,e.typeId);checkPlan(e.jurisdictionId===null||jurisdictions.has(e.jurisdictionId as string),'ontology.jurisdiction_unknown',`${p}.jurisdictionId`,e.jurisdictionId);checkPlan(!agents.has(e.id as string),'ontology.entity_agent_id_collision',`${p}.id`,e.id);
+  if(e.communication!==undefined&&e.communication!==null){const cap=planObject(e.communication,['version','style'],`${p}.communication`);checkPlan(cap.version===1,'plan.invalid_value',`${p}.communication.version`,cap.version);checkPlan(['public-discussion','public-feed','private-group'].includes(cap.style as string),'plan.invalid_value',`${p}.communication.style`,cap.style);}
   if(e.support!==null){checkPlan(grounding,'ontology.source_registry_invalid',`${p}.support`);parseGroundingSupport(e.support,grounding,`${p}.support`);}
  });
  // Composite identity is computed only after every participating primitive is validated.

@@ -2,8 +2,8 @@
 import type {QuestionSimulationSnapshot} from '../lib/question-simulation/client';
 import {questionRunErrorMessage} from '../lib/question-simulation/errors';
 
-export function WorkspaceViews({current,onMap,onGraph,onReport,onSocial}:{current:'map'|'knowledge'|'report'|'social';onSocial?:()=>void;onMap:()=>void;onGraph:()=>void;onReport:()=>void}){
- return <nav className="general-tabs" aria-label="Workspace views"><button type="button" aria-current={current==='map'?'page':undefined} onClick={onMap}>Map</button><button type="button" aria-current={current==='knowledge'?'page':undefined} onClick={onGraph}>Knowledge Graph</button><button type="button" aria-current={current==='report'?'page':undefined} onClick={onReport}>Report</button>{onSocial&&<button type="button" aria-current={current==='social'?'page':undefined} onClick={onSocial}>Social Simulation</button>}</nav>;
+export function WorkspaceViews({current,onMap,onGraph,onReport}:{current:'map'|'knowledge'|'report';onMap:()=>void;onGraph:()=>void;onReport:()=>void}){
+ return <nav className="general-tabs" aria-label="Workspace views"><button type="button" aria-current={current==='map'?'page':undefined} onClick={onMap}>Map</button><button type="button" aria-current={current==='knowledge'?'page':undefined} onClick={onGraph}>Knowledge Graph</button><button type="button" aria-current={current==='report'?'page':undefined} onClick={onReport}>Report</button></nav>;
 }
 export default function MapScenarioPanel({question,state,toolsOpen,result,onQuestion,onExplore,onCancel,onToggleTools,onGraph,onReport,onArchive}:{question:string;state:QuestionSimulationSnapshot;toolsOpen:boolean;result:'completed'|'partial'|null;onQuestion:(q:string)=>void;onExplore:()=>void;onCancel:()=>void;onToggleTools:()=>void;onGraph:()=>void;onReport:()=>void;onArchive:(id:string|null)=>void}){
  const current=state.question===question,busy=current&&['interpreting','preparing','executing'].includes(state.phase);
@@ -15,7 +15,7 @@ export default function MapScenarioPanel({question,state,toolsOpen,result,onQues
    <textarea id="map-question" value={question} maxLength={2000} rows={4} onChange={e=>onQuestion(e.target.value)} placeholder="What would you like to explore?"/>
    <div className="map-question-actions"><button type="button" aria-expanded={toolsOpen} aria-controls="map-plot-controls" onClick={onToggleTools}>Plot Tools</button><button className="map-explore-button" disabled={!question.trim()||busy} type="submit">Explore</button></div>
   </form>
-  <div className="map-exploration-status" role="status" aria-live="polite">{busy?<><span className="spinner"/> Exploring…</>:result==='completed'?<>Exploration complete <span>{state.run?.events.length} accepted turns</span></>:result==='partial'?<>Exploration interrupted <span>{state.run?.events.length} accepted turns retained</span></>:current&&state.phase==='cancelled'?'Exploration cancelled':error?'Exploration could not complete':null}</div>
+  <div className="map-exploration-status" role="status" aria-live="polite">{busy?<><span className="spinner"/> Exploring…</>:result==='completed'?<>Exploration complete <span>{state.publicRun?.initialActions.length??state.run?.events.length} accepted turns</span></>:result==='partial'?<>Exploration interrupted <span>{state.publicRun?.initialActions.length??state.run?.events.length} accepted turns retained</span></>:current&&state.phase==='cancelled'?'Exploration cancelled':error?'Exploration could not complete':null}</div>
   {busy&&<button type="button" className="map-cancel-button" onClick={onCancel}>Cancel</button>}
   {error&&<p className="map-exploration-error" role="alert">{error}</p>}
   {result&&<div className="map-result-links"><button type="button" onClick={onGraph}>{result==='completed'?'View Knowledge Graph':'Inspect partial Knowledge Graph'}</button><button type="button" onClick={onReport}>{result==='completed'?'View Report':'Inspect partial Report'}</button></div>}

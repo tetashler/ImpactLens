@@ -1,0 +1,55 @@
+import {canonical,object} from '../experiments/validation.ts';
+import type {DecisionContext,SocialDecision} from './decision-contract.ts';
+import type {Platform,SocialKind} from './contract.ts';
+export interface DecisionOption {id:string;action:SocialKind;platform:Platform;targetKind:'none'|'item'|'person'|'group';targetIndex:number|null;groupIndex:number|null;memberIndices:number[];memoryIndices:number[];purposeIndex:number|null}
+export class DecisionMenuError extends Error {readonly rule:'SOCIAL_TARGET'|'SOCIAL_SHAPE'|'SOCIAL_MEMORY'|'SOCIAL_STANCE'|'SOCIAL_TEXT';readonly path:string;constructor(rule:DecisionMenuError['rule'],path:string){super(rule);this.rule=rule;this.path=path;}}
+const contentActions=['post','comment','reply','message','group-reply'];
+const priorities=['comment','reply','group-reply','message','post','read','share','like','upvote','downvote','group-create','group-invite','group-join','group-leave','follow','unfollow','inactive'];
+/** Indexed bindings are application-owned, bounded and frozen in the recorded context. */
+export function buildDecisionMenu(c:DecisionContext):DecisionOption[]{
+ const buckets=new Map<string,DecisionOption[]>(),groups=c.communication?.groups??[],channels=c.communication?.channels??[];
+ const memory=(index:number)=>c.memories.findLastIndex(m=>m.itemIds.includes(c.items[index].id));
+ function add(action:SocialKind,platform:Platform,kind:DecisionOption['targetKind']='none',targetIndex:number|null=null,groupIndex:number|null=null,memberIndices:number[]=[],purposeIndex:number|null=null){
+  if(!c.actions.includes(action))return;const memories=kind==='item'&&targetIndex!==null?[memory(targetIndex)]:[];if(memories.some(i=>i<0))return;
+  const a=buckets.get(action)??[];a.push({id:'',action,platform,targetKind:kind,targetIndex,groupIndex,memberIndices,memoryIndices:memories,purposeIndex});buckets.set(action,a);
+ }
+ add('inactive',c.platform);add('post',c.platform);
+ for(const [i,item]of c.items.entries()){
+  if(item.platform!==c.platform)continue;
+  if(c.readableIds?.includes(item.id))add('read',c.platform,'item',i);
+  if(item.groupId){if(groups.some(g=>g.id===item.groupId&&g.member))add('group-reply',c.platform,'item',i);}
+  else add(item.parentId?'reply':'comment',c.platform,'item',i);
+  for(const a of ['like','upvote','downvote'] as const)if(!c.blockedTargets?.some(b=>b.action===a&&b.targetId===item.id))add(a,c.platform,'item',i);
+ }
+ for(const [i,person]of c.connections.entries())if(person.id!==c.actor.id){add('follow',c.platform,'person',i);add('unfollow',c.platform,'person',i);}
+ for(const [i,g]of groups.entries()){
+  if(g.platform===c.platform){if(g.member){add('message',g.platform,'none',null,i);add('group-leave',g.platform,'group',i);}if(g.canJoin)add('group-join',g.platform,'group',i);if(g.canInvite)for(let m=0;m<c.connections.length;m++)add('group-invite',g.platform,'group',i,null,[m]);}
+ }
+ if(c.communication?.canCreateGroup&&c.connections.length)for(const ch of channels.filter(ch=>ch.style==='private-group'))add('group-create',ch.id,'none',null,null,[-1,...c.connections.slice(0,3).map((_,i)=>i)],c.communication!.purposes.length?0:null);
+ for(const [i,item]of c.items.entries()){
+  if(item.groupId&&!groups.some(g=>g.id===item.groupId&&g.member&&g.canShare))continue;
+  for(const ch of channels){if(ch.style==='private-group'){for(const [g,dest]of groups.entries())if(dest.member&&dest.platform===ch.id&&(item.platform!==ch.id||item.groupId&&item.groupId!==dest.id))add('share',ch.id,'item',i,g);}else if(item.platform!==ch.id)add('share',ch.id,'item',i);}
+ }
+ const result:DecisionOption[]=[];for(let round=0;result.length<24;round++){let found=false;for(const action of priorities){const option=buckets.get(action)?.[round];if(option){result.push({...option,id:'choice-'+(result.length+1)});found=true;if(result.length===24)break;}}if(!found)break;}return result;
+}
+function stanceMenu(c:DecisionContext){return [{id:'keep',stance:null},...c.memories.flatMap((m,i)=>m.kind==='exposure'&&c.items.some(item=>item.id===m.primaryItemId&&item.actorId!==c.actor.id)?[-1,1].map(direction=>({id:`stance-${i+1}-${direction>0?'support':'concern'}`,stance:{target:Math.max(-1,Math.min(1,c.actor.position+direction*0.2)),exposureId:m.eventId}})):[])];}
+export function menuSchema(c:DecisionContext){
+ const menu=c.menu??[],ids=menu.map(m=>m.id),memoryIds=c.memories.map((_,i)=>'memory-'+(i+1));
+ const properties={choiceId:{type:'string',enum:ids},text:{type:['string','null'],maxLength:1000},motivation:{type:'string',minLength:1,maxLength:240},recallIds:{type:'array',maxItems:memoryIds.length?6:0,uniqueItems:true,items:memoryIds.length?{type:'string',enum:memoryIds}:{type:'string'}},stanceId:{type:'string',enum:stanceMenu(c).map(s=>s.id)},discussion:{type:'object',additionalProperties:false,required:['topicIds','argument'],properties:{topicIds:{type:'array',maxItems:c.communication?.topics.length?3:0,uniqueItems:true,items:c.communication?.topics.length?{type:'string',enum:c.communication.topics.map(t=>t.id)}:{type:'string'}},argument:{type:'string',enum:['concern','condition','support','question','disagreement','unspecified']}}}};
+ const base={type:'object',additionalProperties:false,required:Object.keys(properties),properties};
+ return {...base,anyOf:[true,false].flatMap(authored=>{const choices=menu.filter(m=>contentActions.includes(m.action)===authored).map(m=>m.id);return choices.length?[{...base,properties:{...properties,choiceId:{type:'string',enum:choices},text:authored?{type:'string',minLength:1,maxLength:1000}:{type:'null'}}}]:[];})};
+}
+export function encodeMenuContext(c:DecisionContext){
+ const itemRef=(id:string|null|undefined)=>id==null?null:c.items.findIndex(i=>i.id===id)>=0?'item-'+(c.items.findIndex(i=>i.id===id)+1):'earlier-record';
+ return canonical({version:1,id:c.id,runId:c.runId,policy:c.policy,actor:c.actor,question:c.question,tick:c.tick,platform:c.platform,channels:c.communication?.channels,groups:c.communication?.groups.map((g,i)=>({ref:'group-'+(i+1),name:g.name,platform:g.platform,member:g.member,canJoin:g.canJoin,canInvite:g.canInvite,canShare:g.canShare})),topics:c.communication?.topics,items:c.items.map((i,n)=>({...i,id:'item-'+(n+1),parentId:itemRef(i.parentId),groupId:i.groupId?'group-'+((c.communication?.groups.findIndex(g=>g.id===i.groupId)??-1)+1):null})),memories:c.memories.map((m,i)=>({ref:'memory-'+(i+1),kind:m.kind,platform:m.platform,primaryItem:itemRef(m.primaryItemId),items:m.itemIds.map(itemRef)})),recentDecisions:c.recentDecisions,choices:c.menu?.map(m=>({id:m.id,action:m.action,platform:m.platform,target:m.targetKind==='none'?null:(m.targetKind==='person'?'connection':m.targetKind)+'-'+(m.targetIndex!+1),destinationGroup:m.groupIndex===null?null:'group-'+(m.groupIndex+1),requiredMemories:m.memoryIndices.map(i=>'memory-'+(i+1)),members:m.memberIndices.map(i=>i<0?'self':'connection-'+(i+1)),purpose:m.purposeIndex===null?null:c.communication?.purposes[m.purposeIndex]})),connections:c.connections.map((p,i)=>({ref:'connection-'+(i+1),handle:p.handle})),stanceChoices:stanceMenu(c).map(s=>({id:s.id,proposal:s.stance?{target:s.stance.target,memory:'memory-'+(c.memories.findIndex(m=>m.eventId===s.stance!.exposureId)+1)}:null})),assumptions:c.assumptions,sharedBriefing:c.sharedBriefing});
+}
+export function decodeMenuDecision(value:unknown,c:DecisionContext):SocialDecision{
+ let v:Record<string,unknown>;try{v=object(value,['choiceId','text','motivation','recallIds','stanceId','discussion']);}catch{throw new DecisionMenuError('SOCIAL_SHAPE','decision');}
+ const option=c.menu?.find(m=>m.id===v.choiceId);if(!option)throw new DecisionMenuError('SOCIAL_TARGET','decision.choiceId');
+ if(!Array.isArray(v.recallIds)||v.recallIds.length>6||new Set(v.recallIds).size!==v.recallIds.length)throw new DecisionMenuError('SOCIAL_MEMORY','decision.recallIds');
+ const recalls=v.recallIds.map(id=>c.memories.findIndex((_,i)=>id==='memory-'+(i+1)));if(recalls.some(i=>i<0))throw new DecisionMenuError('SOCIAL_MEMORY','decision.recallIds');
+ const stance=stanceMenu(c).find(s=>s.id===v.stanceId);if(!stance)throw new DecisionMenuError('SOCIAL_STANCE','decision.stanceId');
+ const groups=c.communication?.groups??[],target=option.targetIndex===null?null:option.targetKind==='item'?c.items[option.targetIndex]?.id:option.targetKind==='person'?c.connections[option.targetIndex]?.id:groups[option.targetIndex]?.id;
+ const memoryIndices=[...new Set([...option.memoryIndices,...recalls,...(stance.stance?[c.memories.findIndex(m=>m.eventId===stance.stance!.exposureId)]:[])])];
+ return {action:option.action,platform:option.platform,targetId:target??null,text:v.text as string|null,motivation:v.motivation as string,memoryIds:memoryIndices.map(i=>c.memories[i].eventId),stance:stance.stance,...(c.communication?{groupId:option.groupIndex===null?null:groups[option.groupIndex].id,memberIds:option.memberIndices.map(i=>i<0?c.actor.id:c.connections[i].id),purposeId:option.purposeIndex===null?null:c.communication.purposes[option.purposeIndex],discussion:v.discussion as SocialDecision['discussion']}:{}),selection:{choiceId:option.id,stanceId:v.stanceId as string,recallIds:v.recallIds as string[]}};
+}

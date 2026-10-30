@@ -94,7 +94,7 @@ export function CitizenProfile({ profile, conversation }: { profile: CitizenProf
       {source && <div className="citizens-source"><strong>{source.agency}</strong><p>{source.datasetId} · {source.kind === 'synthetic-fixture' ? 'Invented fixture' : 'Aggregate government statistics'} · row {citizen.sourceRow}</p><p>Reference year {source.referenceYear} · updated {source.updated}</p><p><a href={source.sourceUrl} target="_blank" rel="noreferrer">Source reference</a> · <a href={source.licenceUrl} target="_blank" rel="noreferrer">Licence reference</a></p><p className="citizens-hash">SHA-256: {source.rawSha256}</p></div>}
       <ul className="citizens-assumptions">{assumptions.map(assumption => <li key={assumption.id}><strong>{assumption.kind}</strong><p>{assumption.description}</p></li>)}</ul>
     </details>
-    {conversation??<><button className="citizens-button" disabled type="button" aria-describedby={geminiNoteId}>Talk to citizen</button><p className="citizens-caption" id={geminiNoteId}>Conversations require a fresh calculated profile. Invented fixture chat is unavailable.</p></>}
+    {conversation??<p className="citizens-caption" id={geminiNoteId}>Fictional profile metadata. Recorded communication is available as summaries in Knowledge Graph and Report.</p>}
   </section>;
 }
 
