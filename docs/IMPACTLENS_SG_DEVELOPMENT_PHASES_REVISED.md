@@ -1,5 +1,12 @@
 # ImpactLens SG — Development Phases & Hackathon Rebuild Roadmap
 
+## SG 2.0 Phases 3?6 sequential checkpoints (30 October 2026)
+
+- Phase 3 **PASS**: national Census-constrained 10k/20k generation, SHA-bound source recipes, persistence/reload, cell/marginal fidelity and bounded inspection. 876 tests, TypeScript/build and browser persistence pass. Household/workplace synthesis remains unsupported. See `PHASE3_SYNTHETIC_POPULATION.md`.
+- Phase 4 **PASS**: canonical profiles/ties, exposure-gated Reddit/Instagram actions, shared memory, event-driven clock, replay and social UI. 883 tests, TypeScript/build and mocked desktop/mobile checks pass. See `PHASE4_AGENT_SWARM_SOCIAL_SIMULATION.md`.
+- Phase 5 **PASS**: source-derived synthetic subzone activity markers, shared clock and canonical cross-view selection; 888 tests and mocked map checks. See `PHASE5_LIVING_MAP_INTEGRATION.md`.
+- Phase 6 **PASS**: event-reconciled evidence-aware reports and bounded local sensitivity; final 895 tests, TypeScript/build, six model CLIs and desktop/mobile checks. See `PHASE6_REPORTS_EVALUATION.md` and final checkpoints below.
+
 **Status:** Phase 7D/7E are integrated and locally verified on the existing Phase 7F/7G checkpoint. The real frozen experiment -> scripted stakeholder run -> combined graph -> A/B comparison journey passes combined production-browser acceptance. Final validation: 521 Node tests, 19 GIS tests, six model CLIs, application/strict TypeScript and production build. Both branches remain at `6c6fb831f72b79e47776417096997c5862fefee9`, unstaged/uncommitted; source worktree retained. Live web retrieval, authorised live stakeholder LLM execution, public building-data licensing, OpenRouter live authentication and calculated-population trajectories remain unresolved.
 **Last updated:** 28 October 2026
 **Team:** 3 (2 AI/data science, 1 mass communications)  
@@ -564,3 +571,52 @@ See `docs/WORLD_KNOWLEDGE_GRAPH_PHASE2B_REFINEMENT.md`. Phase 2B work remains un
 - [ ] Model-selected ontology granularity/classification, independent factual corroboration, broader reliability and existing 300-node performance limits remain. No Phase 3 population simulation or policy forecasting is claimed.
 
 See `docs/PHASE2B_STAGED_PLANNER_LIVE_ACCEPTANCE.md` for architecture research, every iteration, exact file inventory, costs and real screenshots. Earlier FAIL reports remain historical. All changes remain unstaged/uncommitted; private environment files and the secondary directory were untouched.
+
+## Phase 5 checkpoint ? PASS (30 October 2026)
+
+Source-bound synthetic subzone contexts follow recorded activity on the shared clock. Canonical IDs connect map markers, social profiles and graph inspectors. 888 Node tests, TypeScript/build and desktop/mobile mocked browser checks passed before advancing. All 24 tested agents were located; ten step-driven changes had activity-event references. No personal travel routes or addresses are inferred. See `docs/PHASE5_LIVING_MAP_INTEGRATION.md`.
+
+## Phase 6 checkpoint ? PASS (30 October 2026)
+
+Event-derived reports reconcile social-platform actions, exposure, memory-driven position changes, geographic contexts and demographic strata with the same saved world. Existing evidence/usage and numerical model reports remain intact. Local participation sensitivity uses recorded inputs without additional inference. Final verification: **895 Node tests**, application/strict TypeScript, production build, six model CLIs, desktop/mobile mocked browser checks and whitespace check. GIS did not run (Shapely missing). Final browser world: four accepted mocked roles/eight actions; 24 social agents, 80 steps, 783 events, 27 graph nodes and 180 relationships. No paid requests, Git mutation, deployment or secondary-directory access.
+
+All four essential bounded prototype gates pass. Optional household/workplace synthesis lacks joint source data; stories, calibrated recommenders, per-step native live LLM decisions and personal commute routing are not implemented or claimed. Synthetic geographic activity is source-grain context; opinion/engagement are uncalibrated model outputs, never public opinion or policy forecasts. The existing 300-node graph performance limitation remains. Run `node scripts/testing/society-smoke.ts` for a zero-network vertical slice.
+
+### Exact changed-file inventory for Phases 3?6
+
+- `app/api/population/locations/route.ts`
+- `app/api/population/route.ts`
+- `components/knowledge-workspace.tsx`
+- `components/map-scenario-panel.tsx`
+- `components/singapore-map.tsx`
+- `components/social-simulation.css`
+- `components/social-simulation.tsx`
+- `components/society-report.tsx`
+- `components/use-society.ts`
+- `components/workspace.tsx`
+- `docs/IMPACTLENS_SG_DEVELOPMENT_PHASES_REVISED.md`
+- `docs/PHASE3_SYNTHETIC_POPULATION.md`
+- `docs/PHASE4_AGENT_SWARM_SOCIAL_SIMULATION.md`
+- `docs/PHASE5_LIVING_MAP_INTEGRATION.md`
+- `docs/PHASE6_REPORTS_EVALUATION.md`
+- `docs/PHASES3_6_IMPLEMENTATION_PLAN.md`
+- `lib/contracts/tests/population-foundation.test.ts`
+- `lib/contracts/tests/society-engine.test.ts`
+- `lib/contracts/tests/society-geography.test.ts`
+- `lib/contracts/tests/society-report.test.ts`
+- `lib/population/contract.ts`
+- `lib/server/population/geography.ts`
+- `lib/server/population/store.ts`
+- `lib/society/contract.ts`
+- `lib/society/engine.ts`
+- `lib/society/geography.ts`
+- `lib/society/graph.ts`
+- `lib/society/map-layer.ts`
+- `lib/society/report.ts`
+- `scripts/testing/society-smoke.ts`
+
+## Agent swarm behavioural audit (30 October 2026)
+
+**PARTIAL behavioural acceptance; ongoing social LLM autonomy FAIL.** Two controlled real attempts: first rejected a non-verbatim user condition; second accepted both plans and five genuine actions before an unknown-event reference stopped execution. Paid activity stopped at 9 OpenRouter completions / USD 0.0038116176 and 2 Tavily credits. The partial live-seeded world ran 24 profiles for 80 steps: 760 events (5 real model seeds + 755 rule events), 32 graph nodes and 199 relationships. None of the five seed posts was read in that observed social run; twenty background profiles shared one generic goal. Memory/exposure and numeric influence work, while dialogue remains template-driven. These findings refine behavioural scope; prior structural phase checkpoints remain historical results.
+
+A narrow, versioned sharing correction preserves source positions in new genesis-v3 worlds and leaves old snapshots/hashes replayable. Focused/offline replay and a separate mocked browser regression pass; no new live success is claimed. Final 899 Node tests, TypeScript/strict checks/build and whitespace checks pass. No numerical interfaces changed; GIS was not run. See `docs/AGENT_SWARM_BEHAVIOURAL_ACCEPTANCE.md` for conversation samples, journeys, budget ledger, remaining UI/context limitations and the next scoped decision-adapter work. No OASIS rewrite, Git mutation, deployment or secondary-directory access.

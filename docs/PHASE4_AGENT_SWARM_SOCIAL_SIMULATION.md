@@ -1,0 +1,36 @@
+# Phase 4 — Shared synthetic social world
+
+## Upstream research and decision
+
+Inspected pinned official sources: MiroFish `7657031ac01184afe2cb220f5ee3545573b5e843`, OASIS `ba892e0667eb84b312e4c0e5630f275154bbb98f`. Local research copies are ignored under `tmp/phases36/research`.
+
+- [MiroFish parallel runner](https://github.com/666ghj/MiroFish/blob/7657031ac01184afe2cb220f5ee3545573b5e843/backend/scripts/run_parallel_simulation.py): separate Reddit/Twitter SQLite environments, configured profiles/action sets, per-hour activation with random sampling, bounded model concurrency (`semaphore=30`), `LLMAction` execution, DB trace extraction and JSONL action logs. Agent activity is scheduled; it does not assume every agent acts every round. Runner/service modules expose status, recent actions and process/IPC controls; exceptions/statuses and shutdown paths are explicit. These are not Instagram implementations.
+- [OASIS SocialAgent](https://github.com/camel-ai/oasis/blob/ba892e0667eb84b312e4c0e5630f275154bbb98f/oasis/social_agent/agent.py): observes environment text, invokes CAMEL actions/tools, updates agent memory; data/manual actions use the same platform tools. Agent graph supports follow edges; optional Neo4j paths exist, not a requirement to adopt them.
+- [OASIS action types](https://github.com/camel-ai/oasis/blob/ba892e0667eb84b312e4c0e5630f275154bbb98f/oasis/social_platform/typing.py), [recommendations](https://github.com/camel-ai/oasis/blob/ba892e0667eb84b312e4c0e5630f275154bbb98f/oasis/social_platform/recsys.py), [clock](https://github.com/camel-ai/oasis/blob/ba892e0667eb84b312e4c0e5630f275154bbb98f/oasis/clock/clock.py): posts, comments, votes, follows and reposts; Reddit ranking combines votes/time, alternatives use random or personalised recommendations; explicit sandbox time. Its platform module uses SQLite/channel-based actions.
+
+| Approach | Benefits | Prototype cost |
+|---|---|---|
+| Direct OASIS | Existing platform/tool machinery | Python/CAMEL runtime, SQLite bridge and dependency/provider integration; duplicates existing TypeScript contracts; separate state reconciliation and Windows subprocess lifecycle |
+| Independent lightweight TypeScript engine (selected) | Same browser/store identities, deterministic replay, no additional service/dependency, strict local event rules | Smaller rule set, uncalibrated social behaviour; not OASIS-scale or a realistic recommender |
+
+MiroFish is AGPL-3.0; OASIS Apache-2.0. No source blocks copied or new dependency installed. Observable patterns—scheduled actions, feed exposure, event traces and memory—are independently implemented. Instagram-like behaviour is an ImpactLens adaptation, not an upstream compatibility claim.
+
+## Planned bounded implementation
+
+One genesis binds scenario/run identity, Census population, canonical active residents, synthetic ties and accepted model actions. Pure reducers record visible exposures before comments/reactions/shares, maintain shared cross-platform memory, explicit simulated ticks and opinion transitions. Existing four-role/eight-action inference stays unchanged; accepted outputs may seed attributed messages, while routine social actions use explicit deterministic assumptions. New social execution itself has zero network/model calls. Replay validates the event/state snapshot rather than trusting saved display counts.
+
+The implementation and verified gate evidence follow.
+
+## Implemented slice and gate — PASS
+
+`lib/society/contract.ts`, `engine.ts`, `graph.ts`, `components/use-society.ts`, `social-simulation.tsx/.css` and workspace/navigation/inspector integration implement one versioned world. Defaults: 24 active profiles from the bounded adult population view; at most 64; 80 default / 144 maximum fifteen-minute steps; activation 0.55; six / maximum sixteen activations per step; at most 8,192 events, 2,048 items/ties, twelve memory entries and 64 encountered IDs. Genesis contains the complete source view, role bindings, seed, assumptions and accepted statement inputs. Foreign/unresolved roles have no assigned Singapore resident profile.
+
+Initial model statements seed platform posts under an explicit alternating-platform placement assumption, not a claim that the model chose native social posting. All subsequent social actions are deterministic rules. Existing four-role/two-round/eight-call inference is unchanged and remains mockable; no additional social-model call is made. Opinion scale, susceptibility, attention, ties and community memberships are uncalibrated assumptions independent of demographic traits. The latest accepted role position seeds the social position, with an explicit numerical mapping.
+
+Reddit-like community/follow exposure and vote/time ranking differ from Instagram-like follow/recency feeds and likes. Reactions, comments, replies and shares require actual bounded remembered exposures; thread comments become known through a recorded read. Only source-encountered items may transfer platforms. Shared memory and recorded opinion changes retain causal event IDs, including prior platform exposure. Notifications, follows/unfollows, author-withdrawal moderation, inactivity and geographic activity context have bounded transitions. Network ties are assumed online exposure paths, not observed personal relationships. New events never become ordinary primary graph nodes: canonical people, assumed ties and aggregated recorded interactions project into the existing renderer.
+
+Snapshots persist locally under the owning accepted run identity. `saveSociety`/`restoreSociety` reconstruct the entire reducer state from seed/model inputs and reject tampered events or a different genesis; no supplied engagement totals are trusted. UI navigation preserves current state; browser storage may be unavailable, in which case in-memory state is retained with a warning. Discovering/reopening a world after losing its parent accepted run is not a new run-history manager; exporting/reopening full parent records remains the existing application's contract boundary.
+
+**Gate verified before Phase 5:** 883 Node tests, TypeScript and production build pass. Mocked browser Explore completed eight accepted provider-fixture actions, then created a real rule-driven social world. Play/pause/step advanced to step 23; Reddit showed 28 posts/comments, Instagram 37 synthetic cards, profiles exposed Census strata, current positions, memories and notifications. Graph projection and canonical-person focus worked. Returning across views retained step 23; local saved world existed. Desktop 1440×900 and mobile 390×844 had no page errors or horizontal overflow. Screenshots: `tmp/phases36/phase4-reddit-desktop.png`, `phase4-instagram-desktop.png`, `phase4-mobile.png`.
+
+Limitations: no actual Reddit/Instagram integration, paid media, stories, production moderation or realistic calibrated recommender. The generic deterministic response wording is intentionally transparent; event causality/state—not prose sophistication—is the supported behaviour. No independent LLM per resident or native per-step live decision adapter is claimed. Phase 5 can now integrate the recorded geographic activity context with actual local polygons.

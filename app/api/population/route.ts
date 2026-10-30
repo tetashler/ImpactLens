@@ -1,0 +1,3 @@
+import {buildPopulation,persistPopulation,loadPopulation,populationView} from '../../../lib/server/population/store';
+export const runtime='nodejs';
+export function GET(request:Request){try{const q=new URL(request.url).searchParams;if([...q.keys()].some(k=>!['id','size','seed'].includes(k)))throw Error();const p=q.has('id')?loadPopulation(q.get('id')!):buildPopulation({size:q.has('size')?Number(q.get('size')):10000,seed:q.get('seed')??'impactlens-society-v1'});persistPopulation(p);return Response.json(populationView(p),{headers:{'Cache-Control':'no-store'}});}catch{return Response.json({error:'Population could not be generated or loaded. Use a supported sample size, seed and population identity.'},{status:400});}}

@@ -1,5 +1,6 @@
 'use client';
 
+import {SocietyMapLayer,type SocietyMapOptions} from '../lib/society/map-layer';
 import { useEffect, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import type { GeoJSONSource, Map as LibreMap, StyleSpecification } from 'maplibre-gl';
@@ -20,6 +21,7 @@ import type { BuildingManifest } from '../lib/buildings/contract';
 import BuildingCredits,{HDB_SOURCE_URL,SODL_URL,type BuildingView} from './building-credits';
 
 interface Props {
+  society?:SocietyMapOptions;
   exploring:boolean;
   editing:boolean;
   focusKey:number;
@@ -50,6 +52,7 @@ export default function SingaporeMap(props: Props) {
   const citizensRef = useRef<CitizenLayer | null>(null);
   const aacRef=useRef<AacMapLayer|null>(null),stationPopup=useRef<maplibregl.Popup|null>(null);
   latest.current = props;
+  const societyLayer=useRef<SocietyMapLayer|null>(null);
   const [ready, setReady] = useState(false), [fatal, setFatal] = useState(false);
   const [streets, setStreets] = useState(true), [buildings, setBuildings] = useState(true), [notice, setNotice] = useState('Loading local geography…');
   const [pitch, setPitch] = useState(true);
@@ -170,7 +173,7 @@ export default function SingaporeMap(props: Props) {
       });
       map.on('mouseleave', 'station-circles', () => { map.getCanvas().style.cursor = ''; popup.remove(); });
     } catch { setFatal(true); setNotice('WebGL unavailable. Use the geographic plan view and station editor.');latest.current.citizens.onStats({visible:0,fps:null,drawCalls:0,elapsedSeconds:0,status:'3D citizens unavailable; profiles remain usable'}); }
-    return () => { clearTimeout(loadTimer); observer?.disconnect();loadedMap.current=null;mapRef.current=null;buildingSession.current?.dispose();buildingSession.current=null;plotRef.current?.dispose();plotRef.current=null; aacRef.current?.dispose();aacRef.current=null;stationPopup.current?.remove();stationPopup.current=null;map?.remove(); citizensRef.current=null; };
+    return () => { societyLayer.current?.dispose();societyLayer.current=null;clearTimeout(loadTimer); observer?.disconnect();loadedMap.current=null;mapRef.current=null;buildingSession.current?.dispose();buildingSession.current=null;plotRef.current?.dispose();plotRef.current=null; aacRef.current?.dispose();aacRef.current=null;stationPopup.current?.remove();stationPopup.current=null;map?.remove(); citizensRef.current=null; };
   }, []);
 
   useEffect(()=>{
@@ -184,6 +187,7 @@ export default function SingaporeMap(props: Props) {
   useEffect(()=>{if(!props.cameraCommand&&ready&&mapRef.current&&loadedMap.current===mapRef.current&&props.focusKey)fitSingapore(mapRef.current,matchMedia('(prefers-reduced-motion: reduce)').matches);},[props.focusKey,props.cameraCommand,ready]);
   useEffect(()=>{camera.current.apply(mapRef.current,ready&&loadedMap.current===mapRef.current,matchMedia('(prefers-reduced-motion: reduce)').matches);},[props.cameraCommand,ready]);
   useEffect(()=>{const map=mapRef.current;if(!ready||!map||loadedMap.current!==map||!props.plotting)return;if(!plotRef.current)plotRef.current=new PlotMapLayer(map,props.plotting);else plotRef.current.update(props.plotting);},[props.plotting,ready]);
+  useEffect(()=>{const map=mapRef.current;if(!ready||!map||loadedMap.current!==map||!props.society)return;if(!societyLayer.current)societyLayer.current=new SocietyMapLayer(map,props.society);else societyLayer.current.update(props.society);},[props.society,ready]);
   useEffect(()=>{if(props.visible!==false&&ready&&loadedMap.current===mapRef.current)mapRef.current?.resize();},[props.visible,ready]);
   useEffect(()=>{const map=mapRef.current;if(!ready||!map||loadedMap.current!==map)return;aacRef.current?.update(props.aac);for(const id of ['network-lines','station-circles'])map.setLayoutProperty(id,'visibility',props.aac.active?'none':'visible');if(props.aac.active)stationPopup.current?.remove();},[props.aac,ready]);
   useEffect(()=>{if(ready&&loadedMap.current===mapRef.current&&props.citizens.focusKey)citizensRef.current?.focus();},[props.citizens.focusKey,ready]);

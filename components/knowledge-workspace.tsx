@@ -60,7 +60,7 @@ export function KnowledgeInspectorContent({graph,node,edge,inspection,compact=fa
   </>;
 }
 
-export default function KnowledgeWorkspace({graph,visible,onReturn,archived=false,resultLabel='World entities and fictional stakeholders',inspections,emptyReason}:{graph:KnowledgeGraph|null;visible:boolean;onReturn:()=>void;archived?:boolean;resultLabel?:string;inspections?:Record<string,WorldInspectionV1>;emptyReason?:string}){
+export default function KnowledgeWorkspace({graph,visible,onReturn,archived=false,resultLabel='World entities and fictional stakeholders',inspections,emptyReason,focusAgentId,onSocialAgent,onMapAgent}:{focusAgentId?:string|null;onSocialAgent?:(id:string)=>void;onMapAgent?:(id:string)=>void;graph:KnowledgeGraph|null;visible:boolean;onReturn:()=>void;archived?:boolean;resultLabel?:string;inspections?:Record<string,WorldInspectionV1>;emptyReason?:string}){
   const container=useRef<HTMLDivElement>(null),renderer=useRef<GraphRenderer|null>(null),dialog=useRef<HTMLDialogElement>(null),launch=useRef<HTMLButtonElement>(null);
   const [selection,setSelection]=useState<Selection|null>(null),[size,setSize]=useState<'popup'|'expanded'|'full'>('popup');
   const [query,setQuery]=useState(''),[hiddenTypes,setHiddenTypes]=useState<string[]>([]),[status,setStatus]=useState('Preparing relationships…');
@@ -107,10 +107,11 @@ export default function KnowledgeWorkspace({graph,visible,onReturn,archived=fals
   const edge=selectedGraph.current===graphIdentity&&selection?.kind==='edge'?graph?.edges.find(e=>e.id===selection.id):undefined;
   const selected=node??edge,relationships=node?graph?.edges.filter(e=>e.source===node.id||e.target===node.id)??[]:[];
   function focus(id:string){const n=graph?.nodes.find(n=>n.id===id);if(!n)return;const type=knowledgeEntityType(n);if(!categories.includes(type)){renderer.current?.filter([...categories,type],'entity-type');setHiddenTypes(v=>v.filter(t=>t!==type));}selectedGraph.current=graphIdentity;setSelection({kind:'node',id});renderer.current?.focus(id);}
+  useEffect(()=>{if(visible&&focusAgentId&&renderer.current&&graph?.nodes.some(n=>n.id===focusAgentId))focus(focusAgentId);},[focusAgentId,visible,layoutMs,graphIdentity]);
   function close(){setSelection(null);setSize('popup');renderer.current?.select(null);}
   function back(){setSize('expanded');requestAnimationFrame(()=>launch.current?.focus());}
   const inspectEdge=(id:string)=>{selectedGraph.current=graphIdentity;setSelection({kind:'edge',id});renderer.current?.select(id);};
-  function details(full:boolean,compact=false){if(!selected||!graph)return null;return <KnowledgeInspectorContent graph={graph} node={node} edge={edge} inspection={inspections?.[selected.id]} compact={compact} full={full} onFocus={focus} onInspect={inspectEdge}/>;}
+  function details(full:boolean,compact=false){if(!selected||!graph)return null;return <>{node&&typeof node.properties.agentId==='string'&&<div className="kg-social-links">{onSocialAgent&&<button onClick={()=>onSocialAgent(node.properties.agentId as string)}>Open social activity</button>}{onMapAgent&&<button onClick={()=>onMapAgent(node.properties.agentId as string)}>Open agent on Map</button>}</div>}<KnowledgeInspectorContent graph={graph} node={node} edge={edge} inspection={inspections?.[selected.id]} compact={compact} full={full} onFocus={focus} onInspect={inspectEdge}/></>;}
   return <section className="kg-workspace" hidden={!visible} aria-label="Knowledge Graph">
     <header className="kg-header"><div><h1>Knowledge Graph <span>Relationship explorer</span></h1><p>{archived?'Archived experiment snapshot context; unrelated current simulation results are not attached.':'Explore the entities and interactions in this scenario.'}</p></div><button onClick={onReturn}>Back to Map</button></header>
     <div className="kg-stage"><aside className="kg-explorer" aria-label="Graph exploration">

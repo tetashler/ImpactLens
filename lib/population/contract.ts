@@ -1,0 +1,6 @@
+import type {SyntheticPopulation,PopulationOptions} from '../../prototype/agents/types.ts';
+export const POPULATION_LIMITS=Object.freeze({defaultSize:10000,maximumSize:30000,viewResidents:256,cacheEntries:2,archiveBytes:40000000});
+export interface PopulationValidation {representedPopulation:number;publishedTotal:number;nationalLeafTotal:number;discrepancy:number;positiveCells:number;maximumWeightedCellError:number;marginals:Record<string,Record<string,{target:number;weighted:number;agents:number}>>}
+export interface PopulationSnapshot {version:1;id:string;options:PopulationOptions;population:SyntheticPopulation;validation:PopulationValidation;households:{status:'unsupported';reason:string};organisations:{status:'unassigned';reason:string};limitations:string[]}
+export interface Resident {id:string;label:string;synthetic:true;weight:number;ageGroup:string;sex:'male'|'female';planningArea:string;planningAreaName:string;subzone:string;subzoneName:string;householdId:null;organisationId:null;occupation:null;sourceRow:number;socialIdentity:string}
+export interface PopulationView {version:1;id:string;seed:string;sampleSize:number;source:SyntheticPopulation['source'];validation:PopulationValidation;residents:Resident[];households:PopulationSnapshot['households'];organisations:PopulationSnapshot['organisations'];limitations:string[]}
