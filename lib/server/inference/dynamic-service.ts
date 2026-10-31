@@ -41,7 +41,7 @@ export async function handleDynamicRequest(request:Request,dependencies:DynamicD
   const demographics=buildScenarioDemographicContext(wire.request.question,wire.request.geometry);
   const release=acquireAiSlot(`dynamic-plan:${wire.attemptId}`);attempts.set(wire.attemptId,Date.now());let draft;let grounding;
   try{
-   stage='retrieval';stageStarted=Date.now();grounding=await retrieveTavilyGrounding(buildRetrievalQuery(wire.request.question,demographics.planningArea?.name),abort.signal,{key:dependencies.groundingKey,fetcher:dependencies.groundingFetcher,timeoutMs:groundingTimeoutMs});
+   stage='retrieval';stageStarted=Date.now();grounding=await retrieveTavilyGrounding(buildRetrievalQuery(wire.request.question,demographics.planningArea?.name,'balanced-question-v1'),abort.signal,{key:dependencies.groundingKey,fetcher:dependencies.groundingFetcher,timeoutMs:groundingTimeoutMs,passagePolicy:'locality-window-v1',locality:demographics.planningArea?.name});
    retrieval=summariseRetrieval(grounding,Date.now()-stageStarted);
    stage='planning';stageStarted=Date.now();
    const fetcher:typeof fetch=async(url,init)=>{const response=await (dependencies.fetcher??fetch)(url,init);upstreamStatus=response.status;return response;};

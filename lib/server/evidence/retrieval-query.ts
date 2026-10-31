@@ -9,7 +9,7 @@ for(let a=65;a<=90;a++)for(let b=65;b<=90;b++){
  for(const name of [names.of(code),shortNames.of(code)])if(name&&name!==code&&name!=='Singapore')foreignNames.add(tokens(name));
 }
 
-export function buildRetrievalQuery(question:string,planningAreaName?:string|null):string {
+export function buildRetrievalQuery(question:string,planningAreaName?:string|null,policy?:'balanced-question-v1'):string {
  // Inspect the complete source before trimming/truncating so later geography or invalid data is not hidden.
  if(typeof question!=='string'||question.length>2000||!question.trim()||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(question))throw new Error('Invalid retrieval question.');
  const text=tokens(question),query=question.trim().replace(/\s+/gu,' ');
@@ -22,7 +22,9 @@ export function buildRetrievalQuery(question:string,planningAreaName?:string|nul
   if(area.length<=80&&/^[A-Za-z]+(?:[ -][A-Za-z]+)*$/.test(area)&&tokens(area)!==' singapore '&&text.includes(tokens(area)))prefix=area+' Singapore: ';
   else if(text.includes(' singapore '))prefix='Singapore: ';
  }
- const bounded=(prefix+query).slice(0,GROUNDING_LIMITS.query);
+ const full=prefix+query;
+ const headLength=GROUNDING_LIMITS.query-163;
+ const bounded=policy==='balanced-question-v1'&&full.length>GROUNDING_LIMITS.query?full.slice(0,headLength).replace(/[\uD800-\uDBFF]$/u,'')+' … '+query.slice(-160).replace(/^[\uDC00-\uDFFF]/u,''):full.slice(0,GROUNDING_LIMITS.query);
  // A UTF-16 limit must not turn a valid supplementary character into an isolated high surrogate.
  return bounded.replace(/[\uD800-\uDBFF]$/u,'').trimEnd();
 }

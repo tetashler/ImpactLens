@@ -15,5 +15,5 @@ export function phase4dWorld(agents=24,activation=0,legacy=false){
 export function fixtureDecision(c:DecisionContext,action='inactive',targetId?:string,text='A fictional contextual response addressing the recorded safeguard.'){
  const option=c.menu!.find(m=>m.action===action&&(targetId===undefined||m.targetKind==='item'&&c.items[m.targetIndex!].id===targetId));
  if(!option)throw Error('Fixture requires an actually offered '+action);
- return decodeMenuDecision({choiceId:option.id,text:['post','comment','reply','message','group-reply'].includes(action)?text:null,motivation:'Consider the actual encountered concern and persistent goal.',recallIds:[],stanceId:'keep',discussion:{topicIds:[],argument:'unspecified'},...(c.policy==='conversation-menu-v2'?{issueUpdate:null}:{})},c);
+ return decodeMenuDecision({choiceId:option.id,text:['post','comment','reply','message','group-reply'].includes(action)?text:null,motivation:'Consider the actual encountered concern and persistent goal.',recallIds:[],stanceId:'keep',discussion:{topicIds:[],argument:'unspecified'},...(c.policy==='conversation-menu-v3'?{issueChoiceId:null}:c.policy==='conversation-menu-v2'?{issueUpdate:null}:{})},c);
 }

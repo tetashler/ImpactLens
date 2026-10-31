@@ -17,14 +17,14 @@ export const FIXTURE_USAGE=Object.freeze({prompt_tokens:450,completion_tokens:12
 export interface WireItem {id:string;actorId:string;platform:string;parentId:string|null;groupId:string|null;text:string;modelAuthored?:boolean;tick?:number}
 export interface WireChoice {id:string;action:string;platform:string;target:string|null;requiredMemories:string[];destinationGroup:string|null}
 export interface SwarmWireContext {id:string;runId:string;policy:string;tick:number;platform:string;actor:{id:string;goal:string;label:string};items:WireItem[];choices:WireChoice[];memories:{ref:string;kind:string;origin?:string;items:string[]}[];topics?:{id:string;label:string}[];channels?:{id:string;style:string}[];groups?:{ref:string;member:boolean}[]}
-export interface FixtureSelection {choiceId:string;text:string|null;motivation:string;recallIds:string[];stanceId:string;discussion:{topicIds:string[];argument:string};issueUpdate:null}
+export interface FixtureSelection {choiceId:string;text:string|null;motivation:string;recallIds:string[];stanceId:string;discussion:{topicIds:string[];argument:string}|null;issueUpdate?:null;issueChoiceId?:string|null}
 const authored=new Set(['post','comment','reply','message','group-reply']);
 const replying=new Set(['comment','reply','group-reply']);
 
-export function phase4eProviderFixture(c:SwarmWireContext,choice?:WireChoice,text?:string):FixtureSelection{
+export function phase4eProviderFixture(c:SwarmWireContext,choice?:WireChoice,text?:string):FixtureSelection&{discussion:NonNullable<FixtureSelection['discussion']>}{
  const selected=choice??c.choices.find(m=>replying.has(m.action)&&c.items.some(i=>i.id===m.target&&i.modelAuthored&&i.actorId!==c.actor.id))??c.choices.find(m=>replying.has(m.action))??c.choices.find(m=>m.action==='post'||m.action==='message')??c.choices.find(m=>m.action==='inactive')??c.choices[0];
  ensure(selected&&c.choices.some(m=>m.id===selected.id),'PHASE4E_FIXTURE_MENU');
- return {choiceId:selected.id,text:authored.has(selected.action)?text??`RAW_PHASE4E_SOCIAL ${c.actor.label.slice(0,80)} considers wages, staffing and service coverage at tick ${c.tick}.`:null,motivation:'RAW_PHASE4E_MEMORY A fictional fixture response to the supplied goal and encounter.',recallIds:[],stanceId:'keep',discussion:{topicIds:(c.topics??[]).slice(0,1).map(t=>t.id),argument:'condition'},issueUpdate:null};
+ return {choiceId:selected.id,text:authored.has(selected.action)?text??`RAW_PHASE4E_SOCIAL ${c.actor.label.slice(0,80)} considers wages, staffing and service coverage at tick ${c.tick}.`:null,motivation:'RAW_PHASE4E_MEMORY A fictional fixture response to the supplied goal and encounter.',recallIds:[],stanceId:'keep',discussion:{topicIds:(c.topics??[]).slice(0,1).map(t=>t.id),argument:'condition'},...(c.policy==='conversation-menu-v3'?{issueChoiceId:null}:{issueUpdate:null})};
 }
 
 /** Deliberate capability fixture: it chooses replies only when the real menu offers them. */
@@ -49,7 +49,7 @@ export function phase4eCommunication(publicOnly=false){
 }
 export const socialRequest=(body:unknown)=>new Request('http://localhost/api/social-simulate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
 export interface FixtureCall {actorId:string;tick:number;platform:string;contextBytes:number;memoryCount:number;episodicMemories:number;itemCount:number;offeredPeerReplies:number;offeredActions:string[];selectedAction:string;selectedPeer:boolean}
-export function phase4eFetcher(select=(c:SwarmWireContext)=>phase4eProviderFixture(c)){
+export function phase4eFetcher(select:(c:SwarmWireContext)=>FixtureSelection=(c)=>phase4eProviderFixture(c)){
  const calls:FixtureCall[]=[];let inFlight=0,maxInFlight=0;
  const fetcher:typeof fetch=async(url,init)=>{
   ensure(String(url)==='https://openrouter.ai/api/v1/chat/completions','PHASE4E_FIXTURE_URL');

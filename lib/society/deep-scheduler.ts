@@ -5,6 +5,7 @@ import {threadPath} from './exposure.ts';
 import {privateDiscussionInbox} from './deep-context.ts';
 import {getExecutionProfile} from './execution-profile.ts';
 import {isActorAvailable} from './temporal-policy.ts';
+import {isBehaviourQuality} from './intelligence.ts';
 /** Cumulative allowance carries unused credit. Urgent borrowing is debt until release catches up. */
 export function multiDayPacing(value:SocietyInput|SocietyWorld,tick='genesis' in value?value.tick:0,used='genesis' in value?value.hybrid?.records.length??0:0){
  const profile=getExecutionProfile(value);if(!profile)return null;const input='genesis' in value?value.genesis.input:value,target=Math.min(profile.decisions,input.swarm!.multiDay!.pacingTarget),initialBurst=Math.min(target,profile.decisionsPerTick);
@@ -22,7 +23,7 @@ export function multiDayPacing(value:SocietyInput|SocietyWorld,tick='genesis' in
 }
 /** A bounded queue derived exclusively from committed, accessible events. Rebuilt deterministically. */
 export function deepOpportunity(w:SocietyWorld,visible:(w:SocietyWorld,id:string,p:Platform)=>SocialItem[]){
- const p=w.genesis.input.swarm!,d=p.deep!,records=w.hybrid!.records,tick=w.tick;
+ const p=w.genesis.input.swarm!,d=p.deep!,records=w.hybrid!.records,tick=w.tick,quality=isBehaviourQuality(w.genesis.input.intelligence);
  const atTick=records.filter(r=>r.context.tick===tick),pacing=multiDayPacing(w);
  if(!tick||(pacing?tick>w.genesis.config.steps||w.status==='event-limit'||w.status==='item-limit':tick>=w.genesis.config.steps)||atTick.length>=p.decisionsPerTick)return null;
  // Two-tick burst credit retains capacity through later simulated periods. No demand means no dispatch.
@@ -42,8 +43,16 @@ export function deepOpportunity(w:SocietyWorld,visible:(w:SocietyWorld,id:string
   for(const channel of eligibleChannels(w,actorId)){
    const roots=new Set(visible(w,actorId,channel.id).map(i=>i.id));
    // Private inbox targets are revalidated individually; feed root ageing grants no access.
-   const inbox=channel.style==='private-group'?privateDiscussionInbox(w,actorId,channel.id):null;
-   const candidates=(inbox??w.items).filter(i=>i.platform===channel.id&&i.actorId!==actorId&&!handled.has(i.id)&&!repeated.has(i.id)&&canAccessItem(w,actorId,i));
+   const eligiblePrivate=quality?(item:SocialItem)=>{
+    const path=paths.get(item.id)??[];if(!path.length)return false;
+    const direct=items.get(item.parentId??'')?.actorId===actorId;
+    if(pacing&&!pacing.available&&!direct||tick-last<(direct?1:p.cooldownTicks))return false;
+    return atTick.filter(r=>{const source=r.context.opportunity?.sourceEventId;return source&&paths.get(source)?.[0]===path[0];}).length<d.perThreadBurst;
+   }:undefined;
+   const inbox=channel.style==='private-group'?privateDiscussionInbox(w,actorId,channel.id,eligiblePrivate):null;
+   // The quality private inbox owns recipient-scoped novelty. Global inaccessible
+   // history must not independently veto one of its legal targets.
+   const candidates=(inbox??w.items).filter(i=>i.platform===channel.id&&i.actorId!==actorId&&!handled.has(i.id)&&(quality&&inbox!==null||!repeated.has(i.id))&&canAccessItem(w,actorId,i));
    let hasEligibleCandidate=false;
    for(const item of candidates){
     const path=paths.get(item.id)??[];if(!path.length)continue;const root=path[0],parent=items.get(item.parentId??''),direct=parent?.actorId===actorId;

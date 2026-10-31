@@ -38,7 +38,7 @@ globalThis.fetch=async(input,init={})=>{
   const c=JSON.parse(b.messages[1].content),entityStage=['dynamic_entities_v2','dynamic_entities_v3'].includes(stage);
   let value,usage;
   if(stage==='social_decision_v1'){
-   if(b.max_tokens!==600||c.policy!=='conversation-menu-v2')throw Error('PHASE4E2_SOCIAL_WIRE');
+   if(b.max_tokens!==600||!['conversation-menu-v2','conversation-menu-v3'].includes(c.policy))throw Error('PHASE4E2_SOCIAL_WIRE');
    value=phase4eProviderFixture(c);if(value.text){const words=['roster','income','coverage','access','cost','conditions','training','care','staffing','protection','timing'];const n=calls.filter(r=>r.purpose==='social').length;value.text='RAW_PHASE4E2_SOCIAL '+c.actor.label.slice(0,80)+' asks whether '+words[n%words.length]+' and '+words[Math.floor(n/words.length)%words.length]+' need a distinct safeguard before implementation? Recorded step '+c.tick+' ordinal '+n+'.';value.discussion.argument='question';}usage=FIXTURE_USAGE;record({purpose:'social',tick:c.tick,actorId:c.actor.id,platform:c.platform,offered:c.choices.length,selectedAction:c.choices.find(o=>o.id===value.choiceId)?.action});
   }else{
    const planning=stage.startsWith('dynamic_'),f=fixtures.find(f=>f.request.question===(planning?c.question:c.input.question));if(!f)throw Error('PHASE4E2_UNKNOWN_FIXTURE_QUESTION');

@@ -1,8 +1,9 @@
 /** Server-only, optional retrieval. One fixed-endpoint request; source URLs are never fetched. */
 import process from 'node:process';
+import {geographicCoverage,localityWindow,safeRequestedLocality} from '../../grounding/geographic-coverage.ts';
 import { canonicalGroundingUrl, createGroundingBundle, groundingContentId, GROUNDING_LIMITS, type GroundingBundle, type GroundingSource } from '../../grounding/contract.ts';
 
-export interface TavilyGroundingDependencies { key?: string; fetcher?: typeof fetch; now?: () => Date; timeoutMs?: number }
+export interface TavilyGroundingDependencies { key?: string; fetcher?: typeof fetch; now?: () => Date; timeoutMs?: number; passagePolicy?:'locality-window-v1';locality?:string|null }
 const ENDPOINT = 'https://api.tavily.com/search';
 const MAX_BYTES = 128 * 1024;
 const LIMITATION = 'Retrieved candidates are unverified source excerpts. Retrieval and exact quotation do not establish truth, applicability, or semantic entailment.';
@@ -15,7 +16,7 @@ function cleanText(value: unknown, maximum: number): string | null {
   const result = value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').trim().slice(0, maximum);
   return result || null;
 }
-function sourcesFrom(value: unknown, retrievedAt: string): GroundingSource[] {
+function sourcesFrom(value: unknown, retrievedAt: string,locality?:string|null,exactWindow=false): GroundingSource[] {
   if (!object(value) || !Array.isArray(value.results)) throw new Error('Invalid retrieval response.');
   const sources: GroundingSource[] = []; const seen = new Set<string>();
   for (const result of value.results) {
@@ -24,11 +25,15 @@ function sourcesFrom(value: unknown, retrievedAt: string): GroundingSource[] {
     let url: string;
     try { url = canonicalGroundingUrl(result.url); } catch { continue; }
     const title = cleanText(result.title, GROUNDING_LIMITS.title);
-    const content = cleanText(result.content, GROUNDING_LIMITS.passage);
+    const raw=typeof result.content==='string'&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(result.content)?result.content.trim():null;
+    const content = exactWindow?(raw?localityWindow(raw,GROUNDING_LIMITS.passage,locality):null):cleanText(result.content,GROUNDING_LIMITS.passage);
     if (!title || !content || seen.has(url)) continue;
     seen.add(url);
     const published = typeof result.published_date === 'string' && result.published_date.length <= 100 ? Date.parse(result.published_date) : NaN;
-    sources.push({ id: groundingContentId('s', url), title, url, publisher: new URL(url).hostname, publishedAt: Number.isFinite(published) ? new Date(published).toISOString() : null, retrievedAt, passages: [{ id: groundingContentId('p', content), text: content }] });
+    const rawDate=typeof result.published_date==='string'?result.published_date:'';
+    const calendarDate=new Date(rawDate.slice(0,10)+'T00:00:00Z');
+    const strictDate=/^\d{4}-\d{2}-\d{2}(?:T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2}))?$/.test(rawDate)&&Number.isFinite(calendarDate.getTime())&&calendarDate.toISOString().slice(0,10)===rawDate.slice(0,10);
+    sources.push({ id: groundingContentId('s', url), title, url, publisher: new URL(url).hostname, publishedAt: Number.isFinite(published)&&(!exactWindow||strictDate) ? new Date(published).toISOString() : null, retrievedAt, passages: [{ id: groundingContentId('p', content), text: content }] });
   }
   // Rank only accepted candidates, without country restrictions or an allowlist.
   return sources.map((source, index) => ({ source, index, hint: Number(institutionalDomainHint(source.publisher)) }))
@@ -83,11 +88,13 @@ export async function retrieveTavilyGrounding(question: string, signal?: AbortSi
       const data = await boundedJson(response, controller.signal);
       controller.signal.throwIfAborted();
       if (object(data) && object(data.usage) && typeof data.usage.credits === 'number' && Number.isFinite(data.usage.credits) && data.usage.credits >= 0 && data.usage.credits <= 100) credits = data.usage.credits;
-      return sourcesFrom(data, retrievedAt);
+      return sourcesFrom(data, retrievedAt,dependencies.passagePolicy==='locality-window-v1'?dependencies.locality:null,dependencies.passagePolicy==='locality-window-v1');
     })();
     const sources = await Promise.race([request, stopped]);
     if (signal?.aborted) throw abortError();
-    return make('retrieved', sources, [LIMITATION, RANKING_LIMITATION, ...(sources.length === 0 ? ['No usable source excerpts were returned.'] : [])], 1, credits);
+    const area=dependencies.passagePolicy==='locality-window-v1'?safeRequestedLocality(dependencies.locality):null;
+    const coverage=area?geographicCoverage(make('retrieved',sources,[],1,credits),area):null;
+    return make('retrieved', sources, [LIMITATION, RANKING_LIMITATION, ...(dependencies.passagePolicy?['Locality-window-v1 selects a bounded exact substring around a literal locality mention when available. Omitted source text is unavailable; literal mentions do not verify applicability or the hypothetical intervention.']:[]),...(area&&!coverage!.sources.some(s=>s.passages.some(p=>p.requestedLocalityMentioned))?[`No supplied passage mentions ${area}; national or other background must not be represented as locality-specific support.`]:[]), ...(sources.length === 0 ? ['No usable source excerpts were returned.'] : [])], 1, credits);
   } catch {
     if (signal?.aborted) throw abortError();
     return make('failed', [], [timedOut ? 'Optional web grounding timed out.' : 'Optional web grounding is unavailable.', LIMITATION], 1, credits);

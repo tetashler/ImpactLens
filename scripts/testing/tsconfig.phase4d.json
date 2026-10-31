@@ -20,6 +20,7 @@
     "../../components/use-society.ts",
     "../../lib/contracts/tests/phase4d*.ts",
     "../../lib/contracts/tests/phase4e*.ts",
+    "../../lib/contracts/tests/behaviour-quality-*.ts",
     "../../lib/contracts/tests/planner-condition-*.ts",
     "../../lib/contracts/tests/planner-sengkang-integration.test.ts",
     "../../lib/contracts/tests/planner-grounding-context.test.ts",
