@@ -1,4 +1,4 @@
-import {entityDeclarationFixture} from '../../../scripts/testing/entity-declaration-fixture.ts';
+import {entityReferenceFixture} from '../../../scripts/testing/entity-declaration-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {plannerFixture} from './helpers/planner-fixture.ts';
@@ -11,7 +11,7 @@ import {mockDynamicProvider} from './helpers/dynamic-provider.ts';
 function registered(){const f=plannerFixture();f.draft.ontology.relationships=[];return {...f,...registerDraft(parseGeneratedDraft(f.draft,f.request,f.grounding))};}
 test('new entity generation eliminates the ambiguous legacy entity-reference registry; archives retain it',async()=>{
  const f=plannerFixture();f.draft.ontology.relationships=[];f.draft.entities=[];f.draft.agents.forEach(a=>a.entityIds=[]);let schema:any;
- const planner=createEntityPlanner({key:'mock',fetcher:async(_u,i)=>{schema=JSON.parse(String(i?.body)).response_format.json_schema.schema;return Response.json({model:'deepseek/deepseek-v4-flash-0731',provider:'DigitalOcean',choices:[{finish_reason:'stop',message:{content:JSON.stringify(entityDeclarationFixture({...f.draft,relationships:f.draft.relationships.map(({id,...r})=>r),assumptions:f.draft.assumptions.map(({id,...a})=>a),ontology:{...f.draft.ontology,entities:f.draft.ontology.entities.map(e=>({...e,support:e.support?{sourceId:e.support.sourceId,passageId:e.support.passageId}:null}))}}))}}]});}},f.grounding);
+ const planner=createEntityPlanner({key:'mock',fetcher:async(_u,i)=>{schema=JSON.parse(String(i?.body)).response_format.json_schema.schema;return Response.json({model:'deepseek/deepseek-v4-flash-0731',provider:'DigitalOcean',choices:[{finish_reason:'stop',message:{content:JSON.stringify(entityReferenceFixture({...f.draft,relationships:f.draft.relationships.map(({id,...r})=>r),assumptions:f.draft.assumptions.map(({id,...a})=>a),ontology:{...f.draft.ontology,entities:f.draft.ontology.entities.map(e=>({...e,support:e.support?{sourceId:e.support.sourceId,passageId:e.support.passageId}:null}))}}))}}]});}},f.grounding);
  await planner.generate(f.request);assert.equal(schema.properties.entities.maxItems,0);assert.equal(schema.properties.agents.items.properties.entityIds.maxItems,0);assert.equal(schema.properties.ontology.properties.entityTypes.items.properties.entities.maxItems,4);
  f.draft.agents[2].entityIds=['institution-a'];assert.throws(()=>parseGeneratedDraft(f.draft,f.request,f.grounding),(e:any)=>e.diagnostic.rule==='agent.cross_reference_invalid'&&e.diagnostic.path==='draft.agents[2].entityIds[0]');
 });

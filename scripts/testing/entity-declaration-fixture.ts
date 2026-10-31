@@ -1,4 +1,13 @@
 /** Offline provider fixtures only. No production response rewriting. */
+export function entityReferenceFixture(d:any){
+ const declared=structuredClone(d);
+ if(declared.scope==='local'&&Array.isArray(declared.jurisdictions)&&declared.jurisdictions.length===1&&typeof declared.jurisdictions[0]?.id==='string'){
+  const original=declared.jurisdictions[0].id;declared.jurisdictions[0].id='jurisdiction-1';
+  for(const rows of [declared.entities,declared.agents,declared.ontology?.entities])if(Array.isArray(rows))for(const row of rows)if(row&&typeof row==='object'&&row.jurisdictionId===original)row.jurisdictionId='jurisdiction-1';
+ }
+ const {userConditions,userConditionProvenance,...wire}=entityDeclarationFixture(declared);
+ return {...wire,userConditionIds:['question-1']};
+}
 export function entityDeclarationOrder(d:any){return {...d,ontology:{...d.ontology,entities:d.ontology.entityTypes.flatMap((t:any)=>d.ontology.entities.filter((e:any)=>e.typeId===t.id))}};}
 export function entityDeclarationFixture(d:any){
  const ordered=entityDeclarationOrder(d).ontology.entities;const instance=(id:string)=>{const i=ordered.findIndex((e:any)=>e.id===id);return i<0?id:'declared-entity-'+(i+1);};const relationType=(id:string)=>{const i=d.ontology.relationshipTypes.findIndex((t:any)=>t.id===id);return i<0?id:'declared-relationship-type-'+(i+1);};const entities=d.ontology.entities,unknown=entities.filter((e:any)=>!d.ontology.entityTypes.some((t:any)=>t.id===e.typeId));

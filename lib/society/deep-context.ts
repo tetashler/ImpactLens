@@ -19,5 +19,18 @@ export function deepConversationMetadata(w:SocietyWorld,actorId:string,itemIds:s
 export function privateDiscussionInbox(w:SocietyWorld,actorId:string,platform:Platform){
  if(!isDeep(w)||channelFor(w,platform)?.style!=='private-group')return [];
  const {items,sequence}=conversationIndex(w);
- return w.items.filter(i=>i.groupId&&i.platform===platform&&canAccessItem(w,actorId,i)).sort((a,b)=>Number(items.get(b.parentId??'')?.actorId===actorId)-Number(items.get(a.parentId??'')?.actorId===actorId)||b.tick-a.tick||sequence.get(b.id)!-sequence.get(a.id)!).slice(0,16);
+ const modern=!!w.genesis.input.swarm?.multiDay;
+ const handled=new Set(modern?(w.hybrid?.records??[]).filter(r=>r.context.actor.id===actorId).map(r=>r.context.opportunity?.sourceEventId).filter(Boolean):[]);
+ const repeated=new Set<string>();
+ if(modern){
+  const seen=new Set<string>();
+  for(const item of w.items){
+   const root=item.parentId?threadPath(w,item.id)[0]??item.parentId:item.platform+'|root-post';
+   const fingerprint=item.text.toLocaleLowerCase('en').replace(/[^\p{L}\p{N}]+/gu,' ').trim(),key=item.actorId+'|'+root+'|'+fingerprint;
+   if(seen.has(key))repeated.add(item.id);seen.add(key);
+  }
+ }
+ // Saturated histories must not let ineligible items consume the bounded queue.
+ // This is candidate discovery only: an actual reducer read is still required.
+ return w.items.filter(i=>i.groupId&&i.platform===platform&&canAccessItem(w,actorId,i)&&(!modern||i.actorId!==actorId&&!handled.has(i.id)&&!repeated.has(i.id))).sort((a,b)=>Number(items.get(b.parentId??'')?.actorId===actorId)-Number(items.get(a.parentId??'')?.actorId===actorId)||b.tick-a.tick||sequence.get(b.id)!-sequence.get(a.id)!).slice(0,16);
 }

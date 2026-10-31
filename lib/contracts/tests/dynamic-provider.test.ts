@@ -16,7 +16,7 @@ for(const f of dynamicFixtures())test(`registered planners + real action boundar
 });
 test('planner mismatch and invalid output stop before action requests',async()=>{
  const f=dynamicFixtures()[0];for(const kind of ['identity','schema','references']){
-  const m=mocked(f,(b,r)=>{if(b.response_format.json_schema.name==='dynamic_entities_v2'){if(kind==='identity')r.provider='Other';else{const d=structuredClone(f.draft) as any;if(kind==='schema')d.unknown=true;else d.relationships[0].targetAgentId='unknown';r.choices[0].message.content=JSON.stringify(d);}}});
+  const m=mocked(f,(b,r)=>{if(b.response_format.json_schema.name==='dynamic_entities_v3'){if(kind==='identity')r.provider='Other';else{const d=structuredClone(f.draft) as any;if(kind==='schema')d.unknown=true;else d.relationships[0].targetAgentId='unknown';r.choices[0].message.content=JSON.stringify(d);}}});
   const r=await handleDynamicRequest(req(f.request),{enabled:true,groundingKey:'',key:'mock',fetcher:m.fetcher});assert.equal(r.status,502);assert.equal(m.counts().calls,1);assert.ok(!JSON.stringify(await r.json()).includes('Other'));
  }
 });
@@ -26,7 +26,7 @@ test('a failed action preserves planning charge and accepted turns',async()=>{
  assert.equal(body.kind,'dynamic-execution');if(body.kind!=='dynamic-execution')throw Error('Expected execution');assert.equal(body.run.status,'partial');assert.equal(body.run.events.length,1);assert.equal(body.planning.record.status,'accepted');assert.equal(body.accounting.totalCalls,4);
 });
 test('planning cost is not free: reaching the soft cap prevents action requests',async()=>{
- const f=dynamicFixtures()[0],m=mocked(f,(b,r)=>{if(b.response_format.json_schema.name==='dynamic_entities_v2')r.usage.cost=0.05;});
+ const f=dynamicFixtures()[0],m=mocked(f,(b,r)=>{if(b.response_format.json_schema.name==='dynamic_entities_v3')r.usage.cost=0.05;});
  const r=req(f.request),wire=await r.clone().json(),response=await handleDynamicRequest(r,{enabled:true,groundingKey:'',key:'mock',fetcher:m.fetcher}),body=await validateDynamicResponse(await response.json(),wire);
  assert.equal(body.kind,'planning-failed');if(body.kind!=='planning-failed')throw Error('Expected bounded planning stop');assert.equal(body.error.code,'AI_PLAN_BUDGET');assert.equal(body.accounting.costUsd,0.05);assert.equal(m.counts().calls,1);
 });
@@ -44,7 +44,7 @@ test('request correlation, accounting and legacy boundaries reject forged dynami
  assert.equal(m.counts().calls,10);
 });
 test('unknown planning cost remains unknown in combined accounting',async()=>{
- const f=dynamicFixtures()[0],m=mocked(f,(b,r)=>{if(b.response_format.json_schema.name==='dynamic_entities_v2')delete r.usage.cost;});
+ const f=dynamicFixtures()[0],m=mocked(f,(b,r)=>{if(b.response_format.json_schema.name==='dynamic_entities_v3')delete r.usage.cost;});
  const r=req(f.request),wire=await r.clone().json(),response=await handleDynamicRequest(r,{enabled:true,groundingKey:'',key:'mock',fetcher:m.fetcher}),body=await validateDynamicResponse(await response.json(),wire);assert.equal(body.accounting.costUsd,null);
 });
 test('no-key or disabled planning returns a recoverable no-call state and no fictitious run',async()=>{

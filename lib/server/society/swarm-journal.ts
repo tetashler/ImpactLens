@@ -17,7 +17,7 @@ export function swarmStorageLimits(input:SocietyInput){return deepLimits(input);
 function row(s:SwarmJournalState,first:boolean){
  const records=s.world.hybrid!.records,count=s.journalRecords??0;
  ensure(count<=records.length&&records.length<=deepLimits(s.world).decisions,'SOCIAL_JOURNAL_ORDER');
- const body={format:2,id:s.id,runId:s.runId,revision:s.revision,...(first?{input:s.world.genesis.input,...(isDeep(s.world)&&s.providerAdmission?{providerAdmission:s.providerAdmission}:{})}:{}),tick:s.world.tick,recordCount:records.length,records:records.slice(count),pending:s.world.hybrid!.pending,reservation:s.reservation,tokenBudgetExhausted:!!s.world.hybrid!.tokenBudgetExhausted,previous:s.journalHead??null};
+ const body={format:2,id:s.id,runId:s.runId,revision:s.revision,...(first?{input:s.world.genesis.input,...(s.providerAdmission?{providerAdmission:s.providerAdmission}:{})}:{}),tick:s.world.tick,recordCount:records.length,records:records.slice(count),pending:s.world.hybrid!.pending,reservation:s.reservation,tokenBudgetExhausted:!!s.world.hybrid!.tokenBudgetExhausted,previous:s.journalHead??null};
  const hash=digest(body);return {hash,line:JSON.stringify({...body,hash})+'\n'};
 }
 

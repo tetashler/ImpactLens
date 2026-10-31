@@ -12,7 +12,7 @@ export async function observePublicSociety(initial:PublicExplore,{signal,accept,
  const interval=Math.max(0,Math.min(5000,intervalMs)),projectionInterval=Math.max(0,Math.min(10_000,projectionIntervalMs));let lastProjection=0;
  while(current.job?.status==='running'){
   signal.throwIfAborted();const response=await fetcher(prefix+'operation=status&'+identity,{signal,cache:'no-store'});ensure(response.ok,'SOCIETY_JOB_HTTP');const envelope=object(await response.json(),['version','kind','runId','job']);ensure(envelope.version===1&&envelope.kind==='society-job-status'&&envelope.runId===initial.runId,'SOCIETY_JOB_IDENTITY');const job=parseSocietyJob(envelope.job);ensure(job.id===initial.job!.id&&job.revision>=(current.job?.revision??0),'SOCIETY_JOB_STALE');signal.throwIfAborted();current={...current,job};accept(current);
-  if(job.status!=='running'||job.revision>session.revision&&Date.now()-lastProjection>=projectionInterval){
+  if(job.status!=='running'||job.revision>(current.session?.revision??session.revision)&&Date.now()-lastProjection>=projectionInterval){
    const projection=await fetcher(prefix+identity,{signal,cache:'no-store'});ensure(projection.ok,'SOCIETY_JOB_HTTP');const next=parsePublicExplore(await projection.json());ensure(next.runId===initial.runId&&next.session?.id===session.id&&next.session?.token===session.token&&next.job?.id===job.id,'SOCIETY_JOB_IDENTITY');signal.throwIfAborted();current=next;lastProjection=Date.now();accept(next);
   }
   if(current.job?.status==='running')await wait(interval,signal);

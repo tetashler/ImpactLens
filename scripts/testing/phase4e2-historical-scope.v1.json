@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "scopeId": "phase4e2-historical-scope-option-b-v1",
+  "approval": {
+    "id": "Phase4E.2OptionBuserapproval2026-10-31",
+    "date": "2026-10-31",
+    "evidenceRefs": [
+      "docs/PHASE4E2_MULTIDAY_SWARM_IMPLEMENTATION_AND_LIVE_ACCEPTANCE.md",
+      "tmp/phase4e1/progress.md",
+      "tmp/phase4e2/historical-baseline-failure.json"
+    ],
+    "evidenceFiles": [
+      {
+        "path": "tmp/phase4e1/progress.md",
+        "sha256": "0bb06d8718a5d47d988dce4ec8b81d7c3220b79a70b46ad57ad0108d19b9330e"
+      },
+      {
+        "path": "tmp/phase4e2/historical-baseline-failure.json",
+        "sha256": "81b88b0cd08f4d57dea9a43b194d5a000b1266166021cc52bed5166594691e96"
+      }
+    ]
+  },
+  "artifact": {
+    "archiveFile": "f62d6f5e112fc640aa275e193f31fc0eb909032445c106fe4fedcbdf1fa1a916.json",
+    "runId": "run-865f5ae0d398512523eac82e-attempt-4-92873b81-e7e3-4208-acec-221f673b1579",
+    "sessionId": "f8bcfcb0-0291-4238-b6b6-dcf5f9f78bc2",
+    "classification": "pre-final-mocked-development-artifact",
+    "qualification": "nonqualifying-for-mandatory-historical-replay",
+    "replayStatus": "unresolved-SOCIAL_STALE",
+    "sourcePolicyRecoverable": false,
+    "failure": {
+      "code": "SOCIAL_STALE",
+      "firstDivergentRecord": 0,
+      "firstDivergentTick": 1,
+      "baselineCommit": "ff46ab24ad93bb9260cc4a94ee0111f2e83cf21d"
+    },
+    "files": [
+      {
+        "role": "archive",
+        "path": "data/derived/agents/accepted-private/f62d6f5e112fc640aa275e193f31fc0eb909032445c106fe4fedcbdf1fa1a916.json",
+        "sha256": "f509b72702238ce52d3feb6653b28ca68f7151796f5e39d88834160902f503ca"
+      },
+      {
+        "role": "journal",
+        "path": "data/derived/agents/social-sessions/f8bcfcb0-0291-4238-b6b6-dcf5f9f78bc2.jsonl",
+        "sha256": "066ef47d20ec06a953024d0929f0e199d37c16aff147dc4d6d099a3874d5f395"
+      },
+      {
+        "role": "checkpoint",
+        "path": "data/derived/agents/social-sessions/f8bcfcb0-0291-4238-b6b6-dcf5f9f78bc2.checkpoint.json",
+        "sha256": "0c0003dcd4dfe13f6b0c058501b93c6a779da0201b01cb7b956f9ba966c13773"
+      },
+      {
+        "role": "materialized",
+        "path": "data/derived/agents/social-sessions/f8bcfcb0-0291-4238-b6b6-dcf5f9f78bc2.materialized.json",
+        "sha256": "1b24f45c2607c8d095f38b326d322a622d5ca0bfc5bc5b1bd0fcb1df016fcfe0"
+      },
+      {
+        "role": "job",
+        "path": "data/derived/agents/accepted-private/jobs/f62d6f5e112fc640aa275e193f31fc0eb909032445c106fe4fedcbdf1fa1a916.job.json",
+        "sha256": "6204ddd88ce1967ce4fa5c6aad61e29f8e9c9d5ab320719023546fe6b61d2455"
+      }
+    ]
+  }
+}

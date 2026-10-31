@@ -1,4 +1,4 @@
-import {entityDeclarationFixture} from '../../../scripts/testing/entity-declaration-fixture.ts';
+import {entityReferenceFixture} from '../../../scripts/testing/entity-declaration-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseGeneratedDraft,createDynamicPlanner} from '../../server/inference/planner.ts';
@@ -45,7 +45,7 @@ test('minimal grounded v2 fixture preserves provenance and archive validation',a
  const f=plannerFixture();parseGeneratedDraft(f.draft,f.request,f.grounding);const p=await createDynamicPlan(f.request,f.draft,f.grounding);assert.equal(p.version,2);assert.equal(parseDynamicPlan(p).planId,p.planId);assert.equal(p.draft.entities[0].status,'unverified-model-suggestion');
  assert.throws(()=>parseDynamicPlan({...p,version:3}),(e:any)=>e.diagnostic?.rule==='plan.unsupported_version'&&e.diagnostic.path==='plan.version');
 });
-const entityWire=entityDeclarationFixture;
+const entityWire=entityReferenceFixture;
 const completion=(content:string)=>Response.json({model:MODEL,provider:'DigitalOcean',choices:[{finish_reason:'stop',message:{content}}],usage:{prompt_tokens:10,completion_tokens:10,total_tokens:20,cost:0.001}});
 test('planner failure envelope retains safe validation and retrieval diagnostics through the real route',async()=>{
  const f=plannerFixture(),d=structuredClone(f.draft);d.ontology!.entities[0].typeId='private-marker';d.ontology!.entities[0].support=null;

@@ -7,6 +7,7 @@ import {parseScenarioGeometry,type ScenarioGeometry} from '../plots/geometry.ts'
 import {checkPlan,planGuard,planObject,planText,planId,planList,planUnique,planStrings} from './diagnostics.ts';
 import {parseRegistration,type PlannerRegistration} from './registration.ts';
 import {assessEntityAttribution} from '../world-graph/attribution.ts';
+import {validateUserConditionSource,type UserConditionProvenance} from './user-condition-source.ts';
 export const DYNAMIC_LIMITS=Object.freeze({planningCalls:2,planningOutputTokens:6000,agents:4,rounds:2,actionCalls:8,totalCalls:10,timeoutMs:120000,costUsd:0.05});
 export interface DynamicRequest {version:1;question:string;geometry:ScenarioGeometry;geometryRevision:number}
 export type DynamicScope='local'|'cross-border'|'international'|'undetermined';
@@ -15,6 +16,7 @@ export interface DynamicDraft {
  ontology?:WorldOntologyV1;
  description:string;trigger:string;scope:DynamicScope;jurisdictions:{id:string;label:string}[];domains:string[];
  userConditions:string[];
+ userConditionProvenance?:UserConditionProvenance;
  entities:{id:string;name:string;kind:'government'|'business'|'institution'|'infrastructure'|'community'|'industry'|'country';jurisdictionId:string|null;status:'unverified-model-suggestion'}[];
  agents:DynamicAgent[];relationships:{id:string;sourceAgentId:string;targetAgentId:string;opportunity:string}[];
  assumptions:{id:string;text:string}[];uncertainties:string[];evidenceFindingIds:string[];
@@ -31,12 +33,14 @@ export function parseDynamicRequest(value:unknown):DynamicRequest {
 export function parseDynamicDraft(value:unknown,requestValue:DynamicRequest,grounding?:GroundingBundle,generatedSlots=false):DynamicDraft {
  const request=parseDynamicRequest(requestValue);planGuard('draft',()=>assertJsonData(value));checkPlan(new TextEncoder().encode(JSON.stringify(value)).byteLength<=48000,'plan.output_size_exceeded','draft',value);
  const fields=['description','trigger','scope','jurisdictions','domains','userConditions','entities','agents','relationships','assumptions','uncertainties','evidenceFindingIds','spatialRequirement','unsupportedQuantities','horizonYears','progression'];
- const d=planObject(value,[...fields,'ontology'],'draft',fields);
+ const d=planObject(value,[...fields,'ontology','userConditionProvenance'],'draft',fields);
  planText(d.description,400,'draft.description');planText(d.trigger,300,'draft.trigger');checkPlan(['local','cross-border','international','undetermined'].includes(d.scope as string),'plan.invalid_value','draft.scope',d.scope);
  const objects=(field:string,max:number,keys:string[])=>planList(d[field],max,`draft.${field}`).map((v,i)=>planObject(v,keys,`draft.${field}[${i}]`));
  const ids=(values:Record<string,unknown>[],field:string)=>planUnique(values.map((v,i)=>planId(v.id,`draft.${field}[${i}].id`)),`draft.${field}`,'plan.duplicate_value','id');
  const js=objects('jurisdictions',8,['id','label']);js.forEach((j,i)=>planText(j.label,100,`draft.jurisdictions[${i}].label`));const jurisdictions=ids(js,'jurisdictions');
- planStrings(d.domains,6,100,'draft.domains');planStrings(d.userConditions,4,300,'draft.userConditions').forEach((q,i)=>checkPlan(request.question.includes(q),'plan.user_condition_not_verbatim',`draft.userConditions[${i}]`,q));
+ planStrings(d.domains,6,100,'draft.domains');const completeSource=Object.hasOwn(d,'userConditionProvenance');
+ if(completeSource)validateUserConditionSource(d.userConditions,d.userConditionProvenance,request.question);
+ else planStrings(d.userConditions,4,300,'draft.userConditions').forEach((q,i)=>checkPlan(request.question.includes(q),'plan.user_condition_not_verbatim',`draft.userConditions[${i}]`,q));
  const es=objects('entities',8,['id','name','kind','jurisdictionId','status']);es.forEach((e,i)=>{const p=`draft.entities[${i}]`;planText(e.name,120,`${p}.name`);checkPlan(['government','business','institution','infrastructure','community','industry','country'].includes(e.kind as string),'plan.invalid_value',`${p}.kind`,e.kind);checkPlan(e.jurisdictionId===null||jurisdictions.has(e.jurisdictionId as string),'agent.cross_reference_invalid',`${p}.jurisdictionId`,e.jurisdictionId);checkPlan(e.status==='unverified-model-suggestion','plan.invalid_value',`${p}.status`,e.status);});const entities=ids(es,'entities');
  // Validate context shapes before ontology reference resolution; never dereference an unchecked array.
  const rawAgents=planList(d.agents,4,'draft.agents');checkPlan(rawAgents.length===4,'agent.role_slot_missing','draft.agents',d.agents);
@@ -52,7 +56,8 @@ export function parseDynamicDraft(value:unknown,requestValue:DynamicRequest,grou
  planStrings(d.evidenceFindingIds,0,160,'draft.evidenceFindingIds');checkPlan(['none','geometry-for-quantitative-model','no-supported-quantitative-model'].includes(d.spatialRequirement as string),'plan.invalid_value','draft.spatialRequirement',d.spatialRequirement);checkPlan(Number.isInteger(d.horizonYears)&&(d.horizonYears as number)>=1&&(d.horizonYears as number)<=10,'plan.invalid_value','draft.horizonYears',d.horizonYears);planText(d.progression,240,'draft.progression');
  if(d.ontology!==undefined)parseWorldOntology(d.ontology,d as unknown as DynamicDraft,grounding);
  const inspect=(v:unknown,path:string)=>{if(typeof v==='string'){checkPlan(!/https?:\/\/|www\./i.test(v),'plan.unsafe_text',path,v);checkPlan(!/\d[\d.,]*\s*(?:%|percent\b)|[$\u00a3\u20ac]\s*\d|\d[\d,]*\s+(?:jobs|workers|households|residents|people)\b/i.test(v)||request.question.includes(v),'plan.unsupported_numeric_claim',path,v);}else if(Array.isArray(v))v.forEach((item,i)=>inspect(item,`${path}[${i}]`));else if(v&&typeof v==='object')for(const [key,item]of Object.entries(v))inspect(item,`${path}.${key}`);};
- for(const field of fields)inspect(d[field],`draft.${field}`);
+ // Only the validated complete user source is exempt from generated-prose checks.
+ for(const field of fields)if(field!=='userConditions'||!completeSource)inspect(d[field],`draft.${field}`);
  return freezeSnapshot(value) as DynamicDraft;
 }
 export async function createDynamicPlan(requestValue:DynamicRequest,value:unknown,groundingValue?:GroundingBundle,demographicsValue?:ScenarioDemographicContext,registrationValue?:PlannerRegistration):Promise<DynamicScenarioPlan>{

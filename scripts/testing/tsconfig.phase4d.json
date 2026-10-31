@@ -20,6 +20,10 @@
     "../../components/use-society.ts",
     "../../lib/contracts/tests/phase4d*.ts",
     "../../lib/contracts/tests/phase4e*.ts",
+    "../../lib/contracts/tests/planner-condition-*.ts",
+    "../../lib/contracts/tests/planner-sengkang-integration.test.ts",
+    "../../lib/contracts/tests/planner-grounding-context.test.ts",
+    "../../lib/contracts/tests/retrieval-query.test.ts",
     "../../lib/contracts/tests/storage-reliability.test.ts",
     "../../components/discussion-summary.tsx",
     "../../components/communication-report.tsx",
@@ -34,7 +38,8 @@
     "../../scripts/testing/phase4e-benchmark.ts",
     "../../scripts/testing/phase4e-historical.ts",
     "../../next-env.d.ts",
-    "../../scripts/testing/phase4e1*.ts"
+    "../../scripts/testing/phase4e1*.ts",
+    "../../scripts/testing/phase4e2*.ts"
   ],
   "exclude": [
     "../../node_modules"

@@ -1,5 +1,6 @@
 /** Two registered planning stages + at most eight actions. No client-authored generated-role manifest is executable here. */
 import {retrieveTavilyGrounding} from '../evidence/tavily.ts';
+import {buildRetrievalQuery} from '../evidence/retrieval-query.ts';
 import {parseDynamicWire,dynamicAccounting,DYNAMIC_ERRORS} from '../../dynamic-scenarios/response.ts';
 import {createDynamicPlan,DYNAMIC_LIMITS} from '../../dynamic-scenarios/plan.ts';
 import {createDynamicInput} from '../../dynamic-scenarios/execution.ts';
@@ -40,7 +41,7 @@ export async function handleDynamicRequest(request:Request,dependencies:DynamicD
   const demographics=buildScenarioDemographicContext(wire.request.question,wire.request.geometry);
   const release=acquireAiSlot(`dynamic-plan:${wire.attemptId}`);attempts.set(wire.attemptId,Date.now());let draft;let grounding;
   try{
-   stage='retrieval';stageStarted=Date.now();grounding=await retrieveTavilyGrounding(wire.request.question.slice(0,500),abort.signal,{key:dependencies.groundingKey,fetcher:dependencies.groundingFetcher,timeoutMs:groundingTimeoutMs});
+   stage='retrieval';stageStarted=Date.now();grounding=await retrieveTavilyGrounding(buildRetrievalQuery(wire.request.question,demographics.planningArea?.name),abort.signal,{key:dependencies.groundingKey,fetcher:dependencies.groundingFetcher,timeoutMs:groundingTimeoutMs});
    retrieval=summariseRetrieval(grounding,Date.now()-stageStarted);
    stage='planning';stageStarted=Date.now();
    const fetcher:typeof fetch=async(url,init)=>{const response=await (dependencies.fetcher??fetch)(url,init);upstreamStatus=response.status;return response;};

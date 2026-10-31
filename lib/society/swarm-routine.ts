@@ -1,6 +1,8 @@
 import type {Action,Platform,SocietyWorld,SocialItem} from './contract.ts';import {experiencedMemories} from './episodic.ts';
+import {isActorAvailable} from './temporal-policy.ts';
 /** Phase4E routine support never invents discretionary authored dialogue. */
 export function swarmRoutineStep(w:SocietyWorld,id:string,platform:Platform,feed:SocialItem[],apply:(w:SocietyWorld,a:Action)=>SocietyWorld){
+ if(w.genesis.input.swarm?.multiDay&&!isActorAvailable(w,id))return w;
  const actor=w.agents.find(a=>a.id===id)!,events=w.events.filter(e=>e.actorId===id);let next={...w,agents:w.agents.map(a=>a.id===id?{...a,turns:a.turns+1}:a)};
  if(w.tick%8===0)return apply(next,{actorId:id,type:'activity',location:actor.activity==='residential-context'?'community-context':'residential-context'});
  const source=feed.find(i=>i.actorId!==id&&!events.some(e=>e.type==='read'&&e.targetId===i.id&&w.tick-e.tick<8));
