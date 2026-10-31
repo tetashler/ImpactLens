@@ -1,3 +1,4 @@
+import {citizenDecisionSchema,encodeCitizenDecisionContext,decodeCitizenDecision} from '../citizen-grounding/decision.ts';
 import {canonical,object} from '../experiments/validation.ts';
 import type {DecisionContext,SocialDecision} from './decision-contract.ts';
 import type {Platform,SocialKind} from './contract.ts';
@@ -9,6 +10,7 @@ const contentActions=['post','comment','reply','message','group-reply'];
 const priorities=['comment','reply','group-reply','message','post','read','share','like','upvote','downvote','group-create','group-invite','group-join','group-leave','follow','unfollow','inactive'];
 /** Indexed bindings are application-owned, bounded and frozen in the recorded context. */
 export function buildDecisionMenu(c:DecisionContext):DecisionOption[]{
+ if(c.policy==='conversation-menu-v4')return buildDecisionMenu({...c,policy:'conversation-menu-v3'});
  const buckets=new Map<string,DecisionOption[]>(),groups=c.communication?.groups??[],channels=c.communication?.channels??[];
  const memory=(index:number)=>c.memories.findLastIndex(m=>m.itemIds.includes(c.items[index].id));
  function add(action:SocialKind,platform:Platform,kind:DecisionOption['targetKind']='none',targetIndex:number|null=null,groupIndex:number|null=null,memberIndices:number[]=[],purposeIndex:number|null=null){
@@ -50,6 +52,7 @@ export function buildDecisionMenu(c:DecisionContext):DecisionOption[]{
 }
 function stanceMenu(c:DecisionContext){return [{id:'keep',stance:null},...c.memories.flatMap((m,i)=>m.kind==='exposure'&&c.items.some(item=>item.id===m.primaryItemId&&item.actorId!==c.actor.id)?[-1,1].map(direction=>({id:`stance-${i+1}-${direction>0?'support':'concern'}`,stance:{target:Math.max(-1,Math.min(1,c.actor.position+direction*0.2)),exposureId:m.eventId}})):[])];}
 export function menuSchema(c:DecisionContext){
+ if(c.policy==='conversation-menu-v4')return citizenDecisionSchema(c);
  const menu=c.menu??[],ids=menu.map(m=>m.id),memoryIds=c.memories.map((_,i)=>'memory-'+(i+1));
  const properties={choiceId:{type:'string',enum:ids},text:{type:['string','null'],maxLength:1000},motivation:{type:'string',minLength:1,maxLength:240},recallIds:{type:'array',maxItems:memoryIds.length?6:0,uniqueItems:true,items:memoryIds.length?{type:'string',enum:memoryIds}:{type:'string'}},stanceId:{type:'string',enum:stanceMenu(c).map(s=>s.id)},discussion:{type:'object',additionalProperties:false,required:['topicIds','argument'],properties:{topicIds:{type:'array',maxItems:c.communication?.topics.length?3:0,uniqueItems:true,items:c.communication?.topics.length?{type:'string',enum:c.communication.topics.map(t=>t.id)}:{type:'string'}},argument:{type:'string',enum:['concern','condition','support','question','disagreement','unspecified']}}}};
  if(c.policy==='conversation-menu-v2')Object.assign(properties,{issueUpdate:{anyOf:[{type:'null'},{type:'object',additionalProperties:false,required:['kind','topicId','issueId'],properties:{kind:{type:'string',enum:c.issueCreationAllowed===false?['resolve','withdraw']:['question','condition','disagreement','commitment','resolve','withdraw']},topicId:{type:'string',enum:c.communication?.topics.map(t=>t.id)??[]},issueId:{type:['string','null'],enum:[null,...(c.issues??[]).filter(i=>i.status==='open').map(i=>i.id)]}}}]}});
@@ -65,6 +68,7 @@ export function menuSchema(c:DecisionContext){
  return {...base,anyOf:[true,false].flatMap(authored=>{const choices=menu.filter(m=>contentActions.includes(m.action)===authored).map(m=>m.id);return choices.length?[{...base,properties:{...properties,choiceId:{type:'string',enum:choices},text:authored?{type:'string',minLength:1,maxLength:1000}:{type:'null'}}}]:[];})};
 }
 export function encodeMenuContext(c:DecisionContext){
+ if(c.policy==='conversation-menu-v4')return encodeCitizenDecisionContext(c);
  if(c.policy==='conversation-menu-v3'){
   const encoded=JSON.parse(encodeMenuContext({...c,policy:'conversation-menu-v2'}));
   encoded.policy=c.policy;encoded.issues=encoded.issues.map(({id:_id,...issue}:Record<string,unknown>)=>issue);
@@ -78,6 +82,7 @@ export function encodeMenuContext(c:DecisionContext){
  return canonical({...(c.calendar?{calendar:c.calendar}:{}),...(c.issueCreationAllowed!==undefined?{issueCreationAllowed:c.issueCreationAllowed}:{}),...(c.conversation?{conversation:{...c.conversation,omittedMessagesAreNotContext:true,threads:c.conversation.threads.map(t=>({...t,targetId:itemRef(t.targetId),rootId:itemRef(t.rootId),providedIds:t.providedIds.map(itemRef)}))}}:{}),...(c.policy==='conversation-menu-v2'?{issues:c.issues?.map(issue=>({id:issue.id,kind:issue.kind,topicId:issue.topicId,status:issue.status,createdTick:issue.createdTick,sourceItem:itemRef(issue.sourceEventId),lastChangeItem:itemRef(issue.changedEventId),memoryRefs:c.memories.flatMap((m,index)=>m.itemIds.includes(issue.sourceEventId)?['memory-'+(index+1)]:[])}))??[],stateHistory:c.stateHistory??[]}:{}),version:1,id:c.id,runId:c.runId,policy:c.policy,actor:c.actor,question:c.question,tick:c.tick,platform:c.platform,channels:c.communication?.channels,groups:c.communication?.groups.map((g,i)=>({ref:'group-'+(i+1),name:g.name,platform:g.platform,member:g.member,canJoin:g.canJoin,canInvite:g.canInvite,canShare:g.canShare})),topics:c.communication?.topics,items:c.items.map((i,n)=>({...i,id:'item-'+(n+1),parentId:itemRef(i.parentId),groupId:i.groupId?'group-'+((c.communication?.groups.findIndex(g=>g.id===i.groupId)??-1)+1):null})),memories:c.memories.map((m,i)=>({...((c.policy==='conversation-menu-v2')?{tick:m.tick,origin:m.origin,importance:m.importance}:{}),ref:'memory-'+(i+1),kind:m.kind,platform:m.platform,primaryItem:itemRef(m.primaryItemId),items:m.itemIds.map(itemRef)})),recentDecisions:c.recentDecisions,choices:c.menu?.map(m=>({id:m.id,action:m.action,platform:m.platform,target:m.targetKind==='none'?null:(m.targetKind==='person'?'connection':m.targetKind)+'-'+(m.targetIndex!+1),destinationGroup:m.groupIndex===null?null:'group-'+(m.groupIndex+1),requiredMemories:m.memoryIndices.map(i=>'memory-'+(i+1)),members:m.memberIndices.map(i=>i<0?'self':'connection-'+(i+1)),purpose:m.purposeIndex===null?null:c.communication?.purposes[m.purposeIndex]})),connections:c.connections.map((p,i)=>({ref:'connection-'+(i+1),handle:p.handle})),stanceChoices:stanceMenu(c).map(s=>({id:s.id,proposal:s.stance?{target:s.stance.target,memory:'memory-'+(c.memories.findIndex(m=>m.eventId===s.stance!.exposureId)+1)}:null})),assumptions:c.assumptions,...(c.sharedBriefing?{sharedBriefing:c.sharedBriefing}:{})});
 }
 export function decodeMenuDecision(value:unknown,c:DecisionContext):SocialDecision{
+ if(c.policy==='conversation-menu-v4')return decodeCitizenDecision(value,c);
  const quality=c.policy==='conversation-menu-v3';
  let v:Record<string,unknown>;try{v=object(value,['choiceId','text','motivation','recallIds','stanceId','discussion',...(c.policy==='conversation-menu-v2'?['issueUpdate']:[]),...(quality?['issueChoiceId']:[])]);}catch{throw new DecisionMenuError('SOCIAL_SHAPE','decision');}
  const option=c.menu?.find(m=>m.id===v.choiceId);if(!option)throw new DecisionMenuError('SOCIAL_TARGET','decision.choiceId');

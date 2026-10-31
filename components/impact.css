@@ -39,3 +39,9 @@
 @media(min-width:1600px) { .inspecting-impact .workspace-grid { grid-template-columns:302px minmax(400px,1fr) 430px; } }
 @media(max-width:1100px) { .impact-slot { display:block; }.impact-panel { overflow:visible; }.impact-body { max-width:800px; margin:auto; } }
 @media(max-width:700px) { .inspecting-impact .results-panel { order:1; }.inspecting-impact .editor-panel { order:2; }.impact-body { padding:14px; } }
+.impact-report[aria-label="Citizen commute report"] { line-height:1.6; }
+.impact-report[aria-label="Citizen commute report"] table { width:100%; border-collapse:collapse; table-layout:fixed; font-size:12px; }
+.impact-report[aria-label="Citizen commute report"] :is(th,td) { padding:8px 6px; border-bottom:1px solid #355463; text-align:left; vertical-align:top; overflow-wrap:anywhere; }
+.impact-report[aria-label="Citizen commute report"] thead th { color:#a8c0c7; font-size:11px; font-weight:600; }
+.impact-report[aria-label="Citizen commute report"] tbody th { font-weight:500; }
+.question-surface > .impact-report[aria-label="Citizen commute report"] { width:calc(100% - 40px); max-width:1036px; margin:24px auto; padding:20px 0; border-top:1px solid #355463; }

@@ -1,6 +1,7 @@
 import {randomFor,type SocietyInput,type SocietyWorld} from './contract.ts';
 import {getExecutionProfile} from './execution-profile.ts';
 import {ensure} from '../experiments/validation.ts';
+import {citizenAvailability} from '../citizen-grounding/availability.ts';
 
 export function simulationCalendar(value:SocietyInput|SocietyWorld,tick='genesis' in value?value.tick:0){
  const p=getExecutionProfile(value);if(!p)return null;ensure(Number.isSafeInteger(tick)&&tick>=0&&tick<=p.steps,'Invalid simulated calendar tick.');
@@ -11,6 +12,7 @@ export function simulationCalendar(value:SocietyInput|SocietyWorld,tick='genesis
 export function actorAvailability(value:SocietyInput|SocietyWorld,actorId:string,tick='genesis' in value?value.tick:0){
  const p=getExecutionProfile(value);if(!p)return {available:true,restStartMinute:0,restMinutes:0,localMinute:tick*15%1440};
  const input='genesis' in value?value.genesis.input:value,clock=simulationCalendar(value,tick)!,localMinute=clock.hour*60+clock.minute;
+ if(input.citizenGrounding){const state=citizenAvailability(input.citizenGrounding,actorId,tick);return {...state,restStartMinute:0,restMinutes:0,localMinute};}
  const restStartMinute=(1320+15*Math.floor(randomFor(input.seed+'|'+actorId+'|rest-start-v1')*9))%1440,restMinutes=420+15*Math.floor(randomFor(input.seed+'|'+actorId+'|rest-duration-v1')*9);
  return {available:(localMinute-restStartMinute+1440)%1440>=restMinutes,restStartMinute,restMinutes,localMinute};
 }

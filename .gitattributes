@@ -1,0 +1,2 @@
+# Preserve original official CSV bytes and source SHA-256 pins.
+data/employment/**/original.csv -text

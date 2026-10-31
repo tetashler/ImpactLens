@@ -13,6 +13,11 @@
   },
   "include": [
     "../../lib/society/**/*.ts",
+    "../../lib/citizen-grounding/**/*.ts",
+    "../../scripts/testing/citizen-grounded-acceptance.ts",
+    "../../lib/server/citizen-grounding/**/*.ts",
+    "../../lib/contracts/tests/citizen-*.ts",
+    "../../components/citizen-commute-panel.tsx",
     "../../lib/server/society/**/*.ts",
     "../../lib/server/inference/social.ts",
     "../../lib/question-simulation/public-session.ts",

@@ -7,8 +7,9 @@ import {threadPath} from './exposure.ts';
 import type {Memory,SocietyWorld} from './contract.ts';
 
 export interface Episode extends Memory {tick:number;counterparty:string;topicIds:string[];importance:number;access:'recheck-current-membership'}
-export interface SocialIssue {id:string;kind:'question'|'condition'|'disagreement'|'commitment';topicId:string;sourceEventId:string;createdTick:number;status:'open'|'resolved'|'withdrawn';changedEventId:string|null}
-export interface IssueUpdate {kind:SocialIssue['kind']|'resolve'|'withdraw';topicId:string;issueId:string|null}
+export interface GroundedIssueState {subjectId:string;basisRef:string;quote:string;criterion:string|null;statusEvidence:'open'|'updated'|'owner-reported-resolution'|'deterministically-evidenced-satisfaction'|'owner-withdrawal';updates:{eventId:string;basisRef:string;quote:string;statusEvidence:string}[]}
+export interface SocialIssue {grounding?:GroundedIssueState;id:string;kind:'question'|'condition'|'disagreement'|'commitment';topicId:string;sourceEventId:string;createdTick:number;status:'open'|'resolved'|'withdrawn';changedEventId:string|null}
+export interface IssueUpdate {kind:SocialIssue['kind']|'resolve'|'withdraw'|'progress';topicId:string;issueId:string|null;grounding?:GroundedIssueState}
 export function selectedAgents(w:SocietyWorld){return w.genesis.input.swarm?cohortIds(w):Object.values(w.genesis.bindings).slice(0,w.genesis.input.hybrid?.selectedAgents??4);}
 /** Only genuine reducer experiences enter the index. Content remains in private item records. */
 export function rememberExperiences(w:SocietyWorld):SocietyWorld{
@@ -46,9 +47,16 @@ export function applyIssue(w:SocietyWorld,actorId:string,update:IssueUpdate|null
  if(isDeep(w)){
   ensure(actor&&event&&event.actorId===actorId&&['post','comment','reply','message','group-reply'].includes(event.type),'ISSUE_SOURCE');
   const history=actor.issueHistory??actor.issues??[],existing=update.issueId?history.find(i=>i.id===update.issueId):undefined;
-  if(update.issueId)ensure(existing&&existing.status==='open'&&existing.topicId===update.topicId&&['resolve','withdraw'].includes(update.kind),'ISSUE_STATUS');
+  if(update.issueId)ensure(existing&&existing.status==='open'&&existing.topicId===update.topicId&&(w.genesis.input.citizenGrounding?['progress','resolve','withdraw']:['resolve','withdraw']).includes(update.kind),'ISSUE_STATUS');
   else ensure(history.length<16&&!['resolve','withdraw'].includes(update.kind),'ISSUE_LIMIT');
-  const next:SocialIssue[]=update.issueId?history.map(i=>i.id===update.issueId?{...i,status:update.kind==='resolve'?'resolved':'withdrawn',changedEventId:eventId}:i):[...history,{id:'issue:'+eventId,kind:update.kind as SocialIssue['kind'],topicId:update.topicId,sourceEventId:eventId,createdTick:event.tick,status:'open',changedEventId:null}];
+  let next:SocialIssue[];
+  if(w.genesis.input.citizenGrounding){
+   const g=update.grounding;ensure(g&&typeof g.quote==='string'&&g.quote.length<=240&&event.text?.includes(g.quote)&&g.subjectId.length<=80,'ISSUE_EVIDENCE');
+   if(update.issueId){ensure(existing&&existing.status==='open'&&existing.topicId===update.topicId&&['progress','resolve','withdraw'].includes(update.kind)&&existing.grounding?.subjectId===g.subjectId,'ISSUE_STATUS');
+    const status=update.kind==='progress'?'open':update.kind==='resolve'?'resolved':'withdrawn';
+    next=history.map(i=>i.id===existing.id?{...i,status,changedEventId:eventId,grounding:{...g,criterion:i.grounding!.criterion,updates:[...i.grounding!.updates,{eventId,basisRef:g.basisRef,quote:g.quote,statusEvidence:g.statusEvidence}].slice(-16)}}:i);
+   }else{ensure(history.length<16&&!['progress','resolve','withdraw'].includes(update.kind)&&!history.some(i=>i.status==='open'&&i.grounding?.subjectId===g.subjectId),'ISSUE_LIMIT');next=[...history,{id:'issue:'+eventId,kind:update.kind as SocialIssue['kind'],topicId:update.topicId,sourceEventId:eventId,createdTick:event.tick,status:'open',changedEventId:null,grounding:g}];}
+  }else next=update.issueId?history.map(i=>i.id===update.issueId?{...i,status:update.kind==='resolve'?'resolved':'withdrawn',changedEventId:eventId}:i):[...history,{id:'issue:'+eventId,kind:update.kind as SocialIssue['kind'],topicId:update.topicId,sourceEventId:eventId,createdTick:event.tick,status:'open',changedEventId:null}];
   const open=next.filter(i=>i.status==='open'),closed=next.filter(i=>i.status!=='open');
   return {...w,agents:w.agents.map(a=>a.id===actorId?freezeSnapshot({...a,issueHistory:next,issues:[...open,...closed.reverse()].slice(0,8)}):a)};
  }

@@ -8,7 +8,7 @@ import {threadPath} from './exposure.ts';
 import {buildDecisionMenu,replyMenuMetrics,encodeMenuContext,type DecisionOption} from './decision-menu.ts';
 
 export interface ContextCapacityPacking {policy:'deep-byte-pack-v1';changed:boolean;fits:boolean;droppedMemoryReferences:number;droppedItemBodies:number;collapsedThreadRows:number}
-export const decisionContextBytes=(c:DecisionContext)=>{const internal=new TextEncoder().encode(canonical(c)).length;return c.policy==='conversation-menu-v3'?Math.max(internal,new TextEncoder().encode(encodeMenuContext(c)).length):internal;};
+export const decisionContextBytes=(c:DecisionContext)=>{const internal=new TextEncoder().encode(canonical(c)).length;return (c.policy==='conversation-menu-v3'||c.policy==='conversation-menu-v4')?Math.max(internal,new TextEncoder().encode(encodeMenuContext(c)).length):internal;};
 const bytes=decisionContextBytes;
 const replyActions=new Set(['comment','reply','group-reply']);
 

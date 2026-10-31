@@ -8,11 +8,13 @@ import type { ImpactRequest, ImpactResponse } from '../lib/impact/api-contract';
 import { ImpactRevisionGate, journeySide } from '../lib/impact/lifecycle';
 import { CitizenProfile } from './citizens-panel';
 import ImpactDashboard from './impact-dashboard';
+import CitizenCommutePanel from './citizen-commute-panel';
+import type {CitizenImpactPublic} from '../lib/citizen-grounding/public-contract';
 import { AiDashboardTools,useAiAvailability } from './ai-insights';
 import { fallbackLayout,type DashboardLayout } from '../lib/ai/contracts';
 import './impact.css';
 
-interface Props { intervention:MrtIntervention; serviceDate:string; proposalRevision:number; canRun:boolean; view:'baseline'|'scenario'; onView:(view:'baseline'|'scenario')=>void; expanded:boolean; onExpand:()=>void; resultContext?:string; onResult?:(result:ImpactResponse|null,context:string|null)=>void }
+interface Props { intervention:MrtIntervention; serviceDate:string; proposalRevision:number; canRun:boolean; view:'baseline'|'scenario'; onView:(view:'baseline'|'scenario')=>void; expanded:boolean; onExpand:()=>void; resultContext?:string; onResult?:(result:ImpactResponse|null,context:string|null)=>void; onCitizenResult?:(result:CitizenImpactPublic|null)=>void }
 const number=(n:number|null|undefined,digits=2)=>n==null?'Unknown':n.toLocaleString('en-SG',{maximumFractionDigits:digits});
 const percent=(n:number|null)=>n===null?'Unknown':`${number(n*100)}%`;
 const age=(s:string)=>s==='90andOver'?'90+':s.replaceAll('_','–');
@@ -72,7 +74,7 @@ export default function ImpactPanel(props:Props) {
   const overall=active?.metrics[0],side=journeySide(activeProfile?.journey??null,props.view);
   return <section className="impact-panel" aria-label="Calculated social impact">
     <div className="impact-heading"><h2>Calculated social impact</h2><p>Census-grounded residents. Explicitly assumed trips.</p><button className="impact-expand" onClick={props.onExpand}>{props.expanded?'Show line editor':'Expand dashboard'}</button></div>
-    <div className="impact-body">
+    <div className="impact-body"><CitizenCommutePanel intervention={props.intervention} serviceDate={props.serviceDate} revision={props.proposalRevision} canRun={props.canRun} onResult={props.onCitizenResult}/>
       <p className="impact-mode-note">Calculated residents are profile-only. No justified individual locations or movement paths are available. The miniature-city animation is a separate illustrative demo.</p>
       <details className="impact-settings-wrap" open={!active}><summary>Travel-demand assumptions & settings</summary><fieldset className="impact-settings"><legend>Declared inputs</legend>
         <label>Assumption set<select aria-label="Travel-demand assumption set" value="illustrative-cck-demand" onChange={()=>{}}><option value="illustrative-cck-demand">Illustrative Choa Chu Kang demand</option></select></label>

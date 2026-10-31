@@ -34,3 +34,5 @@ Desktop.ini
 /playwright-report/
 /data/derived/agents/
 /data/derived/eldercare/
+# Reproducible private fictional employment/personality/commute records
+/data/synthetic/

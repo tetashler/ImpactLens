@@ -1,0 +1,49 @@
+{
+  "id": "ct17565",
+  "title": "Resident Population Aged 15 Years and Over by Planning Area of Residence, Labour Force Status and Sex (Census of Population 2020)",
+  "organisation": "Singapore Department of Statistics (SingStat)",
+  "referenceYear": 2020,
+  "publicationUrl": "https://data.gov.sg/datasets/d_e9b1f437263fceebc0c1f0e60cd7b0f0/view",
+  "downloadUrl": "https://s3.ap-southeast-1.amazonaws.com/table-downloads-ingest.data.gov.sg/d_e9b1f437263fceebc0c1f0e60cd7b0f0/0ef999836a92a5101900db0003683567f68fa821725e7e7a9acc1904ffc53cd2.csv",
+  "acquiredAt": "2026-10-31T13:06:45.528Z",
+  "sha256": "3608447d9af126ac805edf9f23a371d7e5fb47057bfa64534e203c5fe38d3128",
+  "path": "data/employment/singstat-census2020-ct17565/original.csv",
+  "rows": 32,
+  "columns": [
+    "Number",
+    "Total_Total",
+    "Total_Males",
+    "Total_Females",
+    "LabourForce_Total_Total",
+    "LabourForce_Total_Males",
+    "LabourForce_Total_Females",
+    "LabourForce_Employed_Total",
+    "LabourForce_Employed_Males",
+    "LabourForce_Employed_Females",
+    "LabourForce_Unemployed_Total",
+    "LabourForce_Unemployed_Males",
+    "LabourForce_Unemployed_Females",
+    "OutsidetheLabourForce_Total",
+    "OutsidetheLabourForce_Males",
+    "OutsidetheLabourForce_Females"
+  ],
+  "licenceUrl": "https://data.gov.sg/open-data-licence",
+  "exclusions": [
+    "Reference population and geography are Census2020 residents aged15+ and MP2019; not current individual records."
+  ],
+  "missingValuePolicy": "Dash/empty/NA cells retained as null unknown or nil/negligible; never silently converted to measured zero.",
+  "datasetId": "d_e9b1f437263fceebc0c1f0e60cd7b0f0",
+  "tableId": "CT/17565",
+  "format": "CSV",
+  "acquisitionEndpoint": "https://api-open.data.gov.sg/v1/public/api/datasets/d_e9b1f437263fceebc0c1f0e60cd7b0f0/poll-download",
+  "signedDownloadQueryStored": false,
+  "attribution": "Contains information from Resident Population Aged 15 Years and Over by Planning Area of Residence, Labour Force Status and Sex (Census of Population 2020) accessed from data.gov.sg under Singapore Open Data Licence1.0; no government endorsement.",
+  "grain": [
+    "residence planning area",
+    "sex",
+    "labour-force status"
+  ],
+  "denominatorDefinition": "Resident population aged15+; published total is3,459,093. Employment and outside-labour-force denominators differ from employed-only transport tables.",
+  "publishedOrUpdated": "2021-06-18",
+  "referencePeriod": "Census of Population2020"
+}

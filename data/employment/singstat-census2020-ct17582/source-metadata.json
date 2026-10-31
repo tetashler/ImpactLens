@@ -1,0 +1,44 @@
+{
+  "id": "ct17582",
+  "title": "Employed Residents Aged 15 Years and Over by Planning Area of Workplace and Occupation (Census of Population 2020)",
+  "organisation": "Singapore Department of Statistics (SingStat)",
+  "referenceYear": 2020,
+  "publicationUrl": "https://data.gov.sg/datasets/d_a9c214d2534f2da9587ae3bb481f3b85/view",
+  "downloadUrl": "https://s3.ap-southeast-1.amazonaws.com/table-downloads-ingest.data.gov.sg/d_a9c214d2534f2da9587ae3bb481f3b85/5fe165df996b2f211b77e03184e31f8dc38616b1bf45e13512557ccf31fb786f.csv",
+  "acquiredAt": "2026-10-31T13:08:10.088Z",
+  "sha256": "28af77107c5294c53de7cb9ea7f2d4c447329bc55101a762a40eaf23eee97da4",
+  "path": "data/employment/singstat-census2020-ct17582/original.csv",
+  "rows": 48,
+  "columns": [
+    "Number",
+    "Total",
+    "Legislators_SeniorOfficialsandManagers",
+    "Professionals",
+    "AssociateProfessionalsandTechnicians",
+    "ClericalSupportWorkers",
+    "ServiceandSalesWorkers",
+    "CraftsmenandRelatedTradesWorkers",
+    "PlantandMachineOperatorsandAssemblers",
+    "Cleaners_LabourersandRelatedWorkers",
+    "Others1"
+  ],
+  "licenceUrl": "https://data.gov.sg/open-data-licence",
+  "exclusions": [
+    "Census2020 residents aged15+; Master Plan2019 geography; aggregate not individual records.",
+    "Usual workplace/mode is not temporary COVID19 arrangements."
+  ],
+  "missingValuePolicy": "Dash/empty/NA cells retained as null unknown or nil/negligible; never silently converted to measured zero.",
+  "datasetId": "d_a9c214d2534f2da9587ae3bb481f3b85",
+  "tableId": "CT/17582",
+  "format": "CSV",
+  "acquisitionEndpoint": "https://api-open.data.gov.sg/v1/public/api/datasets/d_a9c214d2534f2da9587ae3bb481f3b85/poll-download",
+  "signedDownloadQueryStored": false,
+  "attribution": "Contains information from Employed Residents Aged 15 Years and Over by Planning Area of Workplace and Occupation (Census of Population 2020) accessed from data.gov.sg under Singapore Open Data Licence1.0; no government endorsement.",
+  "grain": [
+    "workplace planning area",
+    "broad occupation"
+  ],
+  "denominatorDefinition": "Employed residents aged15+; published total2,208,358. This broader employment denominator is not forced equal to transport tables.",
+  "publishedOrUpdated": "2021-06-18",
+  "referencePeriod": "Census of Population2020"
+}

@@ -1,3 +1,4 @@
+import {buildCitizenIssueMenu} from '../citizen-grounding/issue-choices.ts';
 import {freezeSnapshot} from '../experiments/validation.ts';
 import type {DecisionContext,SocialDecision} from './decision-contract.ts';
 import type {IssueUpdate} from './episodic.ts';
@@ -7,6 +8,7 @@ export interface IssueChoice {id:string;update:IssueUpdate;discussion:NonNullabl
 /** New-policy classifications bind exact supplied topics and owner/source evidence.
  * Choosing one is an explicit fictional classification, never an inferred outcome. */
 export function buildIssueMenu(c:DecisionContext):IssueChoice[]{
+ if(c.policy==='conversation-menu-v4')return buildCitizenIssueMenu(c);
  if(c.policy!=='conversation-menu-v3')return [];
  const choices:Omit<IssueChoice,'id'>[]=[],topics=c.communication?.topics??[];
  if(c.issueCreationAllowed!==false)for(const topic of topics)for(const kind of ['question','condition','disagreement','commitment'] as const){

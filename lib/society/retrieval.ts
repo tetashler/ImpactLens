@@ -1,3 +1,4 @@
+import {groundedMemoryBonus} from '../citizen-grounding/memory.ts';
 /** episodic-topic-v2 only. Pure bounded retrieval; no inferred synonyms, embeddings or global topic expansion. */
 import type {Memory,SocietyWorld} from './contract.ts';
 import {canAccessItem} from './communication.ts';
@@ -7,7 +8,7 @@ import {isDeep} from './deep-policy.ts';
 
 export interface TopicScore {
  eventId:string;topic:number;counterparty:number;importance:number;recency:number;lexical:number;issue:number;
- redundancy:number;score:number;lexicalMatches:number;
+ grounded?:number;redundancy:number;score:number;lexicalMatches:number;
  exclusion:'none'|'permission'|'ancestry'|'item-limit'|'duplicate-source'|'no-relevance'|'rank-bound';
 }
 const functionWords=new Set('the and for with this that from was are can would could should have has had will what when where who how must now not but our their them its before after than then your about into also some does did'.split(' '));
@@ -33,10 +34,10 @@ export function retrieveTopicMemories(w:SocietyWorld,actorId:string,eligible:Mem
   const topics=accessible?topicsFor(path):new Set<string>(),matches=overlap(tokens,queryWords);
   const open=(isDeep(w)?actor.issueHistory??actor.issues??[]:actor.issues??[]).some(i=>i.status==='open'&&i.sourceEventId===m.itemId);
   const queryLexical=matches/Math.sqrt(Math.max(1,tokens.size));
-  const details:TopicScore={eventId:m.eventId,topic:6*overlap(topics,queryTopics)/Math.sqrt(Math.max(1,topics.size)),counterparty:item&&queryItem&&item.actorId===queryItem.actorId&&item.actorId!==actorId?0.6:0,importance:(episode?.importance??2)/5,recency:0.6/(1+Math.max(0,w.tick-tick(m))/20),lexical:Math.min(4,queryLexical+0.2*overlap(tokens,goalWords)/Math.sqrt(Math.max(1,tokens.size))),issue:open?(overlap(topics,queryTopics)>0?4:1):0,redundancy:0,score:0,lexicalMatches:matches,exclusion:!accessible?'permission':!path.length?'ancestry':mostRecent.get(m.itemId)!==m?'duplicate-source':'rank-bound'};
-  details.score=details.topic+details.counterparty+details.importance+details.recency+details.lexical+details.issue;
+  const details:TopicScore={eventId:m.eventId,topic:6*overlap(topics,queryTopics)/Math.sqrt(Math.max(1,topics.size)),counterparty:item&&queryItem&&item.actorId===queryItem.actorId&&item.actorId!==actorId?0.6:0,importance:(episode?.importance??2)/5,recency:0.6/(1+Math.max(0,w.tick-tick(m))/20),lexical:Math.min(4,queryLexical+0.2*overlap(tokens,goalWords)/Math.sqrt(Math.max(1,tokens.size))),issue:open?(overlap(topics,queryTopics)>0?4:1):0,...(w.genesis.input.citizenGrounding?{grounded:latest&&accessible&&path.length?groundedMemoryBonus(w,actorId,latest.itemId,m.itemId):0}:{}),redundancy:0,score:0,lexicalMatches:matches,exclusion:!accessible?'permission':!path.length?'ancestry':mostRecent.get(m.itemId)!==m?'duplicate-source':'rank-bound'};
+  details.score=details.topic+details.counterparty+details.importance+details.recency+details.lexical+details.issue+(details.grounded??0);
   // Importance/counterparty are tie-strength signals, not evidence that a different subject is relevant.
-  if(details.exclusion==='rank-bound'&&m!==latest&&details.topic===0&&queryLexical<0.35&&details.issue===0&&path[0]!==queryPath[0])details.exclusion='no-relevance';
+  if(details.exclusion==='rank-bound'&&m!==latest&&details.topic===0&&queryLexical<0.35&&details.issue===0&&!details.grounded&&path[0]!==queryPath[0])details.exclusion='no-relevance';
   return {m,item,path,tokens,details};
  });
  const selected:typeof rows=[],boundedIds:string[]=[],available=rows.filter(r=>r.details.exclusion==='rank-bound');
@@ -48,7 +49,7 @@ export function retrieveTopicMemories(w:SocietyWorld,actorId:string,eligible:Mem
  // Preserve a valid present encounter, without forcing old, cross-platform or private memories.
  const anchor=available.find(r=>r.m===latest);if(anchor){available.splice(available.indexOf(anchor),1);add(anchor);}
  while(available.length&&selected.length<DECISION_LIMITS.memories){
-  for(const r of available){r.details.redundancy=penalty(r);r.details.score=r.details.topic+r.details.counterparty+r.details.importance+r.details.recency+r.details.lexical+r.details.issue-r.details.redundancy;}
+  for(const r of available){r.details.redundancy=penalty(r);r.details.score=r.details.topic+r.details.counterparty+r.details.importance+r.details.recency+r.details.lexical+r.details.issue+(r.details.grounded??0)-r.details.redundancy;}
   available.sort((a,b)=>b.details.score-a.details.score||tick(b.m)-tick(a.m)||a.m.eventId.localeCompare(b.m.eventId));
   add(available.shift()!);
  }

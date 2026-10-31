@@ -7,14 +7,16 @@ import {appendSwarmJournal,readSwarmJournal,recoverIncompleteSwarmTail,assertSwa
 import {writeMaterialCheckpoint,readMaterialCheckpoint} from './checkpoint.ts';
 import {withSocialOwner} from './session-lock.ts';
 import {privateStoreDirectory} from './storage.ts';
-import {TOPIC_POLICY,QUALITY_POLICY} from '../../society/intelligence.ts';
+import {TOPIC_POLICY,QUALITY_POLICY,CITIZEN_POLICY} from '../../society/intelligence.ts';
+import type {CitizenGroundedInput} from '../../citizen-grounding/social.ts';
+import {validatePersonalityRoster} from '../../citizen-grounding/personality.ts';
 import {existsSync,mkdirSync,readFileSync,openSync,closeSync,readSync,writeSync,writeFileSync,fsyncSync,statSync,readdirSync} from 'node:fs';
 import {join} from 'node:path';
 import {randomUUID,createHash} from 'node:crypto';
 import {verifyStakeholderRun} from '../../stakeholder-simulation/identities.ts';
 import type {StakeholderSimulationRunV1} from '../../stakeholder-simulation/contract.ts';
 import {createSociety,stepSociety,multiDayComplete,restoreSocietyForInput,type SocietyWorld,type SocietyInput} from '../../society/engine.ts';
-import {prepareHybridStep,finishDecision,hybridBudget,replayHybrid,replayHybridFrom,decisionReservation} from '../../society/hybrid.ts';
+import {prepareHybridStep,finishDecision,hybridBudget,replayHybrid,replayHybridFrom,decisionReservation,controlledIds} from '../../society/hybrid.ts';
 import {HYBRID_DEFAULTS,DECISION_LIMITS,decisionTokenCharge,type DecisionContext} from '../../society/decision-contract.ts';
 import {populationForActive} from './population.ts';
 import {buildSocietyGeography} from '../population/geography.ts';
@@ -23,6 +25,8 @@ import {acquireAiSlot} from '../ai/gate.ts';
 import {canonical,ensure,object} from '../../experiments/validation.ts';
 
 export interface SocialDependencies {
+ /** Trusted initialization only. Never parsed from browser JSON; no provider dispatch is supplied here. */
+ citizenGrounding?:(preview:SocietyWorld)=>Promise<CitizenGroundedInput>;
  swarm?:SwarmPolicy|false;ruleOnly?:boolean;communication?:import('../../society/communication.ts').CommunicationConfig;
  enabled?:boolean;key?:string;fetcher?:typeof fetch;directory?:string;
  /** Trusted server configuration only. Frozen on first deep journal header. Epoch deadline, not a duration. */
@@ -152,7 +156,15 @@ export async function socialOperation(body:unknown,d:SocialDependencies={},signa
    const grant=swarm?.deep?initialAdmission(hybrid!,swarmHybrid(swarmPolicy(requested as 50|100)),d):undefined;
    if(swarm?.multiDay)swarm=multiDaySwarmPolicy(requested as 50|100,grant!.maxCalls,getExecutionProfile({swarm} as SocietyInput)!.steps as 160|320|672);
    const input:SocietyInput={runId:run.runId,question:plan.request.question,seed:plan.requestIdentity.slice(-32),population:populationForActive(swarm?.activeAgents??Number(process.env.SOCIAL_ACTIVE_AGENTS??24)),geography:buildSocietyGeography(),sharePolicy:'source-position-v1',socialPolicy:'memory-aware-v1',...(d.communication?{communication:d.communication,intelligence:swarm?.multiDay?QUALITY_POLICY:swarm?SWARM_INTELLIGENCE:TOPIC_POLICY}:{}),...(swarm?{swarm,hybrid:hybrid!}:!d.ruleOnly?{hybrid:{...HYBRID_DEFAULTS,maxCalls:Number(process.env.SOCIAL_MAX_DECISIONS??HYBRID_DEFAULTS.maxCalls),selectedAgents:Number(process.env.SOCIAL_CONTROLLED_AGENTS??HYBRID_DEFAULTS.selectedAgents)}}:{}),config:{agents:swarm?.activeAgents??Number(process.env.SOCIAL_ACTIVE_AGENTS??24),...(swarm?.multiDay?{steps:getExecutionProfile({swarm} as SocietyInput)!.steps}:{})},briefing:{assumptions:plan.draft.assumptions.slice(0,4).map(a=>a.text.slice(0,300)),sources:(plan.grounding?.sources??[]).slice(0,2).map(s=>({id:s.id,title:s.title,url:s.url,retrievedAt:s.retrievedAt,publishedAt:s.publishedAt,passage:s.passages[0].text.slice(0,600)}))},roles:plan.draft.agents,jurisdictions:plan.draft.jurisdictions,acceptedActions:run.events.map(e=>({id:e.id,roleId:e.roleId,statement:e.statement,position:e.position}))};
-   const s:Session={id:randomUUID(),runId:run.runId,world:createSociety(input),revision:0,busy:false,reservation:null};
+   let world=createSociety(input);
+   if(d.citizenGrounding){
+    ensure(swarm?.multiDay&&d.communication,'CITIZEN_GROUNDING_POLICY');
+    const grounding=await d.citizenGrounding(world),activeIds=world.agents.map(a=>a.id),capableIds=controlledIds(world);
+    ensure(grounding.personalities.runId===run.runId,'CITIZEN_GROUNDING_RUN');
+    await validatePersonalityRoster(grounding.personalities,capableIds,activeIds.filter(id=>!capableIds.includes(id)));
+    world=createSociety({...input,intelligence:CITIZEN_POLICY,citizenGrounding:grounding});
+   }
+   const s:Session={id:randomUUID(),runId:run.runId,world,revision:0,busy:false,reservation:null};
    s.providerAdmission=grant??configuredAdmission(s.world,d);
    await persist(s,root);
    const fd=openSync(index,'wx',0o600);try{writeFileSync(fd,s.id);fsyncSync(fd);}finally{closeSync(fd);}

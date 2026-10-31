@@ -1,0 +1,47 @@
+{
+  "id": "ct17594",
+  "title": "Employed Residents Aged 15 Years and Over by Planning Area of Residence and Usual Mode of Transport to Work (Census of Population 2020)",
+  "organisation": "Singapore Department of Statistics (SingStat)",
+  "referenceYear": 2020,
+  "publicationUrl": "https://data.gov.sg/datasets/d_1f8f5ec7201964e365c77551cab99503/view",
+  "downloadUrl": "https://s3.ap-southeast-1.amazonaws.com/table-downloads-ingest.data.gov.sg/d_1f8f5ec7201964e365c77551cab99503/15a5e9dc03659b50d9d37ee10a75592ad33bcfa654342960760dbb352c6b8909.csv",
+  "acquiredAt": "2026-10-31T13:08:09.877Z",
+  "sha256": "1b96701295e296913c98cbe0a6828e0395ab27fb3e18e4e1f7b526ace872a204",
+  "path": "data/employment/singstat-census2020-ct17594/original.csv",
+  "rows": 32,
+  "columns": [
+    "Number",
+    "Total",
+    "PublicBusOnly",
+    "Rail_MRT_LRT_Only",
+    "Rail_MRT_LRT_andPublicBusOnly",
+    "CombinationofRail_MRT_LRT_and_orPublicBus_withOtherModes",
+    "Taxi_PrivateHireCarOnly",
+    "CarOnly",
+    "PrivateCharteredBus_VanOnly",
+    "Lorry_PickupOnly",
+    "Motorcycle_ScooterOnly",
+    "Others",
+    "NoTransportRequired"
+  ],
+  "licenceUrl": "https://data.gov.sg/open-data-licence",
+  "exclusions": [
+    "Census2020 residents aged15+; Master Plan2019 geography; aggregate not individual records.",
+    "Usual workplace/mode is not temporary COVID19 arrangements.",
+    "Excludes employed full-time students and persons overseas for at least six months."
+  ],
+  "missingValuePolicy": "Dash/empty/NA cells retained as null unknown or nil/negligible; never silently converted to measured zero.",
+  "datasetId": "d_1f8f5ec7201964e365c77551cab99503",
+  "tableId": "CT/17594",
+  "format": "CSV",
+  "acquisitionEndpoint": "https://api-open.data.gov.sg/v1/public/api/datasets/d_1f8f5ec7201964e365c77551cab99503/poll-download",
+  "signedDownloadQueryStored": false,
+  "attribution": "Contains information from Employed Residents Aged 15 Years and Over by Planning Area of Residence and Usual Mode of Transport to Work (Census of Population 2020) accessed from data.gov.sg under Singapore Open Data Licence1.0; no government endorsement.",
+  "grain": [
+    "residence planning area",
+    "detailed usual transport mode"
+  ],
+  "denominatorDefinition": "Employed residents aged15+ excluding full-time students and overseas6+months; published total2,177,456. This is usual mode, not a daily trip matrix.",
+  "publishedOrUpdated": "2026-06-30",
+  "referencePeriod": "Census of Population2020"
+}
