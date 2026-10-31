@@ -1,55 +1,216 @@
-import {swarmPolicy,swarmHybrid,SWARM_INTELLIGENCE,type SwarmPolicy} from '../../society/swarm.ts';
-import {appendSwarmJournal,readSwarmJournal} from './swarm-journal.ts';
+/** Authoritative local sessions. Client worlds, paths and provider grants are never executable inputs. */
+import {swarmPolicy,deepSwarmPolicy,swarmHybrid,SWARM_INTELLIGENCE,type SwarmPolicy} from '../../society/swarm.ts';
+import {isDeep,deepLimits} from '../../society/deep-policy.ts';
+import {appendSwarmJournal,readSwarmJournal,recoverIncompleteSwarmTail,assertSwarmJournalAdmission,type ProviderAdmission} from './swarm-journal.ts';
+import {writeMaterialCheckpoint,readMaterialCheckpoint} from './checkpoint.ts';
+import {withSocialOwner} from './session-lock.ts';
 import {privateStoreDirectory} from './storage.ts';
 import {TOPIC_POLICY} from '../../society/intelligence.ts';
-/** Authoritative local sessions. Client worlds/costs are never executable inputs. */
-import {existsSync,mkdirSync,readFileSync,openSync,closeSync,writeSync,fsyncSync,statSync} from 'node:fs';
-import {join} from 'node:path';import {randomUUID,createHash} from 'node:crypto';
+import {existsSync,mkdirSync,readFileSync,openSync,closeSync,readSync,writeSync,writeFileSync,fsyncSync,statSync,readdirSync} from 'node:fs';
+import {join} from 'node:path';
+import {randomUUID,createHash} from 'node:crypto';
 import {verifyStakeholderRun} from '../../stakeholder-simulation/identities.ts';
 import type {StakeholderSimulationRunV1} from '../../stakeholder-simulation/contract.ts';
 import {createSociety,stepSociety,restoreSocietyForInput,type SocietyWorld,type SocietyInput} from '../../society/engine.ts';
-import {prepareHybridStep,finishDecision,hybridBudget,replayHybrid} from '../../society/hybrid.ts';
-import {HYBRID_DEFAULTS,type DecisionContext} from '../../society/decision-contract.ts';
-import {populationForActive} from './population.ts';import {buildSocietyGeography} from '../population/geography.ts';
-import {createSocialTransport} from '../inference/social.ts';import {acquireAiSlot} from '../ai/gate.ts';
+import {prepareHybridStep,finishDecision,hybridBudget,replayHybrid,replayHybridFrom,decisionReservation} from '../../society/hybrid.ts';
+import {HYBRID_DEFAULTS,DECISION_LIMITS,type DecisionContext} from '../../society/decision-contract.ts';
+import {populationForActive} from './population.ts';
+import {buildSocietyGeography} from '../population/geography.ts';
+import {createSocialTransport} from '../inference/social.ts';
+import {acquireAiSlot} from '../ai/gate.ts';
 import {canonical,ensure,object} from '../../experiments/validation.ts';
-export interface SocialDependencies {swarm?:SwarmPolicy|false;ruleOnly?:boolean;communication?:import('../../society/communication.ts').CommunicationConfig;enabled?:boolean;key?:string;fetcher?:typeof fetch;directory?:string}
-interface Session {journalRecords?:number;journalHead?:string;id:string;runId:string;world:SocietyWorld;revision:number;busy:boolean;reservation:DecisionContext|null}
-const globalState=globalThis as typeof globalThis&{__socialSessions?:Map<string,Session>};const sessions=globalState.__socialSessions??=new Map<string,Session>();
+
+export interface SocialDependencies {
+ swarm?:SwarmPolicy|false;ruleOnly?:boolean;communication?:import('../../society/communication.ts').CommunicationConfig;
+ enabled?:boolean;key?:string;fetcher?:typeof fetch;directory?:string;
+ /** Trusted server configuration only. Frozen on first deep journal header. Epoch deadline, not a duration. */
+ admission?:Partial<ProviderAdmission>;
+}
+export interface SocialAdmissionStatus {
+ status:'available'|'budget-limited';reason:'completion-limit'|'token-limit'|'cost-limit'|'deadline'|null;
+ calls:number;maxCalls:number;tokens:number;reservedTokens:number;costUsd:number;costLimitUsd:number;
+}
+export interface SocialState {version:1;sessionId:string;revision:number;world:SocietyWorld;budget:ReturnType<typeof hybridBudget>;admission:SocialAdmissionStatus}
+interface Session {
+ journalRecords?:number;journalHead?:string;journalBytes?:number;checkpointRecords?:number;providerAdmission?:ProviderAdmission;
+ id:string;runId:string;world:SocietyWorld;revision:number;busy:boolean;reservation:DecisionContext|null;
+}
+const globalState=globalThis as typeof globalThis&{__socialSessions?:Map<string,Session>};
+const sessions=globalState.__socialSessions??=new Map<string,Session>();
 const enabled=(d:SocialDependencies)=>d.enabled??(process.env.SOCIAL_LLM_ENABLED==='true'&&process.env.STAKEHOLDER_LIVE_ENABLED==='true');
 const directory=(d:SocialDependencies)=>privateStoreDirectory('social-sessions',d.directory);
 const response=(v:unknown,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
-export function socialStatus(d:SocialDependencies={}){return {version:1,enabled:enabled(d),configured:!!(d.key??process.env.OPENROUTER_API_KEY)?.trim(),limits:HYBRID_DEFAULTS,model:'deepseek/deepseek-v4-flash-0731',provider:'digitalocean',fallback:false};}
-async function persist(s:Session,root:string){mkdirSync(root,{recursive:true});if(s.world.genesis.input.swarm){await appendSwarmJournal(s,root);return;}const path=join(root,s.id+'.jsonl');ensure(!existsSync(path)||statSync(path).size<64*1024*1024,'SOCIAL_STORAGE_LIMIT');const line=JSON.stringify({id:s.id,runId:s.runId,revision:s.revision,input:s.world.genesis.input,tick:s.world.tick,hybrid:s.world.hybrid,...(!s.world.hybrid?{world:s.world}:{}),reservation:s.reservation})+'\n';ensure(Buffer.byteLength(line)<2*1024*1024,'SOCIAL_STORAGE_LIMIT');const fd=openSync(path,'a');try{ensure(writeSync(fd,line)===Buffer.byteLength(line));fsyncSync(fd);}finally{closeSync(fd);}}
-async function load(id:string,root:string):Promise<Session>{ensure(/^[a-f0-9-]{36}$/.test(id),'SOCIAL_SESSION');const key=root+'/'+id;const cached=sessions.get(key);if(cached){if(cached.reservation&&!cached.busy){cached.world=finishDecision(cached.world,{decision:null,usage:null,error:'SOCIAL_UNCERTAIN'});cached.reservation=null;cached.revision++;await persist(cached,root);}return cached;}const path=join(root,id+'.jsonl');ensure(statSync(path).size<66*1024*1024,'SOCIAL_STORAGE_LIMIT');const lines=readFileSync(path,'utf8');ensure(lines.endsWith('\n'),'SOCIAL_STORAGE_INCOMPLETE');const v=JSON.parse(lines.split('\n')[0]).format===2?readSwarmJournal(path):JSON.parse(lines.trimEnd().split('\n').at(-1)!);let world=v.input.hybrid?replayHybrid(v.input,v.tick,v.hybrid.records,v.hybrid.pending):restoreSocietyForInput(JSON.stringify(v.world),v.world.genesis);const s:Session={id,runId:v.runId,world,revision:v.revision,busy:false,reservation:null,...(v.journalHead?{journalHead:v.journalHead,journalRecords:v.journalRecords}:{})};if(v.reservation){ensure(canonical(world.hybrid?.pending)===canonical(v.reservation));s.world=finishDecision(world,{decision:null,usage:null,error:'SOCIAL_UNCERTAIN'});s.revision++;await persist(s,root);}if(sessions.size>=4){const first=[...sessions.entries()].find(([,s])=>!s.busy);ensure(first,'SOCIAL_BUSY');sessions.delete(first[0]);}sessions.set(key,s);return s;}
-async function body(request:Request){const reader=request.body?.getReader();ensure(reader,'SOCIAL_REQUEST');const chunks:Uint8Array[]=[];let size=0;try{while(true){request.signal.throwIfAborted();const r=await reader.read();if(r.done)break;size+=r.value.length;if(size>524288){await reader.cancel();throw Error('SOCIAL_REQUEST_SIZE');}chunks.push(r.value);}}finally{reader.releaseLock();}return JSON.parse(Buffer.concat(chunks).toString('utf8'));}
+const cacheKey=(root:string,id:string)=>root+'/'+id;
+export function socialStatus(d:SocialDependencies={}){
+ return {version:1,enabled:enabled(d),configured:!!(d.key??process.env.OPENROUTER_API_KEY)?.trim(),limits:HYBRID_DEFAULTS,model:'deepseek/deepseek-v4-flash-0731',provider:'digitalocean',fallback:false};
+}
+function configuredAdmission(world:SocietyWorld,d:SocialDependencies):ProviderAdmission {
+ const c=world.genesis.input.hybrid??HYBRID_DEFAULTS;
+ const baseline=isDeep(world)?swarmHybrid(swarmPolicy(world.genesis.config.agents as 50|100)):c;
+ const source=d.admission??{};
+ const grant:ProviderAdmission={maxCalls:source.maxCalls??Number(process.env.SOCIAL_PROVIDER_MAX_CALLS??baseline.maxCalls),reservedTokens:source.reservedTokens??baseline.reservedTokens,costUsd:source.costUsd??baseline.costUsd,...(source.deadlineMs===undefined?{}:{deadlineMs:source.deadlineMs})};
+ ensure(Number.isSafeInteger(grant.maxCalls)&&grant.maxCalls>=0&&grant.maxCalls<=c.maxCalls,'SOCIAL_ADMISSION');
+ ensure(Number.isSafeInteger(grant.reservedTokens)&&grant.reservedTokens>=0&&grant.reservedTokens<=c.reservedTokens,'SOCIAL_ADMISSION');
+ ensure(Number.isFinite(grant.costUsd)&&grant.costUsd>=0&&grant.costUsd<=c.costUsd,'SOCIAL_ADMISSION');
+ ensure(grant.deadlineMs===undefined||Number.isSafeInteger(grant.deadlineMs)&&grant.deadlineMs>0,'SOCIAL_ADMISSION');
+ return grant;
+}
+function admission(s:Session,d:SocialDependencies,next=false):SocialAdmissionStatus {
+ const grant=s.providerAdmission??configuredAdmission(s.world,d);
+ // A supplied grant may tighten a restored run but cannot enlarge its frozen authority.
+ const cap={maxCalls:Math.min(grant.maxCalls,d.admission?.maxCalls??grant.maxCalls),reservedTokens:Math.min(grant.reservedTokens,d.admission?.reservedTokens??grant.reservedTokens),costUsd:Math.min(grant.costUsd,d.admission?.costUsd??grant.costUsd),deadlineMs:Math.min(grant.deadlineMs??Infinity,d.admission?.deadlineMs??Infinity)};
+ const records=(s.world.hybrid?.records??[]).filter(r=>r.status!=='skipped');
+ const calls=records.length+(s.reservation?1:0);
+ const tokens=records.reduce((n,r)=>n+(r.usage?.inputTokens!=null&&r.usage.outputTokens!=null?r.usage.inputTokens+r.usage.outputTokens:r.reservedTokens),0)+(s.reservation?decisionReservation(s.reservation):0);
+ const costUsd=records.reduce((n,r)=>n+(r.usage?.costUsd??r.reservedCostUsd),0)+(s.reservation?DECISION_LIMITS.unknownCostUsd:0);
+ const future=next&&!s.reservation?1:0,reserved=next&&!s.reservation&&s.world.hybrid?.pending?decisionReservation(s.world.hybrid.pending):0;
+ const reason=Date.now()>=cap.deadlineMs?'deadline':calls+future>cap.maxCalls||!next&&calls>=cap.maxCalls?'completion-limit':tokens+reserved>cap.reservedTokens?'token-limit':costUsd+(future?DECISION_LIMITS.unknownCostUsd:0)>cap.costUsd?'cost-limit':null;
+ return {status:reason?'budget-limited':'available',reason,calls,maxCalls:cap.maxCalls,tokens,reservedTokens:cap.reservedTokens,costUsd,costLimitUsd:cap.costUsd};
+}
+function project(s:Session,d:SocialDependencies):SocialState{return {version:1,sessionId:s.id,revision:s.revision,world:s.world,budget:hybridBudget(s.world),admission:admission(s,d)};}
+function cache(s:Session,root:string){
+ if(sessions.size>=4&&!sessions.has(cacheKey(root,s.id))){const first=[...sessions.entries()].find(([,v])=>!v.busy);ensure(first,'SOCIAL_BUSY');sessions.delete(first[0]);}
+ sessions.set(cacheKey(root,s.id),s);
+}
+async function persist(s:Session,root:string){
+ mkdirSync(root,{recursive:true});
+ if(s.world.genesis.input.swarm){await appendSwarmJournal(s,root);s.journalBytes=statSync(join(root,s.id+'.jsonl')).size;return;}
+ const path=join(root,s.id+'.jsonl'),size=existsSync(path)?statSync(path).size:0;
+ const line=JSON.stringify({id:s.id,runId:s.runId,revision:s.revision,input:s.world.genesis.input,tick:s.world.tick,hybrid:s.world.hybrid,...(!s.world.hybrid?{world:s.world}:{}),reservation:s.reservation})+'\n';
+ const bytes=Buffer.byteLength(line);ensure(bytes<2*1024*1024&&size+bytes<=64*1024*1024,'SOCIAL_STORAGE_LIMIT');
+ const fd=openSync(path,'a',0o600);try{ensure(writeSync(fd,line)===bytes,'SOCIAL_JOURNAL_WRITE');fsyncSync(fd);}finally{closeSync(fd);}s.journalBytes=size+bytes;
+}
+async function checkpoint(s:Session,root:string,force=false){
+ if(!isDeep(s.world))return;
+ const count=s.world.hybrid!.records.filter(r=>r.status==='accepted').length;
+ if(!force&&count-(s.checkpointRecords??0)<50&&s.world.tick<s.world.genesis.config.steps)return;
+ try{await writeMaterialCheckpoint(s,root);s.checkpointRecords=count;}
+ catch{if(force)throw Error('SOCIAL_CHECKPOINT_WRITE');console.warn('SOCIAL_CHECKPOINT_SAFE',JSON.stringify({code:'RECOVER_FROM_JOURNAL'}));}
+}
+async function load(id:string,root:string):Promise<Session>{
+ ensure(/^[a-f0-9-]{36}$/.test(id),'SOCIAL_SESSION');
+ let cached=sessions.get(cacheKey(root,id));
+ // Another verified process may have advanced the journal between operations.
+ // Never append from an older in-memory head merely because the lease is free.
+ if(cached&&cached.journalBytes!==statSync(join(root,id+'.jsonl')).size){sessions.delete(cacheKey(root,id));cached=undefined;}
+ if(cached){
+  ensure(cached.id===id&&cached.world.genesis.input.runId===cached.runId,'SOCIAL_RUN_IDENTITY');
+  if(cached.reservation&&!cached.busy){cached.world=finishDecision(cached.world,{decision:null,usage:null,error:'SOCIAL_UNCERTAIN'});cached.reservation=null;cached.revision++;await persist(cached,root);}
+  return cached;
+ }
+ const path=join(root,id+'.jsonl');ensure(statSync(path).size<=128*1024*1024,'SOCIAL_STORAGE_LIMIT');
+ const fd=openSync(path,'r'),prefix=Buffer.alloc(32);let count=0;
+ try{count=readSync(fd,prefix,0,prefix.length,0);}finally{closeSync(fd);}
+ const format2=prefix.subarray(0,count).toString('utf8').startsWith('{"format":2,');
+ let s:Session;
+ if(format2){
+  // Full hash audit is mandatory even when a materialised checkpoint is available.
+  let v:ReturnType<typeof readSwarmJournal>;
+  try{v=readSwarmJournal(path);}catch(error){if(!(error instanceof Error)||error.message!=='SOCIAL_STORAGE_INCOMPLETE')throw error;v=await recoverIncompleteSwarmTail(path);}
+  ensure(v.id===id&&v.input.runId===v.runId,'SOCIAL_RUN_IDENTITY');
+  const base=readMaterialCheckpoint(root,v);
+  let world=base?replayHybridFrom(base,v.tick,v.hybrid.records,v.hybrid.pending):replayHybrid(v.input,v.tick,v.hybrid.records,v.hybrid.pending);
+  s={id,runId:v.runId,world,revision:v.revision,busy:false,reservation:v.reservation,journalHead:v.journalHead,journalRecords:v.journalRecords,providerAdmission:v.providerAdmission,checkpointRecords:base?.hybrid?.records.filter(r=>r.status==='accepted').length??0};
+ }else{
+  const raw=readFileSync(path,'utf8');
+  ensure(raw.endsWith('\n'),'SOCIAL_STORAGE_INCOMPLETE');const v=JSON.parse(raw.trimEnd().split('\n').at(-1)!);
+  ensure(v.id===id&&v.input.runId===v.runId,'SOCIAL_RUN_IDENTITY');
+  const world=v.input.hybrid?replayHybrid(v.input,v.tick,v.hybrid.records,v.hybrid.pending):restoreSocietyForInput(JSON.stringify(v.world),v.world.genesis);
+  s={id,runId:v.runId,world,revision:v.revision,busy:false,reservation:v.reservation};
+ }
+ if(s.reservation){ensure(canonical(s.world.hybrid?.pending)===canonical(s.reservation),'SOCIAL_JOURNAL_ORDER');s.world=finishDecision(s.world,{decision:null,usage:null,error:'SOCIAL_UNCERTAIN'});s.reservation=null;s.revision++;await persist(s,root);}
+ s.journalBytes=statSync(path).size;cache(s,root);return s;
+}
+function validateIdentity(id:unknown):asserts id is string {ensure(typeof id==='string'&&/^[a-f0-9-]{36}$/.test(id),'SOCIAL_SESSION');}
+/** Passive load/recovery. Never invokes the model or advances the simulation clock. */
+export async function readSocialSession(sessionId:string,d:SocialDependencies={}):Promise<SocialState>{
+ validateIdentity(sessionId);const root=directory(d);mkdirSync(root,{recursive:true});
+ return withSocialOwner(root,sessionId,async()=>project(await load(sessionId,root),d));
+}
+export async function checkpointSocialSession(sessionId:string,d:SocialDependencies={}){
+ validateIdentity(sessionId);const root=directory(d);
+ return withSocialOwner(root,sessionId,async()=>{const s=await load(sessionId,root);await checkpoint(s,root,true);return project(s,d);});
+}
+/** Typed internal API avoids serialising private worlds through an HTTP Response. */
+export async function socialOperation(body:unknown,d:SocialDependencies={},signal:AbortSignal=new AbortController().signal):Promise<SocialState>{
+ ensure(enabled(d),'SOCIAL_DISABLED');signal.throwIfAborted();
+ const b=body as Record<string,any>,root=directory(d);mkdirSync(root,{recursive:true});
+ if(b.operation==='start'){
+  object(b,['operation','run']);await verifyStakeholderRun(b.run as StakeholderSimulationRunV1);
+  const run=b.run as StakeholderSimulationRunV1;ensure(run.inputSnapshot.version===2,'SOCIAL_RUN');const plan=run.inputSnapshot.scenarioPlan;
+  const name=createHash('sha256').update(run.runId).digest('hex'),index=join(root,name+'.index');
+  return withSocialOwner(root,'start:'+name,async()=>{
+   if(existsSync(index)){const id=readFileSync(index,'utf8');return withSocialOwner(root,id,async()=>{const s=await load(id,root);ensure(s.runId===run.runId,'SOCIAL_RUN_IDENTITY');return project(s,d);});}
+   ensure(readdirSync(root).filter(s=>s.endsWith('.index')).length<64,'SOCIAL_SESSION_LIMIT');
+   const requested=d.swarm===false?24:d.swarm?.activeAgents??Number(process.env.SOCIAL_SWARM_SIZE??process.env.SOCIAL_ACTIVE_AGENTS??50);
+   const swarm=d.communication&&requested!==24?(d.swarm||deepSwarmPolicy(requested as 50|100)):null;
+   const hybrid=swarm?swarmHybrid(swarm):null;
+   const input:SocietyInput={runId:run.runId,question:plan.request.question,seed:plan.requestIdentity.slice(-32),population:populationForActive(swarm?.activeAgents??Number(process.env.SOCIAL_ACTIVE_AGENTS??24)),geography:buildSocietyGeography(),sharePolicy:'source-position-v1',socialPolicy:'memory-aware-v1',...(d.communication?{communication:d.communication,intelligence:swarm?SWARM_INTELLIGENCE:TOPIC_POLICY}:{}),...(swarm?{swarm,hybrid:hybrid!}:!d.ruleOnly?{hybrid:{...HYBRID_DEFAULTS,maxCalls:Number(process.env.SOCIAL_MAX_DECISIONS??HYBRID_DEFAULTS.maxCalls),selectedAgents:Number(process.env.SOCIAL_CONTROLLED_AGENTS??HYBRID_DEFAULTS.selectedAgents)}}:{}),config:{agents:swarm?.activeAgents??Number(process.env.SOCIAL_ACTIVE_AGENTS??24)},briefing:{assumptions:plan.draft.assumptions.slice(0,4).map(a=>a.text.slice(0,300)),sources:(plan.grounding?.sources??[]).slice(0,2).map(s=>({id:s.id,title:s.title,url:s.url,retrievedAt:s.retrievedAt,publishedAt:s.publishedAt,passage:s.passages[0].text.slice(0,600)}))},roles:plan.draft.agents,jurisdictions:plan.draft.jurisdictions,acceptedActions:run.events.map(e=>({id:e.id,roleId:e.roleId,statement:e.statement,position:e.position}))};
+   const s:Session={id:randomUUID(),runId:run.runId,world:createSociety(input),revision:0,busy:false,reservation:null};
+   if(isDeep(s.world))s.providerAdmission=configuredAdmission(s.world,d);
+   await persist(s,root);
+   const fd=openSync(index,'wx',0o600);try{writeFileSync(fd,s.id);fsyncSync(fd);}finally{closeSync(fd);}
+   cache(s,root);return project(s,d);
+  });
+ }
+ object(b,['operation','sessionId','revision']);ensure(b.operation==='step'&&Number.isSafeInteger(b.revision),'SOCIAL_REQUEST');validateIdentity(b.sessionId);
+ // A warm duplicate must fail immediately rather than waiting behind a provider
+ // call whose client may be waiting for this very duplicate response.
+ ensure(!sessions.get(cacheKey(root,b.sessionId))?.busy,'SOCIAL_STALE');
+ return withSocialOwner(root,b.sessionId,async()=>{
+  const s=await load(b.sessionId,root);ensure(!s.busy&&s.revision===b.revision,'SOCIAL_STALE');s.busy=true;
+  try{
+   signal.throwIfAborted();
+   ensure(!s.world.hybrid?.records.some(r=>['AI_PROVIDER_IDENTITY','SOCIAL_TRANSITION'].includes(r.error??'')),'SOCIAL_FATAL');
+   const previous=s.world;let world=s.world.hybrid?prepareHybridStep(s.world):stepSociety(s.world);
+   if(world.hybrid?.pending&&!hybridBudget(world).exhausted){
+    if(d.ruleOnly){world=finishDecision(world,{decision:null,usage:null,error:'SOCIAL_DISABLED'});}
+    else{
+     s.world=world;
+     const available=admission(s,d,true);
+     if(available.status==='budget-limited'){
+      // Persist the valid offered context without fabricating a failed/skipped model action.
+      if(previous!==world)s.revision++;
+      await persist(s,root);return {...project(s,d),admission:available};
+     }
+     if(s.world.genesis.input.swarm)assertSwarmJournalAdmission(s,root);
+     const release=acquireAiSlot('social:'+s.id);
+     try{
+      const transport=createSocialTransport({key:d.key??process.env.OPENROUTER_API_KEY??'',fetcher:d.fetcher});
+      s.reservation=world.hybrid.pending;await persist(s,root);
+      let decision:unknown|null=null,error:string|null=null;
+      try{decision=(await transport.generate(world.hybrid.pending,signal)).value;if(signal.aborted){decision=null;error='AI_CANCELLED';}}
+      catch(e){error=typeof (e as {code?:unknown})?.code==='string'?(e as {code:string}).code:'SOCIAL_FAILURE';}
+      try{world=finishDecision(world,{decision,usage:transport.records.at(-1)??null,error:transport.records.at(-1)?.socialValidationRule??error});}
+      catch{world=finishDecision(world,{decision:null,usage:transport.records.at(-1)??null,error:'SOCIAL_TRANSITION'});}
+      s.reservation=null;
+     }finally{release();}
+    }
+   }
+   s.world=world;s.revision++;await persist(s,root);await checkpoint(s,root);
+   if(world.hybrid?.records.at(-1)?.error==='AI_PROVIDER_IDENTITY')throw Error('SOCIAL_PROVIDER_IDENTITY');
+   if(world.hybrid?.records.at(-1)?.error==='SOCIAL_TRANSITION')throw Error('SOCIAL_FATAL');
+   return project(s,d);
+  }catch(e){
+   // A failed persistence can leave an uncertain durable reservation. Never dispatch from the uncommitted cache.
+   sessions.delete(cacheKey(root,s.id));throw e;
+  }finally{s.busy=false;}
+ });
+}
+async function requestBody(request:Request){
+ const reader=request.body?.getReader();ensure(reader,'SOCIAL_REQUEST');const chunks:Uint8Array[]=[];let size=0;
+ try{while(true){request.signal.throwIfAborted();const r=await reader.read();if(r.done)break;size+=r.value.length;if(size>524288){await reader.cancel();throw Error('SOCIAL_REQUEST_SIZE');}chunks.push(r.value);}}finally{reader.releaseLock();}
+ return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+}
 export async function handleSocialRequest(request:Request,d:SocialDependencies={}){
  if(request.method==='GET')return response(socialStatus(d));
  try{
-  const url=new URL(request.url),localOrigin=new URL(`${url.protocol}//${request.headers.get('host')??url.host}`).origin;ensure(!url.search&&(!request.headers.get('origin')||request.headers.get('origin')===localOrigin),'SOCIAL_ORIGIN');ensure(request.headers.get('content-type')?.split(';')[0]==='application/json','SOCIAL_REQUEST');
-  ensure(enabled(d),'SOCIAL_DISABLED');const root=directory(d),b=await body(request);
-  if(b.operation==='start'){
-   object(b,['operation','run']);await verifyStakeholderRun(b.run as StakeholderSimulationRunV1);const run=b.run as StakeholderSimulationRunV1;ensure(run.inputSnapshot.version===2,'SOCIAL_RUN');const plan=run.inputSnapshot.scenarioPlan;
-   mkdirSync(root,{recursive:true});const index=join(root,createHash('sha256').update(run.runId).digest('hex')+'.index');
-   if(existsSync(index)){const s=await load(readFileSync(index,'utf8'),root);return response({version:1,sessionId:s.id,revision:s.revision,world:s.world});}
-   const fs=await import('node:fs');ensure(fs.readdirSync(root).filter(s=>s.endsWith('.index')).length<64,'SOCIAL_SESSION_LIMIT');
-   const requested=d.swarm===false?24:d.swarm?.activeAgents??Number(process.env.SOCIAL_SWARM_SIZE??process.env.SOCIAL_ACTIVE_AGENTS??50);const swarm=d.communication&&requested!==24?(d.swarm||swarmPolicy(requested as 50|100)):null;const hybrid=swarm?{...swarmHybrid(swarm),maxCalls:d.swarm?swarmHybrid(swarm).maxCalls:Number(process.env.SOCIAL_MAX_DECISIONS??swarmHybrid(swarm).maxCalls)}:null;
-   const input:SocietyInput={runId:run.runId,question:plan.request.question,seed:plan.requestIdentity.slice(-32),population:populationForActive(swarm?.activeAgents??Number(process.env.SOCIAL_ACTIVE_AGENTS??24)),geography:buildSocietyGeography(),sharePolicy:'source-position-v1',socialPolicy:'memory-aware-v1',...(d.communication?{communication:d.communication,intelligence:swarm?SWARM_INTELLIGENCE:TOPIC_POLICY}:{}),...(swarm?{swarm,hybrid:hybrid!}:!d.ruleOnly?{hybrid:{...HYBRID_DEFAULTS,maxCalls:Number(process.env.SOCIAL_MAX_DECISIONS??HYBRID_DEFAULTS.maxCalls),selectedAgents:Number(process.env.SOCIAL_CONTROLLED_AGENTS??HYBRID_DEFAULTS.selectedAgents)}}:{}),config:{agents:swarm?.activeAgents??Number(process.env.SOCIAL_ACTIVE_AGENTS??24)},briefing:{assumptions:plan.draft.assumptions.slice(0,4).map(a=>a.text.slice(0,300)),sources:(plan.grounding?.sources??[]).slice(0,2).map(s=>({id:s.id,title:s.title,url:s.url,retrievedAt:s.retrievedAt,publishedAt:s.publishedAt,passage:s.passages[0].text.slice(0,600)}))},roles:plan.draft.agents,jurisdictions:plan.draft.jurisdictions,acceptedActions:run.events.map(e=>({id:e.id,roleId:e.roleId,statement:e.statement,position:e.position}))};
-   const s:Session={id:randomUUID(),runId:run.runId,world:createSociety(input),revision:0,busy:false,reservation:null};await persist(s,root);fs.writeFileSync(index,s.id,{flag:'wx'});if(sessions.size>=4){const entry=[...sessions.entries()].find(([,s])=>!s.busy);ensure(entry,'SOCIAL_BUSY');sessions.delete(entry[0]);}sessions.set(root+'/'+s.id,s);return response({version:1,sessionId:s.id,revision:0,world:s.world});
-  }
-  object(b,['operation','sessionId','revision']);ensure(b.operation==='step'&&Number.isSafeInteger(b.revision),'SOCIAL_REQUEST');const s=await load(b.sessionId,root);ensure(!s.busy&&s.revision===b.revision,'SOCIAL_STALE');s.busy=true;
-  try{
-   let world=s.world.hybrid?prepareHybridStep(s.world):stepSociety(s.world);
-   if(world.hybrid?.pending&&!hybridBudget(world).exhausted){
-    if(d.ruleOnly){world=finishDecision(world,{decision:null,usage:null,error:'SOCIAL_DISABLED'});}else{
-    const release=acquireAiSlot('social:'+s.id);try{
-     const transport=createSocialTransport({key:d.key??process.env.OPENROUTER_API_KEY??'',fetcher:d.fetcher});s.world=world;s.reservation=world.hybrid.pending;await persist(s,root);
-     let decision:unknown|null=null,error:string|null=null;try{decision=(await transport.generate(world.hybrid.pending,request.signal)).value;if(request.signal.aborted){decision=null;error='AI_CANCELLED';}}catch(e){error=typeof (e as {code?:unknown})?.code==='string'?(e as {code:string}).code:'SOCIAL_FAILURE';}
-     try{world=finishDecision(world,{decision,usage:transport.records.at(-1)??null,error:transport.records.at(-1)?.socialValidationRule??error});}catch{world=finishDecision(world,{decision:null,usage:transport.records.at(-1)??null,error:'SOCIAL_TRANSITION'});}s.reservation=null;
-    }finally{release();}
-    }
-   }
-   s.world=world;s.revision++;await persist(s,root);return response({version:1,sessionId:s.id,revision:s.revision,world:s.world,budget:hybridBudget(s.world)});
-  }finally{s.busy=false;}
- }catch(e){const reason=e instanceof Error&&/^SOCIAL_[A-Z_]+$/.test(e.message)?e.message:'SOCIAL_UNAVAILABLE';return response({version:1,error:reason,message:'The bounded social operation could not complete. Accepted events remain available.'},reason==='SOCIAL_DISABLED'?503:409);}
+  const url=new URL(request.url),localOrigin=new URL(`${url.protocol}//${request.headers.get('host')??url.host}`).origin;
+  ensure(!url.search&&(!request.headers.get('origin')||request.headers.get('origin')===localOrigin),'SOCIAL_ORIGIN');
+  ensure(request.headers.get('content-type')?.split(';')[0]==='application/json','SOCIAL_REQUEST');
+  return response(await socialOperation(await requestBody(request),d,request.signal));
+ }catch(e){
+  const reason=e instanceof Error&&/^SOCIAL_[A-Z_]+$/.test(e.message)?e.message:'SOCIAL_UNAVAILABLE';
+  return response({version:1,error:reason,message:'The bounded social operation could not complete. Accepted events remain available.'},reason==='SOCIAL_DISABLED'?503:409);
+ }
 }

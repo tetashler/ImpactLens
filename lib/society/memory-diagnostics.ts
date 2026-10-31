@@ -9,6 +9,7 @@ export interface MemoryRetrievalDiagnostics {
  rejected:Record<'permission'|'missing-item'|'rank-bound'|'item-filtered'|'unsupported-kind',number>;
  entries:{eventId:string;itemId:string;origin:'short-term'|'episodic';stage:'included'|'pointer-only'|'selected-not-in-context'|'rank-bound'|'permission'|'missing-item'|'unsupported-kind'|'item-limit'|'ancestry'|'duplicate-source'|'no-relevance';score:number|null;lexicalMatches:number}[];
  contextByteLimitExceeded?:boolean;
+ capacityPacking?:import('./context-capacity.ts').ContextCapacityPacking;
  topicSelection?:{scores:TopicScore[];duplicateSources:number;ancestryRejected:number;itemLimitRejected:number;selectedEventIds:string[]};
 }
 export function describeMemoryRetrieval(w:SocietyWorld,actorId:string,c:DecisionContext,ranked:{eventId:string;score:number;lexicalMatches:number}[],selectedIds:string[],topicScores?:TopicScore[]):MemoryRetrievalDiagnostics{

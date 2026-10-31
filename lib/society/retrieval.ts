@@ -3,6 +3,7 @@ import type {Memory,SocietyWorld} from './contract.ts';
 import {canAccessItem} from './communication.ts';
 import {threadPath} from './exposure.ts';
 import {DECISION_LIMITS} from './decision-contract.ts';
+import {isDeep} from './deep-policy.ts';
 
 export interface TopicScore {
  eventId:string;topic:number;counterparty:number;importance:number;recency:number;lexical:number;issue:number;
@@ -30,7 +31,7 @@ export function retrieveTopicMemories(w:SocietyWorld,actorId:string,eligible:Mem
   const item=items.get(m.itemId),path=item?pathFor(item.id):[],episode=episodes.get(m.eventId);
   const accessible=!!item&&canAccessItem(w,actorId,item),tokens=accessible&&path.length?words(item.text):new Set<string>();
   const topics=accessible?topicsFor(path):new Set<string>(),matches=overlap(tokens,queryWords);
-  const open=(actor.issues??[]).some(i=>i.status==='open'&&i.sourceEventId===m.itemId);
+  const open=(isDeep(w)?actor.issueHistory??actor.issues??[]:actor.issues??[]).some(i=>i.status==='open'&&i.sourceEventId===m.itemId);
   const queryLexical=matches/Math.sqrt(Math.max(1,tokens.size));
   const details:TopicScore={eventId:m.eventId,topic:6*overlap(topics,queryTopics)/Math.sqrt(Math.max(1,topics.size)),counterparty:item&&queryItem&&item.actorId===queryItem.actorId&&item.actorId!==actorId?0.6:0,importance:(episode?.importance??2)/5,recency:0.6/(1+Math.max(0,w.tick-tick(m))/20),lexical:Math.min(4,queryLexical+0.2*overlap(tokens,goalWords)/Math.sqrt(Math.max(1,tokens.size))),issue:open?(overlap(topics,queryTopics)>0?4:1):0,redundancy:0,score:0,lexicalMatches:matches,exclusion:!accessible?'permission':!path.length?'ancestry':mostRecent.get(m.itemId)!==m?'duplicate-source':'rank-bound'};
   details.score=details.topic+details.counterparty+details.importance+details.recency+details.lexical+details.issue;
@@ -43,7 +44,7 @@ export function retrieveTopicMemories(w:SocietyWorld,actorId:string,eligible:Mem
   const similarity=overlap(r.tokens,s.tokens)/Math.max(1,new Set([...r.tokens,...s.tokens]).size);
   return Math.max(max,(similarity>=0.85?1.5:0)+(r.path[0]===s.path[0]?0.75:0)+(r.item?.actorId===s.item?.actorId?0.25:0)+(r.item?.platform===s.item?.platform?0.1:0));
  },0);
- const add=(r:typeof rows[number])=>{const extra=r.path.filter(id=>!boundedIds.includes(id));if(boundedIds.length+extra.length>DECISION_LIMITS.items){r.details.exclusion='item-limit';return false;}boundedIds.push(...extra);r.details.exclusion='none';selected.push(r);return true;};
+ const add=(r:typeof rows[number])=>{const required=isDeep(w)?[...new Set([r.path[0],r.m.itemId])]:r.path,extra=required.filter(id=>!boundedIds.includes(id));if(boundedIds.length+extra.length>DECISION_LIMITS.items){r.details.exclusion='item-limit';return false;}boundedIds.push(...extra);r.details.exclusion='none';selected.push(r);return true;};
  // Preserve a valid present encounter, without forcing old, cross-platform or private memories.
  const anchor=available.find(r=>r.m===latest);if(anchor){available.splice(available.indexOf(anchor),1);add(anchor);}
  while(available.length&&selected.length<DECISION_LIMITS.memories){
@@ -52,6 +53,10 @@ export function retrieveTopicMemories(w:SocietyWorld,actorId:string,eligible:Mem
   add(available.shift()!);
  }
  // Additional legitimately encountered context is optional; selected primary content has already secured its ancestry.
- for(const r of selected)for(const id of r.m.exposedIds){const path=pathFor(id),extra=path.filter(p=>!boundedIds.includes(p));if(path.length&&boundedIds.length+extra.length<=DECISION_LIMITS.items)boundedIds.push(...extra);}
+ if(isDeep(w)){
+  // Primary items and issue anchors fit first. Fill spare slots with recent actual ancestors;
+  // omitted bodies are explicitly described by conversation-window metadata, never invented.
+  for(const r of selected)for(const id of [...r.path].reverse()){if(boundedIds.length>=DECISION_LIMITS.items)break;if(!boundedIds.includes(id))boundedIds.push(id);}
+ }else for(const r of selected)for(const id of r.m.exposedIds){const path=pathFor(id),extra=path.filter(p=>!boundedIds.includes(p));if(path.length&&boundedIds.length+extra.length<=DECISION_LIMITS.items)boundedIds.push(...extra);}
  return {selected:selected.map(r=>r.m),itemIds:boundedIds,scores:rows.map(r=>r.details)};
 }

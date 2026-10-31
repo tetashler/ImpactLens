@@ -1,6 +1,9 @@
 import {cohortIds} from './swarm.ts';
 import {freezeSnapshot} from '../experiments/validation.ts';
 import {canAccessItem} from './communication.ts';
+import {isDeep} from './deep-policy.ts';
+import {ensure} from '../experiments/validation.ts';
+import {threadPath} from './exposure.ts';
 import type {Memory,SocietyWorld} from './contract.ts';
 
 export interface Episode extends Memory {tick:number;counterparty:string;topicIds:string[];importance:number;access:'recheck-current-membership'}
@@ -18,8 +21,17 @@ export function rememberExperiences(w:SocietyWorld):SocietyWorld{
   const direct=w.items.find(i=>i.id===item.parentId)?.actorId===actor.id;
   entries.set(m.eventId,{...m,tick:encounter.tick,counterparty:item.actorId,topicIds:source?.discussion?.topicIds??[],importance:direct?9:source?.sourceEventId?8:source?.source==='social-model'?7:m.kind==='authored'?4:2,access:'recheck-current-membership'});
  }
- const issues=actor.issues??[];
- const episodic=[...entries.values()].sort((a,b)=>((issues.some(i=>i.status==='open'&&i.sourceEventId===b.itemId)?20:0)+b.importance+b.tick/1000)-((issues.some(i=>i.status==='open'&&i.sourceEventId===a.itemId)?20:0)+a.importance+a.tick/1000)||b.eventId.localeCompare(a.eventId)).slice(0,w.genesis.input.intelligence.episodicEntries).sort((a,b)=>a.tick-b.tick||a.eventId.localeCompare(b.eventId));
+ const issues=isDeep(w)?actor.issueHistory??actor.issues??[]:actor.issues??[];
+ // Deep retention indexes distinct primary sources. The full encounter journal is unchanged.
+ const candidates=isDeep(w)?[...entries.values()].reduce((sources,m)=>{const prior=sources.get(m.itemId);if(!prior||m.tick>prior.tick||m.tick===prior.tick&&w.events.findIndex(e=>e.id===m.eventId)>w.events.findIndex(e=>e.id===prior.eventId))sources.set(m.itemId,m);return sources;},new Map<string,Episode>()).values():entries.values();
+ const score=(m:Episode)=>(issues.some(i=>i.status==='open'&&i.sourceEventId===m.itemId)?20:0)+m.importance+m.tick/1000;
+ const pool=[...candidates],retained:Episode[]=[];
+ if(isDeep(w)&&pool.length>w.genesis.input.intelligence.episodicEntries){
+  // A modest metadata-only penalty preserves distinctive sources without forcing quotas.
+  const rows=pool.map(m=>({m,root:threadPath(w,m.itemId)[0],base:score(m),penalty:0}));
+  while(rows.length&&retained.length<w.genesis.input.intelligence.episodicEntries){rows.sort((a,b)=>(b.base-b.penalty)-(a.base-a.penalty)||b.m.eventId.localeCompare(a.m.eventId));const selected=rows.shift()!;retained.push(selected.m);for(const row of rows)row.penalty=Math.max(row.penalty,(row.root===selected.root?2:0)+(row.m.counterparty===selected.m.counterparty?0.75:0)+(row.m.topicIds.some(t=>selected.m.topicIds.includes(t))?0.25:0));}
+ }else retained.push(...pool.sort((a,b)=>score(b)-score(a)||b.eventId.localeCompare(a.eventId)).slice(0,w.genesis.input.intelligence.episodicEntries));
+ const episodic=retained.sort((a,b)=>a.tick-b.tick||a.eventId.localeCompare(b.eventId));
  return {...w,agents:w.agents.map(a=>a.id===actor.id?freezeSnapshot({...a,episodic}):a)};
 }
 export function experiencedMemories(w:SocietyWorld,actorId:string):Memory[]{
@@ -31,6 +43,15 @@ export function experienced(w:SocietyWorld,actorId:string,itemId:string){return 
 export function applyIssue(w:SocietyWorld,actorId:string,update:IssueUpdate|null|undefined,eventId:string):SocietyWorld{
  if(!update)return w;
  const actor=w.agents.find(a=>a.id===actorId)!,event=w.events.find(e=>e.id===eventId)!;
+ if(isDeep(w)){
+  ensure(actor&&event&&event.actorId===actorId&&['post','comment','reply','message','group-reply'].includes(event.type),'ISSUE_SOURCE');
+  const history=actor.issueHistory??actor.issues??[],existing=update.issueId?history.find(i=>i.id===update.issueId):undefined;
+  if(update.issueId)ensure(existing&&existing.status==='open'&&existing.topicId===update.topicId&&['resolve','withdraw'].includes(update.kind),'ISSUE_STATUS');
+  else ensure(history.length<16&&!['resolve','withdraw'].includes(update.kind),'ISSUE_LIMIT');
+  const next:SocialIssue[]=update.issueId?history.map(i=>i.id===update.issueId?{...i,status:update.kind==='resolve'?'resolved':'withdrawn',changedEventId:eventId}:i):[...history,{id:'issue:'+eventId,kind:update.kind as SocialIssue['kind'],topicId:update.topicId,sourceEventId:eventId,createdTick:event.tick,status:'open',changedEventId:null}];
+  const open=next.filter(i=>i.status==='open'),closed=next.filter(i=>i.status!=='open');
+  return {...w,agents:w.agents.map(a=>a.id===actorId?freezeSnapshot({...a,issueHistory:next,issues:[...open,...closed.reverse()].slice(0,8)}):a)};
+ }
  const issues=actor.issues??[];
  const next=update.issueId?issues.map(i=>i.id===update.issueId?{...i,status:update.kind==='resolve'?'resolved' as const:'withdrawn' as const,changedEventId:eventId}:i):[...issues,{id:'issue:'+eventId,kind:update.kind as SocialIssue['kind'],topicId:update.topicId,sourceEventId:eventId,createdTick:event.tick,status:'open' as const,changedEventId:null}].slice(-8);
  return {...w,agents:w.agents.map(a=>a.id===actorId?freezeSnapshot({...a,issues:next}):a)};

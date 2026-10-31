@@ -33,7 +33,8 @@
     "../../scripts/testing/storage-lifecycle.ts",
     "../../scripts/testing/phase4e-benchmark.ts",
     "../../scripts/testing/phase4e-historical.ts",
-    "../../next-env.d.ts"
+    "../../next-env.d.ts",
+    "../../scripts/testing/phase4e1*.ts"
   ],
   "exclude": [
     "../../node_modules"

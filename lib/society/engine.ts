@@ -1,5 +1,6 @@
 import {validateSwarm,cohortIds} from './swarm.ts';
 import {swarmRoutineStep} from './swarm-routine.ts';
+import {isDeep,deepLimits} from './deep-policy.ts';
 import {validateIntelligence} from './intelligence.ts';
 import {attentiveStep} from './attention.ts';
 import {rememberExperiences,experiencedMemories,experienced} from './episodic.ts';
@@ -21,7 +22,7 @@ export function createSociety(input:SocietyInput):SocietyWorld{
  ensure(new Set(input.roles.map(r=>r.id)).size===input.roles.length,'Duplicate active role identity.');
  if(input.briefing){object(input.briefing,['assumptions','sources']);ensure(input.socialPolicy&&input.briefing.assumptions.length<=4&&input.briefing.sources.length<=2);input.briefing.assumptions.forEach(a=>ensure(typeof a==='string'&&a.length<=300));for(const s of input.briefing.sources){object(s,['id','title','url','retrievedAt','publishedAt','passage']);ensure(typeof s.id==='string'&&s.id.length<=80&&typeof s.title==='string'&&s.title.length<=240&&typeof s.passage==='string'&&s.passage.length<=600);canonicalGroundingUrl(s.url);ensure(typeof s.retrievedAt==='string'&&Number.isFinite(Date.parse(s.retrievedAt)));ensure(s.publishedAt===null||(typeof s.publishedAt==='string'&&Number.isFinite(Date.parse(s.publishedAt))));}}
  if(input.swarm){validateSwarm(input.swarm);ensure(input.intelligence?.memory==='episodic-topic-v2'&&input.hybrid&&input.hybrid.selectedAgents===input.swarm.modelAgents&&input.config?.agents===input.swarm.activeAgents,'Swarm requires matching frozen configuration.');}
- if(input.hybrid){object(input.hybrid,['selectedAgents','maxCalls','reservedTokens','costUsd']);ensure(input.socialPolicy==='memory-aware-v1');for(const [k,max]of [['selectedAgents',input.swarm?70:4],['maxCalls',input.swarm?128:16],['reservedTokens',input.swarm?8000000:400000],['costUsd',input.swarm?5:0.5]] as const){bounded(input.hybrid[k],k==='costUsd'?0.02:1,max);if(k!=='costUsd')ensure(Number.isSafeInteger(input.hybrid[k]));}}
+ if(input.hybrid){object(input.hybrid,['selectedAgents','maxCalls','reservedTokens','costUsd']);ensure(input.socialPolicy==='memory-aware-v1');for(const [k,max]of [['selectedAgents',input.swarm?70:4],['maxCalls',isDeep(input)?deepLimits(input).decisions:input.swarm?128:16],['reservedTokens',isDeep(input)?32000000:input.swarm?8000000:400000],['costUsd',isDeep(input)?16:input.swarm?5:0.5]] as const){bounded(input.hybrid[k],k==='costUsd'?0.02:1,max);if(k!=='costUsd')ensure(Number.isSafeInteger(input.hybrid[k]));}}
  ensure(input.socialPolicy===undefined||input.socialPolicy==='memory-aware-v1','Unknown social policy.');
  ensure(input.sharePolicy===undefined||input.sharePolicy==='source-position-v1','Unknown sharing policy.');
  ensure(input.acceptedActions.every(e=>typeof e.id==='string'&&e.id.length>0&&e.id.length<=300)&&new Set(input.acceptedActions.map(e=>e.id)).size===input.acceptedActions.length,'Duplicate or invalid accepted action identity.');
@@ -67,13 +68,15 @@ export function act(w:SocietyWorld,a:Action):SocietyWorld{
  if(a.type==='read'){
   const root=target&&w.items.find(i=>i.id===(w.genesis.input.socialPolicy?threadPath(w,target.id)[0]:target.id));
   const remembered=w.genesis.input.socialPolicy&&root&&(actor.seen.includes(root.id)||w.genesis.input.intelligence&&experienced(w,actor.id,root.id))&&(root.actorId===actor.id||w.ties.some(t=>t.source===actor.id&&t.target===root.actorId)||platform==='reddit'&&root.community===actor.community);
-  ensure(root&&(remembered||visibleFeed(w,actor.id,platform!).some(i=>i.id===root.id)),'Cannot read a hidden or unavailable item.');
+  const notified=isDeep(w)&&target&&actor.notifications.includes(target.id)&&w.items.find(i=>i.id===target.parentId)?.actorId===actor.id&&canAccessItem(w,actor.id,target);
+  ensure(root&&(remembered||notified||visibleFeed(w,actor.id,platform!).some(i=>i.id===root.id)),'Cannot read a hidden or unavailable item.');
  }
  if(['comment','reply','like','upvote','downvote','share','opinion','moderate'].includes(a.type))ensure(target&&prior,'An actual remembered exposure is required.');
  if(target)ensure(!target.hidden&&(!w.genesis.input.socialPolicy||threadPath(w,target.id).length>0),'Withdrawn threads cannot receive new reactions.');
  if(target&&a.type!=='share')ensure(target.platform===platform,'Platform target mismatch.');
  if(a.type==='share'){ensure(!w.genesis.input.communication||canAccessItem(w,actor.id,target!),'Unknown share');ensure(target&&target.platform!==platform,'Cross-platform sharing requires a different destination.');if(w.genesis.input.sharePolicy==='source-position-v1')ensure(a.position===undefined||a.position===target.position,'A source share cannot silently replace the source position.');}
  if(['upvote','downvote'].includes(a.type))ensure(platform==='reddit'||platform!==null&&channelFor(w,platform)?.style==='public-discussion','This environment has no votes.');
+ if(isDeep(w)&&['comment','reply'].includes(a.type))ensure(threadPath(w,target!.id).length<deepLimits(w).ancestry,'Deep conversation ancestry limit reached.');
  if(a.type==='reply')ensure(target?.parentId,'A reply requires a visible comment.');
  if(a.type==='comment')ensure(!target?.parentId,'Comment on a post; reply to a comment.');
  if(['follow','unfollow'].includes(a.type))ensure(person&&person.id!==actor.id,'Invalid follow endpoint.');
@@ -120,12 +123,12 @@ export function stepSociety(original:SocietyWorld):SocietyWorld{
  return immutable({...w,status:w.status==='event-limit'?'event-limit':w.tick>=config.steps?'complete':'ready'});
 }
 export function advanceSociety(w:SocietyWorld,steps:number){ensure(Number.isSafeInteger(steps)&&steps>=0&&steps<=L.steps);for(let i=0;i<steps&&w.tick<w.genesis.config.steps;i++)w=stepSociety(w);return w;}
-export function saveSociety(w:SocietyWorld){const text=JSON.stringify(w);ensure(new TextEncoder().encode(text).length<=L.savedBytes,'Saved society exceeds limit.');return text;}
-export function restoreSociety(text:string,expected?:SocietyWorld['genesis']):SocietyWorld{ensure(new TextEncoder().encode(text).length<=L.savedBytes);const value=JSON.parse(text);ensure(value.version===1&&[1,2,3,4,5].includes(value.genesis?.version)&&Number.isSafeInteger(value.tick)&&value.tick>=0&&value.tick<=L.steps);if(expected)ensure(canonical(expected)===canonical(value.genesis),'Stale or different society genesis.');const replay=value.genesis.input.hybrid?replayHybrid(value.genesis.input,value.tick,value.hybrid.records,value.hybrid.pending):advanceSociety(createSociety(value.genesis.input),value.tick);ensure(canonical(replay)===canonical(value),'Society events/state differ from deterministic replay.');return replay;}
+export function saveSociety(w:SocietyWorld){const text=JSON.stringify(w);ensure(new TextEncoder().encode(text).length<=deepLimits(w).savedBytes,'Saved society exceeds limit.');return text;}
+export function restoreSociety(text:string,expected?:SocietyWorld['genesis']):SocietyWorld{ensure(new TextEncoder().encode(text).length<=32*1024*1024);const value=JSON.parse(text);ensure(new TextEncoder().encode(text).length<=(value.genesis?.input?deepLimits(value.genesis.input).savedBytes:L.savedBytes));ensure(value.version===1&&[1,2,3,4,5].includes(value.genesis?.version)&&Number.isSafeInteger(value.tick)&&value.tick>=0&&value.tick<=L.steps);if(expected)ensure(canonical(expected)===canonical(value.genesis),'Stale or different society genesis.');const replay=value.genesis.input.hybrid?replayHybrid(value.genesis.input,value.tick,value.hybrid.records,value.hybrid.pending):advanceSociety(createSociety(value.genesis.input),value.tick);ensure(canonical(replay)===canonical(value),'Society events/state differ from deterministic replay.');return replay;}
 
 /** Restore earlier worlds as recorded; upgrading policy requires an explicit new/reset social world. */
 export function restoreSocietyForInput(text:string,expected:SocietyWorld['genesis']):SocietyWorld{
- ensure(new TextEncoder().encode(text).length<=L.savedBytes);
+ ensure(new TextEncoder().encode(text).length<=deepLimits(expected.input).savedBytes);
  const value=JSON.parse(text);
  if([1,2,3].includes(value.genesis?.version)&&value.genesis?.input?.socialPolicy===undefined){
   const legacyInput=structuredClone(expected.input);delete legacyInput.socialPolicy;delete legacyInput.hybrid;if(!value.genesis.input.sharePolicy)delete legacyInput.sharePolicy;

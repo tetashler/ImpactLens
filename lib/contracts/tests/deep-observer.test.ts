@@ -1,0 +1,18 @@
+import '../../../scripts/testing/offline-network.mjs';
+import test from 'node:test';import assert from 'node:assert/strict';
+import {observePublicSociety,controlSelectedPublicSociety} from '../../question-simulation/job.ts';
+import type {PublicExplore,SocietyJobSummary} from '../../society/public-contract.ts';
+const job=(revision=0,status:SocietyJobSummary['status']='running'):SocietyJobSummary=>({version:1,id:'test-job',status,tick:revision,totalSteps:80,acceptedDecisions:revision,participatingAgents:Math.min(35,revision),capacity:350,admittedCalls:70,remainingCalls:70-revision,reason:null,revision});
+const snapshot=(revision=0,status:SocietyJobSummary['status']='running'):PublicExplore=>({version:3,kind:'summary-execution',runId:'run-observer',attemptId:'observer',requestIdentity:'observer',planId:null,question:'Fictional question',status:'completed',request:null,graph:{version:1,scenarioIdentity:'observer',nodes:[],edges:[],limitations:[]},inspections:{},roles:[],initialActions:[],assumptions:[],limitations:[],sources:[],accounting:{planningCalls:2,actionCalls:8,inputTokens:null,outputTokens:null,costUsd:null},demographics:null,session:{id:'session',token:'observer-token',revision},society:null,job:job(revision,status)});
+
+test('observer polls compact status and retrieves safe snapshots without posting continuation',async()=>{let polls=0,reads=0;const accepted:PublicExplore[]=[];const result=await observePublicSociety(snapshot(),{signal:new AbortController().signal,accept:p=>accepted.push(p),intervalMs:0,projectionIntervalMs:0,fetcher:async(url,init)=>{assert.ok(!init?.method||init.method==='GET');if(String(url).includes('operation=status')){polls++;return Response.json({version:1,kind:'society-job-status',runId:'run-observer',job:job(polls,polls>=3?'budget-limited':'running')});}reads++;return Response.json(snapshot(polls,polls>=3?'budget-limited':'running'));}});assert.equal(polls,3);assert.equal(reads,3);assert.equal(result.job?.status,'budget-limited');assert.equal(result.job?.acceptedDecisions,3);assert.ok(accepted.length>=3);});
+
+test('observer shutdown aborts only observation and cannot send pause or resume',async()=>{const abort=new AbortController();let requests=0;await assert.rejects(observePublicSociety(snapshot(),{signal:abort.signal,intervalMs:0,accept:()=>{},fetcher:async(_url,init)=>{assert.ok(!init?.body);requests++;abort.abort();throw new DOMException('Aborted','AbortError');}}),{name:'AbortError'});assert.equal(requests,1);});
+
+test('status allowlists exclude transcript data before client publication',async()=>{let accepted=0;await assert.rejects(observePublicSociety(snapshot(),{signal:new AbortController().signal,intervalMs:0,accept:()=>accepted++,fetcher:async()=>Response.json({version:1,kind:'society-job-status',runId:'run-observer',job:{...job(1),memory:'RAW_MEMORY_SENTINEL'}})}));assert.equal(accepted,0);});
+test('controls cannot dispatch against an old selected run or publish after selection changes',async()=>{
+ let requests=0;const current=snapshot(),other='run-new-selection';
+ assert.equal(await controlSelectedPublicSociety(current,other,'pause',{isCurrent:()=>true,fetcher:async()=>{requests++;throw Error('Wrong run must not dispatch');}}),null);assert.equal(requests,0);
+ let selected=current.runId,release!:()=>void;const ready=new Promise<void>(resolve=>release=resolve);
+ const work=controlSelectedPublicSociety(current,current.runId,'pause',{isCurrent:()=>selected===current.runId,fetcher:async()=>{requests++;await ready;return Response.json(snapshot(1,'paused'));}});selected=other;release();assert.equal(await work,null);assert.equal(requests,1);
+});
