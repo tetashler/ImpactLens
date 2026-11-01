@@ -10,11 +10,4 @@ test('allowlisted summaries and graph data never contain raw messages, memories 
 
 test('actual report SSR and downloadable summary JSON contain no transcript-shaped data',async()=>{const {default:Report,CommunicationStatus}=await renderableReport();const value:any={question:'A fictional scenario',status:'completed',initialActions:[],roles:[],assumptions:[],runId:'safe-run',planId:null,accounting:{planningCalls:0,actionCalls:0,inputTokens:null,outputTokens:null,costUsd:null},sources:[],limitations:[],society:null};const failed=renderToStaticMarkup(createElement(CommunicationStatus,{result:value}));assert.match(failed,/Background communication: failed/);assert.doesNotMatch(failed,/RAW_/);let world=privacyWorld();world=act(world,{actorId:world.agents[0].id,type:'message',platform:world.groups![0].platform,groupId:world.groups![0].id,text:'RAW_SSR_PRIVATE_4C'});value.society=publicSociety(world);value.internalMessages=['RAW_SSR_PRIVATE_4C'];const html=renderToStaticMarkup(createElement(Report,{result:value}));assert.match(html,/Recorded fictional communication/);assert.doesNotMatch(html,/transcript|RAW_|<blockquote>/);delete value.internalMessages;assert.ok(!JSON.stringify(value).includes('RAW_SSR_PRIVATE_4C'));assert.ok(!JSON.stringify(value).includes('memories'));});
 
-async function renderableReport(){
- const require=createRequire(import.meta.url),babel=require('next/dist/compiled/babel/core');
- const compile=(name:string)=>babel.transformSync(readFileSync(new URL('../../../components/'+name,import.meta.url),'utf8').replace(/import ['"][^'"]+\.css['"];?/g,''),{filename:name,babelrc:false,configFile:false,presets:[[require.resolve('next/dist/compiled/babel/preset-typescript'),{allExtensions:true,isTSX:true}],[require.resolve('next/dist/compiled/babel/preset-react'),{runtime:'automatic'}]]}).code.replace(/from (["'])(react\/jsx-runtime)\1/g,(_m:string,q:string,s:string)=>`from ${q}${pathToFileURL(require.resolve(s)).href}${q}`);
- const data=(code:string)=>'data:text/javascript;base64,'+Buffer.from(code).toString('base64');
- const details=data(compile('discussion-summary.tsx'));
- const report=compile('communication-report.tsx').replace("'./discussion-summary'",JSON.stringify(details));
- return import(data(report));
-}
+async function renderableReport(){return (await import('./helpers/report-ssr.ts')).renderableCommunicationReport();}

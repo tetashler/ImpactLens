@@ -7,7 +7,7 @@ async function wait(ms:number,signal:AbortSignal){signal.throwIfAborted();if(ms<
 /** Observe an already-authorised local job. No request here can start, resume,
  * extend, or cancel inference. Closing the page only stops this observer. */
 export async function observePublicSociety(initial:PublicExplore,{signal,accept,fetcher=fetch,intervalMs=750,projectionIntervalMs=1500}:{signal:AbortSignal;accept:(value:PublicExplore)=>void;fetcher?:typeof fetch;intervalMs?:number;projectionIntervalMs?:number}):Promise<PublicExplore>{
- let current=parsePublicExplore(initial);if(!current.job||!current.session)return current;
+ let current=parsePublicExplore(initial);if(current.storage?.disposition==='historical-read-only'||!current.job||!current.session)return current;
  const session=current.session,prefix='/api/social-simulate?',identity='runId='+encodeURIComponent(current.runId)+'&token='+encodeURIComponent(session.token);
  const interval=Math.max(0,Math.min(5000,intervalMs)),projectionInterval=Math.max(0,Math.min(10_000,projectionIntervalMs));let lastProjection=0;
  while(current.job?.status==='running'){
@@ -20,8 +20,8 @@ export async function observePublicSociety(initial:PublicExplore,{signal,accept,
  return current;
 }
 
-export async function controlPublicSociety(current:PublicExplore,operation:'pause'|'resume'|'cancel',signal?:AbortSignal,fetcher:typeof fetch=fetch):Promise<PublicExplore>{ensure(current.session&&current.job,'SOCIETY_JOB_SESSION');const r=await fetcher('/api/social-simulate',{method:'POST',headers:{'Content-Type':'application/json'},signal,body:JSON.stringify({operation,runId:current.runId,token:current.session.token,revision:current.session.revision})});ensure(r.ok,'SOCIETY_JOB_HTTP');const next=parsePublicExplore(await r.json());ensure(next.runId===current.runId&&next.job?.id===current.job.id,'SOCIETY_JOB_IDENTITY');return next;}
+export async function controlPublicSociety(current:PublicExplore,operation:'pause'|'resume'|'cancel',signal?:AbortSignal,fetcher:typeof fetch=fetch):Promise<PublicExplore>{ensure(current.storage?.disposition!=='historical-read-only','SOCIETY_ARCHIVED_READ_ONLY');ensure(current.session&&current.job,'SOCIETY_JOB_SESSION');const r=await fetcher('/api/social-simulate',{method:'POST',headers:{'Content-Type':'application/json'},signal,body:JSON.stringify({operation,runId:current.runId,token:current.session.token,revision:current.session.revision})});ensure(r.ok,'SOCIETY_JOB_HTTP');const next=parsePublicExplore(await r.json());ensure(next.runId===current.runId&&next.job?.id===current.job.id,'SOCIETY_JOB_IDENTITY');return next;}
 
 /** Bind controls to the currently displayed run both before dispatch and after
  * awaiting the response. An old response cannot replace a newly selected run. */
-export async function controlSelectedPublicSociety(current:PublicExplore|null,runId:string|null,operation:'pause'|'cancel',{isCurrent,signal,fetcher=fetch}:{isCurrent:()=>boolean;signal?:AbortSignal;fetcher?:typeof fetch}):Promise<PublicExplore|null>{if(!current?.job||current.runId!==runId||!isCurrent())return null;const next=await controlPublicSociety(current,operation,signal,fetcher);return isCurrent()?next:null;}
+export async function controlSelectedPublicSociety(current:PublicExplore|null,runId:string|null,operation:'pause'|'cancel',{isCurrent,signal,fetcher=fetch}:{isCurrent:()=>boolean;signal?:AbortSignal;fetcher?:typeof fetch}):Promise<PublicExplore|null>{if(current?.storage?.disposition==='historical-read-only'||!current?.job||current.runId!==runId||!isCurrent())return null;const next=await controlPublicSociety(current,operation,signal,fetcher);return isCurrent()?next:null;}

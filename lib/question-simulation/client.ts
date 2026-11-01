@@ -1,3 +1,4 @@
+import {parseHybridExploreOptions,type HybridExploreOptions,type HybridReview} from '../interventions/explore-contract.ts';
 import {PublicScenarioSession,parsePublicExplore} from './public-session.ts';
 import type {PublicExplore} from '../society/public-contract.ts';
 import {DynamicSession} from '../dynamic-scenarios/client.ts';
@@ -23,8 +24,9 @@ import {questionRunErrorMessage} from './errors.ts';
 
 export type QuestionSimulationPhase = 'idle' | 'interpreting' | 'preparing' | 'executing' | 'completed' | 'partial' | 'failed' | 'unsupported' | 'needs-map-review' | 'cancelled' | 'error';
 export type QuestionExecutionChoice='live'|'scripted'|'dynamic';
-export interface QuestionSimulationContext { question: string; geometry: ScenarioGeometry; geometryRevision: number }
+export interface QuestionSimulationContext { question: string; geometry: ScenarioGeometry; geometryRevision: number;hybrid?:HybridExploreOptions }
 interface QuestionResult {
+  hybridReview?:HybridReview|null;
   publicRun?:PublicExplore|null;
   question: string;
   scope: QuestionContextV1 | null;
@@ -66,7 +68,7 @@ const SAFE_LIVE_ERRORS=new Set([
   'This attempt was already used. Start a new attempt.',
 ]);
 
-function emptyResult(question = ''): QuestionResult { return { question, scope: null, plan: null, record: null, run: null, linked: null,publicRun:null,live:null,dynamic:null,dynamicFailure:null,executionMode:null }; }
+function emptyResult(question = ''): QuestionResult { return { question,hybridReview:null, scope: null, plan: null, record: null, run: null, linked: null,publicRun:null,live:null,dynamic:null,dynamicFailure:null,executionMode:null }; }
 function initial(history: QuestionSimulationArchive[] = [], revision = 0): QuestionSimulationSnapshot {
   return freezeSnapshot({ ...emptyResult(), phase: 'idle', revision, attemptId: null, error: null, history, selectedArchiveId: null,inferenceStatus:null });
 }
@@ -116,10 +118,10 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
   function invalidate(value: QuestionSimulationContext) {
     try {
       assertJsonData(value);
-      const supplied = object(value, ['question', 'geometry', 'geometryRevision']);
+      const supplied = object(value, ['question', 'geometry', 'geometryRevision','hybrid'],['question','geometry','geometryRevision']);
       text(supplied.question, 2000, true);
       if (typeof supplied.geometryRevision !== 'number' || !Number.isSafeInteger(supplied.geometryRevision) || supplied.geometryRevision < 0 || supplied.geometryRevision > 1_000_000_000) throw new Error();
-      const next: QuestionSimulationContext = { question: supplied.question as string, geometry: parseScenarioGeometry(supplied.geometry), geometryRevision: supplied.geometryRevision };
+      const next: QuestionSimulationContext = { question: supplied.question as string, geometry: parseScenarioGeometry(supplied.geometry), geometryRevision: supplied.geometryRevision,...(supplied.hybrid?{hybrid:parseHybridExploreOptions(supplied.hybrid)}:{}) };
       const key = canonical(next);
       if (key === inputKey) return;
       stop(); revision++; inputKey = key; input = freezeSnapshot(next);
@@ -139,7 +141,7 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
   }
   async function prepare(attempt: Attempt, context: QuestionSimulationContext) {
     try {
-      if(attempt.mode==='dynamic'&&options.publicOnly){publish({phase:'preparing'});const response=await checked(attempt,publicSession.execute({version:1,question:context.question,geometry:context.geometry,geometryRevision:context.geometryRevision},`${attempt.id}:${attempt.revision}`,options.fetcher??fetch,Math.max(1,Math.min(125000,attempt.deadline-Date.now()))));if(!response)return;if(response.kind==='planning-failed'){publish({...emptyResult(context.question),executionMode:'dynamic',phase:'error',dynamicFailure:response,error:response.error.message});return;}finish(attempt,{...emptyResult(context.question),executionMode:'dynamic',publicRun:response},response.status==='completed'?'completed':response.initialActions.length?'partial':'failed');return;}
+      if(attempt.mode==='dynamic'&&options.publicOnly){publish({phase:'preparing'});const response=await checked(attempt,publicSession.execute({version:1,question:context.question,geometry:context.geometry,geometryRevision:context.geometryRevision},`${attempt.id}:${attempt.revision}`,options.fetcher??fetch,Math.max(1,Math.min(context.hybrid?235000:125000,attempt.deadline-Date.now())),context.hybrid));if(!response)return;if(response.kind==='hybrid-map-review'){publish({...emptyResult(context.question),executionMode:'dynamic',phase:'needs-map-review',hybridReview:response,error:response.message});return;}if(response.kind==='planning-failed'){publish({...emptyResult(context.question),executionMode:'dynamic',phase:'error',dynamicFailure:response,error:response.error.message});return;}finish(attempt,{...emptyResult(context.question),executionMode:'dynamic',publicRun:response},response.status==='completed'?'completed':response.initialActions.length?'partial':'failed');return;}
       if(attempt.mode==='dynamic'){
         publish({phase:'preparing'});
         const response=await checked(attempt,dynamicSession.execute({version:1,question:context.question,geometry:context.geometry,geometryRevision:context.geometryRevision},`${attempt.id}:${attempt.revision}`,options.fetcher??fetch,Math.max(1,Math.min(125000,attempt.deadline-Date.now()))));
@@ -220,7 +222,7 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
     }
     let resolve = () => {};
     const promise = new Promise<void>(done => { resolve = done; });
-    const timeoutMs=options.timeoutMs??(mode!=='scripted'?130000:15000);
+    const timeoutMs=options.timeoutMs??(mode==='dynamic'&&options.publicOnly&&input?.hybrid?240000:mode!=='scripted'?130000:15000);
     const attempt: Attempt = { id: `question-attempt-${crypto.randomUUID()}`, revision,mode,geographicConfirmed,deadline:Date.now()+timeoutMs, promise, resolve, timer: null };
     active = attempt;
     publish({ ...emptyResult(input.question),revision,executionMode:mode, phase: 'interpreting', attemptId: attempt.id, error: null, selectedArchiveId: null });

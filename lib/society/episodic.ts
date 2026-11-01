@@ -7,7 +7,8 @@ import {threadPath} from './exposure.ts';
 import type {Memory,SocietyWorld} from './contract.ts';
 
 export interface Episode extends Memory {tick:number;counterparty:string;topicIds:string[];importance:number;access:'recheck-current-membership'}
-export interface GroundedIssueState {subjectId:string;basisRef:string;quote:string;criterion:string|null;statusEvidence:'open'|'updated'|'owner-reported-resolution'|'deterministically-evidenced-satisfaction'|'owner-withdrawal';updates:{eventId:string;basisRef:string;quote:string;statusEvidence:string}[]}
+export interface IssueDeclaration {policy:'issue-declaration-v1';origin:'model-selected-server-rendered';optionId:string;kind:IssueUpdate['kind'];statement:string}
+export interface GroundedIssueState {declaration?:IssueDeclaration;subjectId:string;basisRef:string;quote:string;criterion:string|null;statusEvidence:'open'|'updated'|'owner-reported-resolution'|'deterministically-evidenced-satisfaction'|'owner-withdrawal';updates:{eventId:string;basisRef:string;quote:string;statusEvidence:string;declaration?:IssueDeclaration}[]}
 export interface SocialIssue {grounding?:GroundedIssueState;id:string;kind:'question'|'condition'|'disagreement'|'commitment';topicId:string;sourceEventId:string;createdTick:number;status:'open'|'resolved'|'withdrawn';changedEventId:string|null}
 export interface IssueUpdate {kind:SocialIssue['kind']|'resolve'|'withdraw'|'progress';topicId:string;issueId:string|null;grounding?:GroundedIssueState}
 export function selectedAgents(w:SocietyWorld){return w.genesis.input.swarm?cohortIds(w):Object.values(w.genesis.bindings).slice(0,w.genesis.input.hybrid?.selectedAgents??4);}
@@ -52,9 +53,10 @@ export function applyIssue(w:SocietyWorld,actorId:string,update:IssueUpdate|null
   let next:SocialIssue[];
   if(w.genesis.input.citizenGrounding){
    const g=update.grounding;ensure(g&&typeof g.quote==='string'&&g.quote.length<=240&&event.text?.includes(g.quote)&&g.subjectId.length<=80,'ISSUE_EVIDENCE');
+   if(w.genesis.input.intelligence?.context==='conversation-menu-v7'){const d=g.declaration;ensure(d&&d.policy==='issue-declaration-v1'&&d.origin==='model-selected-server-rendered'&&d.kind===update.kind&&d.statement===g.quote&&/^declaration-v1-[a-f0-9]{16}$/.test(d.optionId)&&event.text?.includes('[Agent-selected issue declaration: '+d.statement+']'),'ISSUE_DECLARATION');}
    if(update.issueId){ensure(existing&&existing.status==='open'&&existing.topicId===update.topicId&&['progress','resolve','withdraw'].includes(update.kind)&&existing.grounding?.subjectId===g.subjectId,'ISSUE_STATUS');
     const status=update.kind==='progress'?'open':update.kind==='resolve'?'resolved':'withdrawn';
-    next=history.map(i=>i.id===existing.id?{...i,status,changedEventId:eventId,grounding:{...g,criterion:i.grounding!.criterion,updates:[...i.grounding!.updates,{eventId,basisRef:g.basisRef,quote:g.quote,statusEvidence:g.statusEvidence}].slice(-16)}}:i);
+    next=history.map(i=>i.id===existing.id?{...i,status,changedEventId:eventId,grounding:{...g,criterion:i.grounding!.criterion,updates:[...i.grounding!.updates,{eventId,basisRef:g.basisRef,quote:g.quote,statusEvidence:g.statusEvidence,...(g.declaration?{declaration:g.declaration}:{})}].slice(-16)}}:i);
    }else{ensure(history.length<16&&!['progress','resolve','withdraw'].includes(update.kind)&&!history.some(i=>i.status==='open'&&i.grounding?.subjectId===g.subjectId),'ISSUE_LIMIT');next=[...history,{id:'issue:'+eventId,kind:update.kind as SocialIssue['kind'],topicId:update.topicId,sourceEventId:eventId,createdTick:event.tick,status:'open',changedEventId:null,grounding:g}];}
   }else next=update.issueId?history.map(i=>i.id===update.issueId?{...i,status:update.kind==='resolve'?'resolved':'withdrawn',changedEventId:eventId}:i):[...history,{id:'issue:'+eventId,kind:update.kind as SocialIssue['kind'],topicId:update.topicId,sourceEventId:eventId,createdTick:event.tick,status:'open',changedEventId:null}];
   const open=next.filter(i=>i.status==='open'),closed=next.filter(i=>i.status!=='open');

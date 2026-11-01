@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import {confirmedAnchorVertex} from '../lib/plots/anchor';
+import { useEffect, useState } from 'react';
 import type { ScenarioPlannerState } from './use-scenario-planner';
 import type { useScenarioPlot } from './use-scenario-plot';
 import type { AacScenario } from './use-aac-scenario';
@@ -25,6 +26,8 @@ export interface GeneralPlotPanelProps {
   onConfirmAnchor: () => void;
   onDisconnect: (pointId: string) => void;
   onRunMrt: (settings: MrtPlotSettings) => void;
+  onHybridTimings?: (settings: Pick<MrtPlotSettings,'runSeconds'|'dwellSeconds'|'waitingTimeSeconds'|'transferWalkSeconds'|'geometryConfirmed'|'assumptionsConfirmed'>) => void;
+  onHybridSelection?: (selection:{routeId:string;pointIds:string[]}|null) => void;
   onAdvancedMrt: () => void;
   aac: AacScenario;
   aacBound: boolean;
@@ -86,6 +89,9 @@ function MrtControls(props: GeneralPlotPanelProps) {
   const selectedRoute = lines.some(line => line.id === routeId) ? routeId : lines[0]?.id ?? '';
   const activeAnchors = Object.fromEntries(chosen.flatMap(point => Object.hasOwn(anchors, point.id) ? [[point.id, anchors[point.id]]] : []));
   const settings: MrtPlotSettings = { routeId: selectedRoute, pointIds: chosen.map(point => point.id), anchors: activeAnchors, geometryConfirmed, assumptionsConfirmed, ...times };
+  useEffect(()=>{props.onHybridTimings?.({...times,geometryConfirmed,assumptionsConfirmed});},[props.onHybridTimings,times,geometryConfirmed,assumptionsConfirmed]);
+  const chosenKey=JSON.stringify(chosen.map(p=>p.id));
+  useEffect(()=>{props.onHybridSelection?.(selectedRoute&&chosen.length>=2?{routeId:selectedRoute,pointIds:JSON.parse(chosenKey)}:null);},[props.onHybridSelection,selectedRoute,chosenKey]);
   function editSettings(action: () => void) {
     onInvalidate(); setConfirmation({ revision: plot.revision, geometry: false, assumptions: false }); action();
   }
@@ -129,7 +135,7 @@ function MrtControls(props: GeneralPlotPanelProps) {
         <label>Find an existing station<input type="search" value={search} disabled={disabled || !catalog} placeholder="Station name or ID" onChange={event => setSearch(event.target.value)} /></label>
         {query && <div className="plot-search-results" aria-live="polite">{matches.length ? matches.map(station => <button type="button" key={station.id} disabled={disabled} onClick={() => onRequestAnchor(station.id, selected?.id)}><span>{station.name}</span><small>{station.id}</small></button>) : <p className="plot-help">No matching served MRT stations.</p>}</div>}
         {selected && nearby.length > 0 && <div className="plot-nearby"><h3>Nearby suggestions</h3>{nearby.map(({ station, distanceMetres }) => <button type="button" key={station.id} disabled={disabled} onClick={() => onRequestAnchor(station.id, selected.id)}><span>{station.name}</span><small>{Math.round(distanceMetres).toLocaleString()} m</small></button>)}<p className="plot-help">Distance is straight line. Choosing a suggestion still needs confirmation.</p></div>}
-        {pendingAnchor && <div className="plot-confirm-anchor"><strong>{pendingStation?.name ?? pendingAnchor.stationId}</strong><p>{pendingPoint ? `Confirming moves “${pendingPoint.label}” to this station.` : 'Confirming adds a point at this station.'} This explicitly creates an interchange.</p><button type="button" disabled={disabled || !pendingStation} onClick={onConfirmAnchor}>Confirm interchange</button></div>}
+        {pendingAnchor && <div className="plot-confirm-anchor"><strong>{pendingStation?.name ?? pendingAnchor.stationId}</strong><p>{pendingPoint ? `Confirming moves “${pendingPoint.label}”${confirmedAnchorVertex(plot.geometry,pendingPoint.id)?' and its coincident route vertex':''} to this station.` : 'Confirming adds a point at this station.'} This explicitly creates an interchange.</p><button type="button" disabled={disabled || !pendingStation} onClick={onConfirmAnchor}>Confirm interchange</button></div>}
       </div>
     </details>
 
@@ -176,7 +182,7 @@ export default function GeneralPlotPanel(props: GeneralPlotPanelProps) {
   const plan = planner.response?.plan;
   const selected = plot.geometry.features.find(feature => feature.id === plot.selection?.id);
   const disabled = plot.activeLineId !== null;
-  const mrt = plan?.execution === 'calculated' && plan.capabilityId === 'mrt-accessibility-v1';
+  const mrt = plan?.execution === 'calculated' && plan.capabilityId === 'mrt-accessibility-v1' || ((/\b(?:MRT|rail(?:way)?)\b/i.test(planner.question)||!/\b(?:polyclinic|eldercare|school|community centre)\b/i.test(planner.question))&&plot.geometry.features.some(f=>f.kind==='line')&&plot.geometry.features.some(f=>f.kind==='point'&&f.role==='station'));
   const aac = plan?.execution === 'calculated' && plan.capabilityId === 'aac-accessibility-v1';
   const points = plot.geometry.features.filter(feature => feature.kind === 'point');
   const lines = plot.geometry.features.filter(feature => feature.kind === 'line');
@@ -191,7 +197,7 @@ export default function GeneralPlotPanel(props: GeneralPlotPanelProps) {
         </div></details> : <p className="plot-empty">Choose a drawing tool on the map. Add station dots separately from a route line.</p>}
       </section>
 
-      {mrt && <MrtControls key={plan.planId} {...props} />}
+      {mrt && <MrtControls key={plan?.planId??'hybrid-drawing'} {...props} />}
       {aac && <AacControls key={plan.planId} {...props} />}
       {error && <p className="plot-error" role="alert">{error}</p>}
       {hasResults && <div className="plot-result-actions"><button type="button" className="plot-primary" onClick={onShowResults}>Show results</button><button type="button" onClick={onResetSimulation}>Reset simulation</button></div>}

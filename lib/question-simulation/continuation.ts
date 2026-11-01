@@ -21,7 +21,7 @@ async function pause(ms:number,signal:AbortSignal):Promise<void>{
 /** Only a newly accepted Explore or explicit resume calls this helper. Passive
  * reads and navigation remain owned by the hook and never enter this loop. */
 export async function continuePublicSociety(initial:PublicExplore,{signal,accept,fetcher=fetch,intervalMs=120}:{signal:AbortSignal;accept:(value:PublicExplore)=>void;fetcher?:typeof fetch;intervalMs?:number}):Promise<PublicExplore>{
- let next=parsePublicExplore(initial);const limit=societyContinuationLimit(next),interval=Number.isFinite(intervalMs)?Math.max(0,Math.min(1000,intervalMs)):120;
+ let next=parsePublicExplore(initial);if(next.storage?.disposition==='historical-read-only')return next;const limit=societyContinuationLimit(next),interval=Number.isFinite(intervalMs)?Math.max(0,Math.min(1000,intervalMs)):120;
  for(let batch=0;batch<limit&&next.session&&next.society?.phase==='simulating';batch++){
   signal.throwIfAborted();const previous=next,session=next.session;
   if(!Number.isSafeInteger(session.revision)||session.revision<0)throw Error('SOCIETY_CONTINUATION_SESSION');

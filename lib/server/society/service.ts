@@ -1,3 +1,5 @@
+import type {SafeSocialDiagnosticV2} from '../../society/social-diagnostics-v2.ts';
+import {configuredProseObserver} from './rejection-observations-v2.ts';
 /** Authoritative local sessions. Client worlds, paths and provider grants are never executable inputs. */
 import {swarmPolicy,multiDaySwarmPolicy,swarmHybrid,SWARM_INTELLIGENCE,type SwarmPolicy} from '../../society/swarm.ts';
 import {getExecutionProfile} from '../../society/execution-profile.ts';
@@ -7,11 +9,13 @@ import {appendSwarmJournal,readSwarmJournal,recoverIncompleteSwarmTail,assertSwa
 import {writeMaterialCheckpoint,readMaterialCheckpoint} from './checkpoint.ts';
 import {withSocialOwner} from './session-lock.ts';
 import {privateStoreDirectory} from './storage.ts';
-import {TOPIC_POLICY,QUALITY_POLICY,CITIZEN_POLICY} from '../../society/intelligence.ts';
-import type {CitizenGroundedInput} from '../../citizen-grounding/social.ts';
+import {assertStorageAdmission,beginStorageInitialization,storageBundle,storageBase,inspectStorageAdmission,type StorageAdmission} from './storage-admission.ts';
+import {TOPIC_POLICY,QUALITY_POLICY,CITIZEN_POLICY,CITIZEN_MENU_POLICY,CITIZEN_PROSE_POLICY,CITIZEN_DECLARATION_POLICY} from '../../society/intelligence.ts';
+import {createRejectionObserver} from './rejection-observations.ts';
+import {validateCitizenGroundingAsync,type CitizenGroundedInput} from '../../citizen-grounding/social.ts';
 import {validatePersonalityRoster} from '../../citizen-grounding/personality.ts';
 import {existsSync,mkdirSync,readFileSync,openSync,closeSync,readSync,writeSync,writeFileSync,fsyncSync,statSync,readdirSync} from 'node:fs';
-import {join} from 'node:path';
+import {join,resolve} from 'node:path';
 import {randomUUID,createHash} from 'node:crypto';
 import {verifyStakeholderRun} from '../../stakeholder-simulation/identities.ts';
 import type {StakeholderSimulationRunV1} from '../../stakeholder-simulation/contract.ts';
@@ -25,8 +29,14 @@ import {acquireAiSlot} from '../ai/gate.ts';
 import {canonical,ensure,object} from '../../experiments/validation.ts';
 
 export interface SocialDependencies {
+ /** Trusted filesystem policy only; never accepted from a browser request. */
+ storageBase?:string;storageAdmission?:StorageAdmission;
  /** Trusted initialization only. Never parsed from browser JSON; no provider dispatch is supplied here. */
  citizenGrounding?:(preview:SocietyWorld)=>Promise<CitizenGroundedInput>;
+ /** Trusted current initialization selector; never parsed from browser JSON. Legacy callers retain v4. */
+ citizenMenuPolicy?:'conversation-menu-v4'|'conversation-menu-v5'|'conversation-menu-v6'|'conversation-menu-v7';
+ /** Trusted opt-in task observer. v6 never writes optional observations into admission storage. */
+ proseRejectionObserver?:{version:2;observe:(contextId:string,value:SafeSocialDiagnosticV2)=>void};
  swarm?:SwarmPolicy|false;ruleOnly?:boolean;communication?:import('../../society/communication.ts').CommunicationConfig;
  enabled?:boolean;key?:string;fetcher?:typeof fetch;directory?:string;
  /** Trusted server configuration only. Frozen on first deep journal header. Epoch deadline, not a duration. */
@@ -45,6 +55,7 @@ const globalState=globalThis as typeof globalThis&{__socialSessions?:Map<string,
 const sessions=globalState.__socialSessions??=new Map<string,Session>();
 const enabled=(d:SocialDependencies)=>d.enabled??(process.env.SOCIAL_LLM_ENABLED==='true'&&process.env.STAKEHOLDER_LIVE_ENABLED==='true');
 const directory=(d:SocialDependencies)=>privateStoreDirectory('social-sessions',d.directory);
+const historicalDirectory=(d:SocialDependencies)=>resolve(directory(d))===storageBundle(storageBase(d.storageBase),true).sessions;
 const response=(v:unknown,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
 const cacheKey=(root:string,id:string)=>root+'/'+id;
 export function socialStatus(d:SocialDependencies={}){
@@ -95,9 +106,9 @@ async function checkpoint(s:Session,root:string,force=false){
  try{await writeMaterialCheckpoint(s,root);s.checkpointRecords=count;s.checkpointRevision=s.revision;}
  catch(error){if(s.world.genesis.input.swarm?.multiDay&&(error instanceof Error&&error.message==='SOCIAL_CHECKPOINT_LIMIT'||(error as NodeJS.ErrnoException)?.code==='ENOSPC'))throw error;if(force)throw Error('SOCIAL_CHECKPOINT_WRITE');console.warn('SOCIAL_CHECKPOINT_SAFE',JSON.stringify({code:'RECOVER_FROM_JOURNAL'}));}
 }
-async function load(id:string,root:string):Promise<Session>{
+async function load(id:string,root:string,readOnly=false):Promise<Session>{
  ensure(/^[a-f0-9-]{36}$/.test(id),'SOCIAL_SESSION');
- let cached=sessions.get(cacheKey(root,id));
+ let cached=readOnly?undefined:sessions.get(cacheKey(root,id));
  // Another verified process may have advanced the journal between operations.
  // Never append from an older in-memory head merely because the lease is free.
  if(cached&&cached.journalBytes!==statSync(join(root,id+'.jsonl')).size){sessions.delete(cacheKey(root,id));cached=undefined;}
@@ -114,7 +125,7 @@ async function load(id:string,root:string):Promise<Session>{
  if(format2){
   // Full hash audit is mandatory even when a materialised checkpoint is available.
   let v:ReturnType<typeof readSwarmJournal>;
-  try{v=readSwarmJournal(path);}catch(error){if(!(error instanceof Error)||error.message!=='SOCIAL_STORAGE_INCOMPLETE')throw error;v=await recoverIncompleteSwarmTail(path);}
+  try{v=readSwarmJournal(path);}catch(error){if(readOnly||!(error instanceof Error)||error.message!=='SOCIAL_STORAGE_INCOMPLETE')throw error;v=await recoverIncompleteSwarmTail(path);}
   ensure(v.id===id&&v.input.runId===v.runId,'SOCIAL_RUN_IDENTITY');
   const base=readMaterialCheckpoint(root,v);
   let world=base?replayHybridFrom(base,v.tick,v.hybrid.records,v.hybrid.pending):replayHybrid(v.input,v.tick,v.hybrid.records,v.hybrid.pending);
@@ -126,30 +137,40 @@ async function load(id:string,root:string):Promise<Session>{
   const world=v.input.hybrid?replayHybrid(v.input,v.tick,v.hybrid.records,v.hybrid.pending):restoreSocietyForInput(JSON.stringify(v.world),v.world.genesis);
   s={id,runId:v.runId,world,revision:v.revision,busy:false,reservation:v.reservation};
  }
- if(s.reservation){ensure(canonical(s.world.hybrid?.pending)===canonical(s.reservation),'SOCIAL_JOURNAL_ORDER');s.world=finishDecision(s.world,{decision:null,usage:null,error:'SOCIAL_UNCERTAIN'});s.reservation=null;s.revision++;await persist(s,root);}
- s.journalBytes=statSync(path).size;cache(s,root);return s;
+ if(s.reservation&&!readOnly){ensure(canonical(s.world.hybrid?.pending)===canonical(s.reservation),'SOCIAL_JOURNAL_ORDER');s.world=finishDecision(s.world,{decision:null,usage:null,error:'SOCIAL_UNCERTAIN'});s.reservation=null;s.revision++;await persist(s,root);}
+ s.journalBytes=statSync(path).size;if(!readOnly)cache(s,root);return s;
 }
 function validateIdentity(id:unknown):asserts id is string {ensure(typeof id==='string'&&/^[a-f0-9-]{36}$/.test(id),'SOCIAL_SESSION');}
 /** Passive load/recovery. Never invokes the model or advances the simulation clock. */
 export async function readSocialSession(sessionId:string,d:SocialDependencies={}):Promise<SocialState>{
- validateIdentity(sessionId);const root=directory(d);mkdirSync(root,{recursive:true});
+ validateIdentity(sessionId);const root=directory(d);if(historicalDirectory(d))return project(await load(sessionId,root,true),d);mkdirSync(root,{recursive:true});
+ if(d.storageAdmission)try{inspectStorageAdmission(d.storageAdmission.base);}catch{return project(await load(sessionId,root,true),d);}
  return withSocialOwner(root,sessionId,async()=>project(await load(sessionId,root),d));
 }
 export async function checkpointSocialSession(sessionId:string,d:SocialDependencies={}){
- validateIdentity(sessionId);const root=directory(d);
+ validateIdentity(sessionId);ensure(!historicalDirectory(d),'SOCIAL_ARCHIVED_READ_ONLY');const root=directory(d);
+ if(d.storageAdmission)inspectStorageAdmission(d.storageAdmission.base);
  return withSocialOwner(root,sessionId,async()=>{const s=await load(sessionId,root);await checkpoint(s,root,true);return project(s,d);});
 }
 /** Typed internal API avoids serialising private worlds through an HTTP Response. */
 export async function socialOperation(body:unknown,d:SocialDependencies={},signal:AbortSignal=new AbortController().signal):Promise<SocialState>{
  ensure(enabled(d),'SOCIAL_DISABLED');signal.throwIfAborted();
+ ensure(!historicalDirectory(d),'SOCIAL_ARCHIVED_READ_ONLY');
  const b=body as Record<string,any>,root=directory(d);mkdirSync(root,{recursive:true});
  if(b.operation==='start'){
   object(b,['operation','run']);await verifyStakeholderRun(b.run as StakeholderSimulationRunV1);
   const run=b.run as StakeholderSimulationRunV1;ensure(run.inputSnapshot.version===2,'SOCIAL_RUN');const plan=run.inputSnapshot.scenarioPlan;
+  const claimed=d.storageAdmission?assertStorageAdmission(d.storageAdmission,run.runId):null;
+  if(claimed)ensure(resolve(root)===storageBundle(d.storageAdmission!.base).sessions,'STORAGE_ADMISSION_BINDING');
   const name=createHash('sha256').update(run.runId).digest('hex'),index=join(root,name+'.index');
   return withSocialOwner(root,'start:'+name,async()=>{
-   if(existsSync(index)){const id=readFileSync(index,'utf8');return withSocialOwner(root,id,async()=>{const s=await load(id,root);ensure(s.runId===run.runId,'SOCIAL_RUN_IDENTITY');return project(s,d);});}
+   if(existsSync(index)){const id=readFileSync(index,'utf8');ensure(!claimed||id===claimed.sessionId,'STORAGE_ADMISSION_BINDING');return withSocialOwner(root,id,async()=>{const s=await load(id,root);ensure(s.runId===run.runId,'SOCIAL_RUN_IDENTITY');return project(s,d);});}
+   if(claimed&&existsSync(join(root,claimed.sessionId+'.jsonl')))return withSocialOwner(root,claimed.sessionId,async()=>{
+    const s=await load(claimed.sessionId,root);ensure(s.runId===run.runId,'SOCIAL_RUN_IDENTITY');
+    const fd=openSync(index,'wx',0o600);try{writeFileSync(fd,s.id);fsyncSync(fd);}finally{closeSync(fd);}return project(s,d);
+   });
    ensure(readdirSync(root).filter(s=>s.endsWith('.index')).length<64,'SOCIAL_SESSION_LIMIT');
+   if(claimed)beginStorageInitialization(d.storageAdmission!.claim,run.runId,d.storageAdmission!.base);
    const requested=d.swarm===false?24:d.swarm?.activeAgents??Number(process.env.SOCIAL_SWARM_SIZE??process.env.SOCIAL_ACTIVE_AGENTS??50);
    let swarm=d.communication&&requested!==24?(d.swarm||multiDaySwarmPolicy(requested as 50|100)):null;
    const hybrid=swarm?swarmHybrid(swarm):null;
@@ -162,9 +183,10 @@ export async function socialOperation(body:unknown,d:SocialDependencies={},signa
     const grounding=await d.citizenGrounding(world),activeIds=world.agents.map(a=>a.id),capableIds=controlledIds(world);
     ensure(grounding.personalities.runId===run.runId,'CITIZEN_GROUNDING_RUN');
     await validatePersonalityRoster(grounding.personalities,capableIds,activeIds.filter(id=>!capableIds.includes(id)));
-    world=createSociety({...input,intelligence:CITIZEN_POLICY,citizenGrounding:grounding});
+    await validateCitizenGroundingAsync(grounding,input.population,activeIds,capableIds);
+    world=createSociety({...input,intelligence:d.citizenMenuPolicy==='conversation-menu-v7'?CITIZEN_DECLARATION_POLICY:d.citizenMenuPolicy==='conversation-menu-v6'?CITIZEN_PROSE_POLICY:d.citizenMenuPolicy==='conversation-menu-v5'?CITIZEN_MENU_POLICY:CITIZEN_POLICY,citizenGrounding:grounding});
    }
-   const s:Session={id:randomUUID(),runId:run.runId,world,revision:0,busy:false,reservation:null};
+   const s:Session={id:claimed?.sessionId??randomUUID(),runId:run.runId,world,revision:0,busy:false,reservation:null};
    s.providerAdmission=grant??configuredAdmission(s.world,d);
    await persist(s,root);
    const fd=openSync(index,'wx',0o600);try{writeFileSync(fd,s.id);fsyncSync(fd);}finally{closeSync(fd);}
@@ -172,12 +194,14 @@ export async function socialOperation(body:unknown,d:SocialDependencies={},signa
   });
  }
  object(b,['operation','sessionId','revision']);ensure(b.operation==='step'&&Number.isSafeInteger(b.revision),'SOCIAL_REQUEST');validateIdentity(b.sessionId);
+ if(d.storageAdmission)inspectStorageAdmission(d.storageAdmission.base);
  // A warm duplicate must fail immediately rather than waiting behind a provider
  // call whose client may be waiting for this very duplicate response.
  ensure(!sessions.get(cacheKey(root,b.sessionId))?.busy,'SOCIAL_STALE');
  return withSocialOwner(root,b.sessionId,async()=>{
   const s=await load(b.sessionId,root);ensure(!s.busy&&s.revision===b.revision,'SOCIAL_STALE');s.busy=true;
   try{
+   if(d.storageAdmission){const bound=assertStorageAdmission(d.storageAdmission,s.runId);ensure(bound.sessionId===s.id&&resolve(root)===storageBundle(d.storageAdmission.base).sessions,'STORAGE_ADMISSION_BINDING');}
    signal.throwIfAborted();
    ensure(!s.world.hybrid?.records.some(r=>['AI_PROVIDER_IDENTITY','SOCIAL_TRANSITION'].includes(r.error??''))&&!fatalMultiDayTransport(s.world),'SOCIAL_FATAL');
    if(capacityReason(s.world)||s.world.genesis.input.swarm?.multiDay&&admission(s,d).status==='budget-limited')return project(s,d);
@@ -195,10 +219,10 @@ export async function socialOperation(body:unknown,d:SocialDependencies={},signa
      if(s.world.genesis.input.swarm)assertSwarmJournalAdmission(s,root);
      const release=acquireAiSlot('social:'+s.id);
      try{
-      const transport=createSocialTransport({key:d.key??process.env.OPENROUTER_API_KEY??'',fetcher:d.fetcher});
+      const transport=createSocialTransport({key:d.key??process.env.OPENROUTER_API_KEY??'',fetcher:d.fetcher,...(['conversation-menu-v6','conversation-menu-v7'].includes(world.genesis.input.intelligence?.context??'')?{rejectionObserver:configuredProseObserver(s.id,d.proseRejectionObserver)}:world.genesis.input.intelligence?.context==='conversation-menu-v5'?{rejectionObserver:{version:1 as const,observe:createRejectionObserver(root,s.id)}}:{})});
       s.reservation=world.hybrid.pending;await persist(s,root);
       let decision:unknown|null=null,error:string|null=null;
-      try{decision=(await transport.generate(world.hybrid.pending,signal)).value;if(signal.aborted){decision=null;error='AI_CANCELLED';}}
+      try{if(d.storageAdmission)inspectStorageAdmission(d.storageAdmission.base);decision=(await transport.generate(world.hybrid.pending,signal)).value;if(signal.aborted){decision=null;error='AI_CANCELLED';}}
       catch(e){error=typeof (e as {code?:unknown})?.code==='string'?(e as {code:string}).code:'SOCIAL_FAILURE';}
       try{world=finishDecision(world,{decision,usage:transport.records.at(-1)??null,error:transport.records.at(-1)?.socialValidationRule??error});}
       catch{world=finishDecision(world,{decision:null,usage:transport.records.at(-1)??null,error:'SOCIAL_TRANSITION'});}

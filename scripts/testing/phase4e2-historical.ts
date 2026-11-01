@@ -14,6 +14,7 @@ import {currentFingerprint} from './phase4e2-live-guard.mjs';
 import {validateSwarm} from '../../lib/society/swarm.ts';
 import {verifyHistoricalScope} from './phase4e2-historical-scope.ts';
 import {historicalAcceptanceResult,type HistoricalReplayObservation,type HistoricalAcceptanceFailure,type HistoricalClassifiedObservation} from './phase4e2-historical-results.ts';
+import {auditHistoricalNamespaces,legacyProtectedArchives} from './historical-namespace-inventory.ts';
 
 const hash=(s:string|Buffer)=>createHash('sha256').update(s).digest('hex');
 const output='tmp/phase4e2',progressPath=join(output,'historical-replay-progress.json'),diagnosticsPath=join(output,'historical-replay-diagnostics.jsonl');
@@ -62,7 +63,8 @@ function diagnoseSaved(saved:ReturnType<typeof readSwarmJournal>,file:string,fir
  }
  return {...metadata,stage:'iterations',recordIndex:index,tick:world.tick,paths:['$.replayIterations']};
 }
-const files=before.flatMap(r=>r.path.replaceAll('\\','/').match(/\/accepted-private\/([a-f0-9]{64}\.json)$/)?.[1]??[]);
+const historyBase=join('data','derived','agents'),namespaceInventory=auditHistoricalNamespaces(historyBase,before);
+const files=legacyProtectedArchives(historyBase,before).map(row=>row.file);
 ensure(selector===undefined||files.includes(selector),'HISTORICAL_FILE_UNKNOWN');
 const historicalReferences=[['tmp/phase4c-autonomous',14,'Phase4C-eldercare'],['tmp/phase4c-autonomous',15,'Phase4C-workweek'],['tmp/phase4d-live',1,'Phase4D-workweek'],['tmp/phase4d-live',2,'Phase4D-eldercare']] as const;
 const referenceFiles=historicalReferences.map(([directory,attempt])=>hash(JSON.parse(readFileSync(join(directory,'attempt-'+attempt+'-audit.json'),'utf8')).runId)+'.json');
@@ -80,8 +82,9 @@ for(const file of readdirSync(archiveRoot).filter(name=>/^[a-f0-9]{64}\.json$/.t
  const header=JSON.parse(readFileSync(join('data/derived/agents/social-sessions',stored.sessionId+'.jsonl'),'utf8').split('\n')[0]);
  ensure(header.format===2&&header.id===stored.sessionId&&header.runId===stored.publicRun.runId&&header.input?.runId===header.runId&&header.input.swarm?.multiDay?.policy==='multi-day-swarm-v1'&&hash(header.runId)+'.json'===file,'HISTORICAL_UNEXPECTED_ARCHIVE');
  validateSwarm(header.input.swarm);
- currentPolicyInventory.push({file,coverage:'current-policy-acceptance',policy:'multi-day-swarm-v1',replay:'verified-separately-by-current-policy-acceptance'});
+ currentPolicyInventory.push({namespace:'legacy',file,coverage:'legacy-current-policy-preservation-only',policy:'multi-day-swarm-v1',replay:'NOT_RUN',archiveSha256:namespaceInventory.legacy.find(row=>row.file===file)?.archiveSha256});
 }
+for(const row of namespaceInventory.current)currentPolicyInventory.push({...row,coverage:row.fullReplayExact?'namespace-strict-pure-replay':'accepted-prefix-without-society',replay:row.fullReplayExact?'PASS':'NO_SOCIETY_TO_REPLAY'});
 let failed=false;
 if(!firstOnly&&!selector)for(const [directory,attempt,label]of historicalReferences){
  if(progress.historical.some(r=>r.label===label))continue;
@@ -135,7 +138,7 @@ persist();
 if(!firstOnly&&!diagnose&&!selector){
  const outcome=historicalAcceptanceResult({expectedMandatory,qualifying:[...progress.historical,...progress.interim],failures:progress.failures,classified:progress.classified,approvedFile:scope.artifact.archiveFile});
  const entries=originals.map(({file})=>({file,coverage:file===scope.artifact.archiveFile?'classified-unresolved':expectedMandatory.includes(file)?'mandatory-strict-replay':'unchanged-preexisting-preservation-only-coverage'}));
- const result={version:3,codeFingerprint,snapshotHash,scope:{version:scope.version,manifestHash:scope.manifestHash},mandatory:{...outcome.mandatory,historical:progress.historical,swarm:progress.interim},inventory:{...outcome.inventory,entries,currentPolicy:currentPolicyInventory},priorFilesUnchanged:before.length,providerCalls:0,networkAttempts};
+ const result={version:3,codeFingerprint,snapshotHash,scope:{version:scope.version,manifestHash:scope.manifestHash},mandatory:{...outcome.mandatory,historical:progress.historical,swarm:progress.interim},inventory:{...outcome.inventory,entries,currentPolicy:currentPolicyInventory,namespaces:{version:1,legacyArchives:namespaceInventory.legacy.length,currentArchives:namespaceInventory.current.filter(row=>row.archivePresent).length,currentJournalWorlds:namespaceInventory.current.filter(row=>row.fullReplayExact).length,claims:namespaceInventory.claims}},priorFilesUnchanged:before.length,providerCalls:0,networkAttempts};
  writeFileSync(resultPath,JSON.stringify(result,null,2));console.log(JSON.stringify({mandatory:outcome.mandatory,inventory:outcome.inventory,priorFilesUnchanged:before.length,providerCalls:0,networkAttempts}));
  if(outcome.mandatory.status!=='PASS'||outcome.inventory.status!=='COMPLETE_WITH_CLASSIFIED_UNRESOLVED')failed=true;
 }

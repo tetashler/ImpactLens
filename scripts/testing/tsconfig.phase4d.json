@@ -13,6 +13,10 @@
   },
   "include": [
     "../../lib/society/**/*.ts",
+    "../../lib/interventions/**/*.ts",
+    "../../lib/server/interventions/**/*.ts",
+    "../../lib/server/inference/personality.ts",
+    "../../lib/contracts/tests/hybrid-*.test.ts",
     "../../lib/citizen-grounding/**/*.ts",
     "../../scripts/testing/citizen-grounded-acceptance.ts",
     "../../lib/server/citizen-grounding/**/*.ts",

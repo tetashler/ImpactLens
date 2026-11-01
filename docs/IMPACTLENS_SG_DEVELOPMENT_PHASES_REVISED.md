@@ -864,3 +864,111 @@ Full methodology, evidence, preserved hashes, exact file inventory and separate 
 ## Official Census dataset location cleanup (1 November 2026)
 
 The CT17565/17582/17586/17594 source folders and index were relocated together to `data/employment/`. Current loader allowlists, metadata and tests use that location. Original CSV bytes/source hashes, existing synthetic IDs/calibration and accepted histories remain unchanged; v1 embedded source paths are preserved as recorded provenance, not used for reads. See [relocation verification](OFFICIAL_CENSUS_DATASET_RELOCATION.md) for the final test, build, trace and historical preservation results. No provider calls or stored population regeneration.
+
+## Hybrid map interpretation and provider personality activation (1 November 2026 — offline PASS; live clarification)
+
+The new versioned ordinary Explore path connects strict question/map intent, deterministic citizen commute facts and one-time provider-personality initialization. Server-owned V2 inputs retain exact original geometry, confirmed station selection, catalogue/intervention identity and personality provenance. Facility and standalone-station cases remain bounded location/clarification analyses where quantitative support is absent. Historical worlds retain their original policies.
+
+Pre-paid offline acceptance passed 1,669 network-blocked tests, both TypeScript checks, production build, all fourteen benchmarks, both standard cohorts/viewports and ordinary grounded 35/70-personality initialization. New-bundle fixtures reached 350/700 accepted decisions through tick 320 with exact genesis and positive 346/696-record checkpoint tails. Twenty qualifying historical worlds replay strictly; all 814 protected files remain unchanged. The dot/line snapping and accepted-run Graph/Report binding defects were repaired without loosening connectivity or replay checks. Private runtime files are excluded from packaging traces while required official assets remain traced.
+
+The one authorised UI-drawn Choa Chu Kang–Sengkang Explore stopped after a valid real DeepSeek/DigitalOcean interpretation chose clarification. It did not reach retrieval, entity/relationship planning, initial actions, personalities, citizen-impact execution or social simulation. Actual usage: one completion, 1,125 tokens and USD 0.000147322; zero Tavily requests, zero unknown reservations and zero retries. The ledger is closed as partial and the backend is stopped. Provider-personality initialization is implemented and mocked offline, but actual DeepSeek personality generation remains NOT RUN. This is not a successful live societal simulation.
+
+Post-run verification passed 1,670 network-blocked tests, both TypeScript checks, production build, 25 clean traces and whitespace checks. All twenty qualifying historical worlds replayed strictly again; all 814 original protected files and six closed task authority/ledger files remain unchanged. Task-owned servers and browser pages are stopped. One labelled synthetic regression verifies that accepted clarification prevents downstream calls and duplicate inference; production behaviour is unchanged. The next justified design review is a versioned interpretation context containing the confirmed route/stops and supported quantitative/qualitative capabilities. The observed model statement conflicts with validated server inputs, but one stochastic response does not establish its unique cause. No second paid attempt or next phase is authorised.
+
+Full evidence and independent outcomes: [hybrid MRT and personality acceptance](CITIZEN_GROUNDED_MRT_V1_REAL_PROVIDER_ACCEPTANCE.md).
+
+
+## Hybrid MRT interpretation handoff v2 (1 November 2026 - offline repair)
+
+New ordinary plotted Explore requests explicitly select `hybrid-map-v2`; absent selectors and accepted historical bindings retain v1. The server validates the selected route, complete station-dot order, exact catalogue anchors and acknowledged illustrative seconds, and supplies a frozen capability manifest to semantic interpretation. Clear proposed MRT line/route/connection/rail-link requests with valid geometry can proceed deterministically. Clarification remains terminal; facilities and unconnected standalone stations do not gain invented numerical models or rail edges.
+
+The exact prior NS4-middle-NE16 clarification scenario now reaches valid MRT interpretation and the actual local synthetic commute calculator offline without a semantic call. Frozen v2 proofs retain selection/capability/catalogue identity and, where mocked semantic inference is exercised, verified provider metadata and request/parsed-output hashes. No society clock, capacity, memory, numerical model or historical policy was changed.
+
+Fresh verification passes 1,687 network-blocked tests, both TypeScript checks, production build, 25 asset traces, whitespace and all 20 qualifying strict historical replays. The pinned experimental artifact remains explicitly unresolved; all 148 historical and 931 protected-file checks pass. Both standard desktop cohorts completed through tick 320, and new UI-drawn 35/70 personality/grounding flows passed both desktop sizes, Graph/Report restoration and privacy checks. Four new v2 continuations retain personalities and replay exactly from a four-record checkpoint plus four-record tail. Task-local observation/audit helpers were corrected without weakening application validation. The fourteen-row engine benchmark matrix was not rerun for this interface-only delta; the report states that boundary explicitly.
+
+Zero new real OpenRouter/Tavily calls or real-task paid ledgers. Previous paid authority remains closed; original capacity remains 63/64 indexes (one unreserved slot). Task servers and browser contexts are stopped. The ordinary path is ready for a separately authorized live preflight, with fresh source/provider/storage/budget checks; genuine DeepSeek compliance and behavior under v2 remain untested. No next paid attempt starts automatically. Changes remain unstaged and uncommitted.
+
+See [handoff repair, verification scope and remaining limits](HYBRID_MRT_INTERPRETATION_HANDOFF_REPAIR.md).
+
+## Hybrid-map-v2 real-provider end-to-end acceptance (1 November 2026 - PARTIAL)
+
+Fresh offline admission passed 1,716 network-blocked tests, both TypeScript checks, the production build, both standard 320-tick cohorts/viewports, actual v2 plotting and mocked 35/70-personality initialization, positive checkpoint tails, 20 qualifying historical replays and 1,102 protected-file checks. The fourteen-row engine matrix was explicitly not rerun for unchanged simulation/selection source; its previous results were pinned as historical evidence, not claimed as fresh measurements.
+
+One newly authorised actual UI-plotted NS4-middle-NE16 Explore passed deterministic v2 interpretation with zero semantic calls, real entity/relationship planning, eight initial actions, a complete 35-agent real DeepSeek/DigitalOcean personality roster, deterministic citizen grounding and society genesis. Citizen selection remained unchanged. The actual mouse middle was approximately 45 metres from the historical reference and was recorded as drawn. Quantities were recomputed exactly; none of the selected 50 citizens was a calculated beneficiary.
+
+The run was paused after observed social validation failures at tick 17/320 (fictional Day 1 12:15): 15 accepted decisions, eight rejected returned responses and one request interrupted by stopping. The prefix contains 12 model-authored items and eight peer replies; it does not establish multi-day behaviour, older-memory use or improved issue precision. Exact genesis/materialized replay, roster retention, Graph/Report, both live desktop sizes and saved restoration passed for this retained prefix. Validators were not weakened and rejected text was not reconstructed.
+
+The independent authority is closed partial: 35 OpenRouter dispatches, 34 verified returned responses, USD 0.0226989406 reported plus a retained USD 0.02 unknown reservation; one Tavily search/credit, zero retries/replacement Explores. No further paid continuation is authorised. Post-run 1,716 tests, both TypeScript checks, whitespace, dataset/trace and preservation checks pass. Task servers/pages are stopped and earlier histories/ledgers remain unchanged. Storage is now 62 archives and 64/64 session indexes; another Explore is blocked pending a separate non-destructive storage decision.
+
+Next: an offline review of the citizen-menu factual-claim and issue-evidence interfaces with finer safe diagnostics, preserving provenance and frozen policies. Full actual findings and limitations: [hybrid-map-v2 real-provider acceptance](HYBRID_MAP_V2_REAL_PROVIDER_END_TO_END_ACCEPTANCE.md). Changes remain unstaged and uncommitted.
+
+
+<!-- citizen-menu-storage-admission-20261101:start -->
+## Citizen-menu reliability and bounded storage admission — 1 November 2026
+
+Implemented `conversation-menu-v5` / `citizen-menu-v2`: finite server-bound evidence choices, exact authored-span resolution, factual-text headroom and privacy-safe structural rejection observations. Existing v4 meanings, citizen selection, datasets, 320-tick profiles, memory bounds and provider limits remain frozen.
+
+Added `storage-admission-v1`: one fixed sixteen-claim `session-store-v2` namespace, atomic admission, initialization intent, safe journal/index recovery and read-only original history. No records were deleted/moved or old paid claims recycled. Historical inventory now preserves namespace-qualified paths and explicit replay coverage.
+
+Offline PASS: 1,792 tests, both TypeScript gates, strict new fixtures, build, fourteen benchmark rows, both desktop cohorts/viewports, full-capacity v5 replay and nonzero checkpoint tails, 20 qualifying historical strict replays and 1,426 protected-file checks. The pinned experimental archive remains unresolved `SOCIAL_STALE`; it is not a replay PASS. Zero new paid calls. Original unknown USD0.02 remains reserved.
+
+Genuine DeepSeek compliance remains untested. Next: a separately authorized capped comparison with a fresh v5/namespace-compatible authority and storage preflight. The original full64 store is retained read-only; sixteen future claims are bounded, not an automatic retention/rollover system.
+
+Report: [Citizen-menu reliability and storage admission](CITIZEN_MENU_RELIABILITY_AND_STORAGE_ADMISSION.md).
+<!-- citizen-menu-storage-admission-20261101:end -->
+
+<!-- conversation-menu-v5-live-20261101:start -->
+## Conversation-menu-v5 real-provider acceptance — 1 November 2026
+
+One newly authorised UI-plotted NS4–intermediate–NE16 MRT Explore passed deterministic `hybrid-map-v2`, both real planning stages, eight initial stakeholder actions and a complete 35-personality DeepSeek/DigitalOcean batch. The original selection and numerical model were unchanged; the selected cohort had zero calculated commute beneficiaries.
+
+Live social compliance failed the fixed pre-arm observation policy: 20 returned social completions produced 4 accepted decisions and 16 rejections (6 numeric/unit prose guards and 10 issue subject/span guards). The owned society was paused at tick 14/320, Day 1 11:30, and its independent authority closed partial. The prefix contains four model-published items including one share and zero model-to-model peer replies. This is not a completed 320-tick society or evidence of improved memory/grounding.
+
+Usage was 31 OpenRouter completions, 164,718 tokens and US$0.0201464382, with zero new outstanding reservations, one Tavily credit and no retries/replacement Explore. The old closed authority's US$0.02 uncertainty remains reserved. One of sixteen new storage claims was consumed; fifteen remain, with the original 64-session store preserved.
+
+Fresh pre-live and post-run suites each passed 1,823 network-blocked tests and both TypeScript checks. The fresh production build, both full mocked cohorts/viewports, retained-prefix genesis/materialized replay, Graph/Report restoration and tested privacy checks passed. All 9,874 original protected files are unchanged. The final post-run historical audit passed all 20 qualifying worlds with all 148 original historical hashes preserved; the pinned experimental artifact remains separately unresolved. The prior fourteen-row benchmark matrix was pinned and source-verified, not newly rerun.
+
+Next: offline investigation of the remaining prose/issue-span boundary, with synthetic positive/negative/ambiguous cases and more specific safe diagnostics. Do not weaken evidence permissions, change citizen selection or start another paid run automatically. The current authority is closed; servers and task browser pages are stopped. Changes remain unstaged and uncommitted.
+
+Report: [Conversation-menu-v5 real-provider acceptance](CONVERSATION_MENU_V5_REAL_PROVIDER_ACCEPTANCE.md).
+<!-- conversation-menu-v5-live-20261101:end -->
+
+
+## Citizen prose validation reliability — 1 November 2026
+
+Implemented `conversation-menu-v6` / `citizen-menu-v3`: bounded qualitative prose, source-validated station identifiers, trusted factual rendering, natural authored issue spans and conservative owned closure. Old v4/v5 meanings and v1 diagnostic formats remain frozen. Optional v2 observations use a separately bounded, trusted external sink; they cannot affect session admission or decision authority.
+
+Offline acceptance PASS: 1,918 blocked tests (95 focused), both TypeScript checks, production build, all fourteen benchmarks, full 50/35/350 and 100/70/700 mocked tick-320 societies, both desktop cohorts/viewports, exact genesis and non-empty checkpoint-tail replay, all twenty qualifying historical worlds and 10,251 preserved original files. The pinned experimental archive remains explicitly unresolved/nonqualifying. No paid calls or historical ledger changes.
+
+Real v6 compliance remains NOT TESTED. GO only for a separately authorised small prose-compliance verification with a new compatible guard, bounded structural diagnostics and accepted-output inspection; do not infer real behavioural improvement from fixtures. Full findings: [Citizen prose validation reliability repair](CITIZEN_PROSE_VALIDATION_RELIABILITY_REPAIR.md).
+
+
+## Conversation-menu-v6 small real-provider verification — 1 November 2026
+
+One newly authorised real MRT Explore passed actual UI plotting, deterministic `hybrid-map-v2`, both planning stages, eight initial actions, all 35 DeepSeek/DigitalOcean personalities and citizen-grounded genesis under `conversation-menu-v6` / `citizen-menu-v3` / `citizen-prose-v1`. Selection and application semantics were unchanged; provider allowance 20 froze pacing target 20 within the existing 350-capacity profile.
+
+**NO-GO for geographic/impact-aware selection work on this reliability baseline.** The fixed repeated-failure policy paused at tick 47/320, Day 1 19:45, after 8 returned social responses: 3 accepted and 5 issue-evidence rejections (four action-language-unassessed, one subject-missing). Acceptance 37.5% fails the provisional 80% screen. Two accepted private replies formed one genuine peer reply; one read was accepted. Two conditions remain open, no closure occurred, and meaningful older-memory/commute use was not established. No numeric rejection was observed, but intended qualitative unit/transfer vocabulary was not adequately exercised in the two accepted messages. This is a short failed compliance screen, not a complete multi-day result or causal improvement study.
+
+The independent authority closed partial: 19 OpenRouter completions, 89,237 tokens, US$0.011027016 reported, zero new outstanding reservations, one Tavily credit, no retry/replacement. The older US$0.02 uncertainty remains reserved. Namespace use is 2/16 claims, 14 remaining; original legacy storage and all 10,587 protected files are unchanged.
+
+Fresh preflight PASS: 1,952 blocked tests, both TypeScript checks, build/assets, fresh 350 mocked-world replay and 20 qualifying historical worlds. Prior 14-row/full 350/700/browser evidence was reused only with exact unchanged-application-source proof. Retained-prefix genesis/checkpoint replay, deterministic fact recomputation, both live desktop views, GET-only restoration, privacy and post-run 20-world historical/preservation checks passed. The classified experimental artifact remains unresolved. A post-click helper receipt failure was independently corroborated through server/storage hashes without another click; its original failed receipt is preserved.
+
+Next: offline repair of finite issue-selection versus authored-language/subject assessment, using structural diagnostics and clearly synthetic phrasing controls. Preserve strict source/ownership rules; do not invent rejected wording, force closure or automatically start another paid run. Report: [Conversation-menu-v6 small verification](CONVERSATION_MENU_V6_SMALL_REAL_PROVIDER_VERIFICATION.md). Changes remain unstaged and uncommitted; task processes/pages are stopped.
+
+
+## Issue-evidence declaration interface — offline repair (1 November 2026)
+
+Implemented `conversation-menu-v7` / `citizen-menu-v4` / `issue-declaration-v1`: deliberate source-bound formal statements are labelled separately from unchanged model-authored prose. Old v4–v6 semantics, numerical/source safeguards, permissions and immutable history remain preserved. Fixed the new public aggregate browser allowlist with RED/GREEN coverage.
+
+Fresh offline acceptance: 1,981 tests; 124 focused tests; both TypeScript checks; build and 25 asset traces; full 350/700 mocked 320-tick cohorts; both desktop viewports/cohorts; full and nonempty checkpoint-tail replay; twenty qualifying historical worlds; 10,827 protected files unchanged. Previous fourteen-row benchmarks are explicitly reused as historical evidence with unchanged-algorithm proof, not represented as newly run. Zero paid calls. Real v7 compliance remains NOT TESTED; the previous real-v6 NO-GO for geographic selection remains in force. Ready for a separately authorised small v7 screen with a fresh policy-bound authority. See `docs/ISSUE_EVIDENCE_INTERFACE_REPAIR_AND_OFFLINE_ACCEPTANCE.md`.
+
+
+## Conversation-menu-v7 small real-provider screen — 1 November 2026
+
+One fresh authorised ordinary UI-plotted MRT Explore: real planning, eight stakeholder actions and all 35 DeepSeek personalities passed. Exactly 20 social completions returned: **14 accepted / six rejected (70%)**, below the 80% screen. The 20-call grant reached tick 320; this is not a full 350-call acceptance. Four source-bound, model-selected/server-rendered condition declarations passed; no resolutions. Remaining first failures: four `personal-fact-requires-reference`, two `ambiguous-quantity-phrase`. Rejected bodies were not retained; later validations on those responses are unproven.
+
+Technical checks passed: 2,019 blocked tests, both TypeScript checks, build/25 asset traces, fresh full350 replay and 20 qualifying historical worlds before/after the run; both live Graph/Report viewports, GET-only restoration and exact live genesis/checkpoint replay. Prior 14-row/700-cohort/desktop evidence was reused only with exact unchanged-application proof. All 11,175 protected files remain unchanged; the classified experimental SOCIAL_STALE artifact remains unresolved.
+
+Closed partial: 31 OpenRouter completions, 173,536 tokens, US$0.02138311 reported, no new outstanding reservation, one Tavily credit, no retry/fallback/replacement. Older US$0.02 uncertainty remains reserved. V2 storage is 3/16 claims, 13 free; legacy 64-session history retained. Task servers/pages stopped; changes unstaged/uncommitted.
+
+**NO-GO for geographic/impact-aware selection or a larger paid evaluation.** Next: narrowly targeted offline prose-validation work for the two observed subreason families, preserving source/fact permissions and explicit declaration provenance. Behavioural/personality causality and substantive memory use remain unverified. Report: [Conversation-menu-v7 small verification](CONVERSATION_MENU_V7_SMALL_REAL_PROVIDER_VERIFICATION.md).

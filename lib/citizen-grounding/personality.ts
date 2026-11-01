@@ -11,7 +11,7 @@ export interface PersonalityInitialization {runId:string;capableIds:string[];bac
 export interface PersonalityGeneration {id:string;mode:'offline-mock'|'real-provider';status:'accepted';requestId:string;inputDigest:string;outputDigest:string;requestedModel:typeof PERSONALITY_MODEL;servingModel:typeof PERSONALITY_MODEL;servingProvider:typeof PERSONALITY_PROVIDER;fallback:false;uncertain:false;inputTokens:number;outputTokens:number;costUsd:number;usageBasis:'offline-byte-upper-bound'|'provider-reported'}
 export interface PersonalityRoster {version:1;policy:'personality-initialization-v1';id:string;runId:string;seedDigest:string;capableIds:string[];backgroundIds:string[];profiles:CitizenPersonality[];generation:PersonalityGeneration}
 interface WireProfile {slotId:string;style:PersonalityTraits['communicationStyle'];c:number;i:number;d:number;k:number;u:number}
-interface WireRoster {profiles:WireProfile[]}
+export interface PersonalityWireRoster {profiles:WireProfile[]}
 export interface PersonalityRequest {version:1;policy:'personality-request-v1';requestId:string;runId:string;seedDigest:string;capableIds:string[];backgroundIds:string[];inputDigest:string;body:{model:typeof PERSONALITY_MODEL;provider:{only:['digitalocean'];allow_fallbacks:false;require_parameters:true};reasoning:{effort:'none';exclude:true};max_tokens:6000;stream:false;messages:{role:'system'|'user';content:string}[];response_format:{type:'json_schema';json_schema:{name:'citizen_personalities_v1';strict:true;schema:Record<string,any>}}}}
 export interface MockPersonalityResponse {id:string;model:string;provider:string;choices:{finish_reason:string;message:{content:string}}[];usage:{prompt_tokens:number;completion_tokens:number;cost:number}}
 export interface MockPersonalityGateway {mode:'offline-mock';generate(request:Readonly<PersonalityRequest>,signal?:AbortSignal):Promise<MockPersonalityResponse>}
@@ -48,7 +48,7 @@ function traits(value:unknown):PersonalityTraits{
  for(const k of ['caution','initiative','detail','cooperation','uncertaintyTolerance'])check(Number.isSafeInteger(t[k])&&(t[k] as number)>=0&&(t[k] as number)<=4,'PERSONALITY_TRAITS');
  return t as unknown as PersonalityTraits;
 }
-function parseWire(value:unknown,count:number):WireRoster{
+function parseWire(value:unknown,count:number):PersonalityWireRoster{
  const root=safe('PERSONALITY_ROSTER',()=>{assertJsonData(value);return object(value,['profiles']);});
  check(Array.isArray(root.profiles)&&root.profiles.length===count,'PERSONALITY_ROSTER');
  const seen=new Set<string>(),vectors=new Set<string>();
@@ -99,6 +99,23 @@ export async function initializeMockPersonalities(value:PersonalityInitializatio
 }
 export const mockPersonalityRoster=(input:PersonalityInitialization,signal?:AbortSignal)=>initializeMockPersonalities(input,createMockPersonalityGateway(),signal);
 export function initializeLivePersonalities():never{throw new Error('PERSONALITY_LIVE_DISABLED');}
+
+/** Shared strict output parser; a server transport must supply verified provider provenance separately. */
+export function parsePersonalityWire(value:unknown,count:number):PersonalityWireRoster{
+ check(Number.isSafeInteger(count)&&count>=1&&count<=PERSONALITY_LIMITS.capable,'PERSONALITY_INPUT');
+ return parseWire(value,count);
+}
+
+export interface ProviderPersonalityProvenance {id:string;inputTokens:number;outputTokens:number;costUsd:number}
+/** Pure assembly only. This function performs no inference and never substitutes mock profiles. */
+export async function acceptProviderPersonalities(request:Readonly<PersonalityRequest>,value:unknown,provenance:ProviderPersonalityProvenance):Promise<PersonalityRoster>{
+ const wire=parsePersonalityWire(value,request.capableIds.length),bySlot=new Map(wire.profiles.map(p=>[p.slotId,p]));
+ const profiles:CitizenPersonality[]=request.capableIds.map((citizenId,i)=>({citizenId,policy:'citizen-personality-v1',origin:'model-generated',traits:wireTraits(bySlot.get('profile-'+(i+1))!),generationId:provenance.id}));
+ profiles.push(...backgroundProfiles(request.backgroundIds,request.seedDigest,profiles));
+ const generation:PersonalityGeneration={id:provenance.id,mode:'real-provider',status:'accepted',requestId:request.requestId,inputDigest:request.inputDigest,outputDigest:await sha({profiles:request.capableIds.map((_,i)=>encodeTraits('profile-'+(i+1),profiles[i].traits))}),requestedModel:PERSONALITY_MODEL,servingModel:PERSONALITY_MODEL,servingProvider:PERSONALITY_PROVIDER,fallback:false,uncertain:false,inputTokens:provenance.inputTokens,outputTokens:provenance.outputTokens,costUsd:provenance.costUsd,usageBasis:'provider-reported'};
+ const body={version:1 as const,policy:'personality-initialization-v1' as const,runId:request.runId,seedDigest:request.seedDigest,capableIds:request.capableIds,backgroundIds:request.backgroundIds,profiles,generation};
+ return validatePersonalityRoster({...body,id:'personality-roster-'+await sha(body)},request.capableIds,request.backgroundIds);
+}
 
 /** Synchronous strict shape/provenance parser for pure replay. Full SHA verification is async below. */
 export function parsePersonalityRoster(value:unknown,capableIds:readonly string[],backgroundIds:readonly string[]=[]):PersonalityRoster{

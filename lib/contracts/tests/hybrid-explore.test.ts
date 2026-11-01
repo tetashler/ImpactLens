@@ -1,0 +1,10 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import '../../../scripts/testing/offline-network.mjs';
+import {parseHybridExploreOptions,parseHybridExploreWire,parseHybridReview} from '../../interventions/explore-contract.ts';
+const geometry={version:1,scenarioId:'scenario-one',features:[]};
+const options={version:1,policy:'hybrid-citizen-explore-v1',serviceDate:'2026-10-27',anchors:{},timings:{runSeconds:120,dwellSeconds:30,waitingTimeSeconds:150,transferWalkSeconds:120,geometryConfirmed:true,assumptionsConfirmed:true}};
+test('hybrid Explore is a separate strict envelope preserving original request',()=>{const request={version:1,question:'What if a new polyclinic is built here?',geometry,geometryRevision:4};const w=parseHybridExploreWire({version:2,attemptId:'attempt-one',request,hybrid:options});assert.deepEqual(w.request,request);assert.equal(w.hybrid.policy,'hybrid-citizen-explore-v1');assert.ok(Object.isFrozen(w));});
+test('hybrid options reject arbitrary private profiles and accepted interpretations',()=>{for(const extra of [{citizens:[]},{personalities:[]},{intent:{}},{key:'secret'}])assert.throws(()=>parseHybridExploreOptions({...options,...extra}));});
+test('hybrid timing/date/anchor schema fails closed',()=>{for(const patch of [{serviceDate:'2026-02-30'},{anchors:{point:42}},{timings:{...options.timings,runSeconds:-1}},{timings:{...options.timings,geometryConfirmed:'true'}}])assert.throws(()=>parseHybridExploreOptions({...options,...patch}));});
+test('hybrid review contains only bounded location/clarification summary',()=>{const r={version:1,kind:'hybrid-map-review',bindingKey:'a'.repeat(64),question:'What if a station is added here?',geometryRevision:1,interventionType:'new_mrt_station',analysisMode:'clarification',message:'No supported station insertion is established. Edit the drawing or confirm an existing interchange.',limitations:['Nearby schematic segments are not verified track.']};assert.equal(parseHybridReview(r).kind,'hybrid-map-review');assert.throws(()=>parseHybridReview({...r,rawContext:{}}));});

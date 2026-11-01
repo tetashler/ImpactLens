@@ -71,9 +71,4 @@ test('the final multi-day clock tick stays simulating until its eligible model s
  assert.equal(multiDayComplete(w),true);assert.equal(publicSociety(w).phase,'completed');
 });
 
-async function renderableReport(){
- const require=createRequire(import.meta.url),babel=require('next/dist/compiled/babel/core');
- const compile=(name:string)=>babel.transformSync(readFileSync(new URL('../../../components/'+name,import.meta.url),'utf8').replace(/import ['"][^'"]+\.css['"];?/g,''),{filename:name,babelrc:false,configFile:false,presets:[[require.resolve('next/dist/compiled/babel/preset-typescript'),{allExtensions:true,isTSX:true}],[require.resolve('next/dist/compiled/babel/preset-react'),{runtime:'automatic'}]]}).code.replace(/from (["'])(react\/jsx-runtime)\1/g,(_m:string,q:string,s:string)=>`from ${q}${pathToFileURL(require.resolve(s)).href}${q}`);
- const data=(code:string)=>'data:text/javascript;base64,'+Buffer.from(code).toString('base64');
- return (await import(data(compile('communication-report.tsx').replace("'./discussion-summary'",JSON.stringify(data(compile('discussion-summary.tsx'))))))).default;
-}
+async function renderableReport(){return (await (await import('./helpers/report-ssr.ts')).renderableCommunicationReport()).default;}

@@ -5,8 +5,12 @@ import type {CitizenDataset,CitizenRecord,CitizenCommuteFact,CitizenCommuteRun} 
 import {validateCitizenCommuteFact} from './commute-contract.ts';
 import {parsePersonalityRoster,validatePersonalityRoster,type PersonalityRoster,type PersonalityTraits,type CitizenPersonality} from './personality.ts';
 import type {GroundedIssueSubject} from './issues.ts';
+import {parseHybridBinding,validateHybridBinding,type HybridBinding} from '../interventions/binding.ts';
 
-export interface CitizenGroundedInput {version:1;policy:'citizen-grounded-v1';populationId:string;datasetId:string;scenarioFingerprint:string;profiles:{citizen:CitizenRecord;commute:CitizenCommuteFact|null}[];personalities:PersonalityRoster;sourceManifest:{baseSourceHash:string;generatorVersion:string;sourceIds:string[];assumptionIds:string[]}}
+interface CitizenGroundedFields {policy:'citizen-grounded-v1';populationId:string;datasetId:string;scenarioFingerprint:string;profiles:{citizen:CitizenRecord;commute:CitizenCommuteFact|null}[];personalities:PersonalityRoster;sourceManifest:{baseSourceHash:string;generatorVersion:string;sourceIds:string[];assumptionIds:string[]}}
+export interface CitizenGroundedInputV1 extends CitizenGroundedFields {version:1}
+export interface CitizenGroundedInputV2 extends CitizenGroundedFields {version:2;executionBundle:'hybrid-citizen-explore-v1';hybridBinding:HybridBinding}
+export type CitizenGroundedInput=CitizenGroundedInputV1|CitizenGroundedInputV2;
 export interface GroundedFact {id:string;label:string;value:string|number|null;unit:string|null;basis:'source-constrained'|'synthetic-assumption'|'calculated';sourceIds:string[]}
 export interface GroundedActorContext {
  version:1;policy:'citizen-grounded-v1';citizenId:string;populationId:string;datasetId:string;scenarioFingerprint:string;
@@ -44,8 +48,17 @@ function validateRecord(r:CitizenRecord,base?:Resident){guard('CITIZEN_GROUNDING
 }
 function shape(value:CitizenGroundedInput,activeIds:readonly string[],capableIds:readonly string[],base?:PopulationView){
  guard('CITIZEN_GROUNDING_SHAPE',()=>assertJsonData(value));check(bytes(value)<=CITIZEN_GROUNDING_LIMITS.inputBytes,'CITIZEN_GROUNDING_BOUND');
- guard('CITIZEN_GROUNDING_SHAPE',()=>object(value,['version','policy','populationId','datasetId','scenarioFingerprint','profiles','personalities','sourceManifest']));
- check(value.version===1&&value.policy==='citizen-grounded-v1'&&/^population-[a-f0-9]{64}$/.test(value.populationId)&&/^citizens-[a-f0-9]{64}$/.test(value.datasetId)&&/^[a-f0-9]{64}$/.test(value.scenarioFingerprint),'CITIZEN_GROUNDING_IDENTITY');
+ const legacyFields=['version','policy','populationId','datasetId','scenarioFingerprint','profiles','personalities','sourceManifest'];
+ guard('CITIZEN_GROUNDING_SHAPE',()=>{
+  const root=object(value,[...legacyFields,'executionBundle','hybridBinding'],legacyFields);
+  object(root,root.version===2?[...legacyFields,'executionBundle','hybridBinding']:legacyFields);
+ });
+ check((value.version===1||value.version===2)&&value.policy==='citizen-grounded-v1'&&/^population-[a-f0-9]{64}$/.test(value.populationId)&&/^citizens-[a-f0-9]{64}$/.test(value.datasetId)&&/^[a-f0-9]{64}$/.test(value.scenarioFingerprint),'CITIZEN_GROUNDING_IDENTITY');
+ if(value.version===2){
+  check(value.executionBundle==='hybrid-citizen-explore-v1','CITIZEN_GROUNDING_BINDING');
+  const binding=guard('CITIZEN_GROUNDING_BINDING',()=>parseHybridBinding(value.hybridBinding));
+  check(binding.scenarioFingerprint===value.scenarioFingerprint,'CITIZEN_GROUNDING_BINDING');
+ }
  const ids=rosterIds(activeIds,capableIds);check(Array.isArray(value.profiles)&&value.profiles.length===ids.active.length&&value.profiles.every((p,i)=>p.citizen?.id===ids.active[i]),'CITIZEN_GROUNDING_ROSTER');
  parsePersonalityRoster(value.personalities,ids.capable,ids.background);
  guard('CITIZEN_GROUNDING_MANIFEST',()=>object(value.sourceManifest,['baseSourceHash','generatorVersion','sourceIds','assumptionIds']));check(/^[a-f0-9]{64}$/.test(value.sourceManifest.baseSourceHash),'CITIZEN_GROUNDING_MANIFEST');text(value.sourceManifest.generatorVersion,120);
@@ -56,7 +69,7 @@ function shape(value:CitizenGroundedInput,activeIds:readonly string[],capableIds
  return ids;
 }
 
-export async function createCitizenGrounding(dataset:CitizenDataset,commutes:CitizenCommuteRun,roster:PersonalityRoster,activeIds:string[],capableIds:string[]):Promise<CitizenGroundedInput>{
+export async function createCitizenGrounding(dataset:CitizenDataset,commutes:CitizenCommuteRun,roster:PersonalityRoster,activeIds:string[],capableIds:string[]):Promise<CitizenGroundedInputV1>{
  const ids=rosterIds(activeIds,capableIds);await validatePersonalityRoster(roster,ids.capable,ids.background);
  check(dataset.version===1&&dataset.policy==='citizen-circumstances-v1'&&dataset.manifest.version===1&&dataset.manifest.policy===dataset.policy&&dataset.manifest.populationId===dataset.populationId&&dataset.manifest.baseSourceHash===dataset.baseSourceHash&&dataset.manifest.recordCount===dataset.records.length,'CITIZEN_GROUNDING_DATASET');
  check(commutes.version===1&&commutes.policy==='citizen-commute-v1'&&commutes.populationId===dataset.populationId&&commutes.citizenDatasetId===dataset.id&&commutes.facts.length===dataset.records.length,'CITIZEN_GROUNDING_FACT');
@@ -64,13 +77,34 @@ export async function createCitizenGrounding(dataset:CitizenDataset,commutes:Cit
  const profiles=ids.active.map(id=>{const citizen=citizens.get(id),commute=facts.get(id);check(citizen&&commute,'CITIZEN_GROUNDING_ACTOR');return {citizen,commute};});
  const sourceIds=[...new Set([dataset.manifest.baseSourceHash,...dataset.manifest.sources.map(s=>s.id),...profiles.flatMap(p=>[...Object.values(p.citizen.fieldProvenance).flatMap(f=>f.sourceIds),...p.commute.sourceIds])])].sort();
  const assumptionIds=[...new Set([...dataset.manifest.assumptions.map(a=>a.id),...profiles.flatMap(p=>[...Object.values(p.citizen.fieldProvenance).flatMap(f=>f.assumptionIds),...p.commute.assumptions])])].sort();
- const input:CitizenGroundedInput={version:1,policy:'citizen-grounded-v1',populationId:dataset.populationId,datasetId:dataset.id,scenarioFingerprint:commutes.scenarioFingerprint,profiles,personalities:roster,sourceManifest:{baseSourceHash:dataset.baseSourceHash,generatorVersion:dataset.manifest.generatorVersion,sourceIds,assumptionIds}};
+ const input:CitizenGroundedInputV1={version:1,policy:'citizen-grounded-v1',populationId:dataset.populationId,datasetId:dataset.id,scenarioFingerprint:commutes.scenarioFingerprint,profiles,personalities:roster,sourceManifest:{baseSourceHash:dataset.baseSourceHash,generatorVersion:dataset.manifest.generatorVersion,sourceIds,assumptionIds}};
  shape(input,ids.active,ids.capable);return freezeSnapshot(input);
 }
 
 /** Pure replay validation checks accepted shapes and original strata; service/journal boundaries own SHA checks. */
 export function validateCitizenGrounding(input:CitizenGroundedInput,base:PopulationView,activeIds:string[],capableIds:string[]):void{
  shape(input,activeIds,capableIds,base);
+}
+/** Trusted creation/service boundary: complete SHA verification before an input is persisted. */
+export async function validateCitizenGroundingAsync(input:CitizenGroundedInput,base:PopulationView,activeIds:string[],capableIds:string[]):Promise<CitizenGroundedInput>{
+ const ids=shape(input,activeIds,capableIds,base),snapshot=freezeSnapshot(input);
+ await validatePersonalityRoster(snapshot.personalities,ids.capable,ids.background);
+ if(snapshot.version===2)await guardAsyncBinding(snapshot.hybridBinding);
+ return snapshot;
+}
+async function guardAsyncBinding(binding:HybridBinding):Promise<HybridBinding>{
+ try{return await validateHybridBinding(binding);}catch{throw Error('CITIZEN_GROUNDING_BINDING');}
+}
+/** Explicit new execution bundle. Existing accepted inputs are never silently upgraded or rebound. */
+export async function withHybridBinding(input:CitizenGroundedInputV1,binding:HybridBinding):Promise<CitizenGroundedInputV2>{
+ guard('CITIZEN_GROUNDING_SHAPE',()=>assertJsonData(input));check(input?.version===1,'CITIZEN_GROUNDING_BINDING');
+ const activeIds=guard('CITIZEN_GROUNDING_ROSTER',()=>input.profiles.map(p=>p.citizen.id)),capableIds=guard('CITIZEN_GROUNDING_ROSTER',()=>input.personalities.capableIds);
+ const ids=shape(input,activeIds,capableIds),snapshot=freezeSnapshot(input);
+ const accepted=guard('CITIZEN_GROUNDING_BINDING',()=>parseHybridBinding(binding));
+ check(accepted.scenarioFingerprint===snapshot.scenarioFingerprint,'CITIZEN_GROUNDING_BINDING');
+ await validatePersonalityRoster(snapshot.personalities,ids.capable,ids.background);await guardAsyncBinding(accepted);
+ const result:CitizenGroundedInputV2={...snapshot,version:2,executionBundle:'hybrid-citizen-explore-v1',hybridBinding:accepted};
+ shape(result,ids.active,ids.capable);return freezeSnapshot(result);
 }
 const clock=(minute:number)=>String(Math.floor(minute/60)).padStart(2,'0')+':'+String(minute%60).padStart(2,'0');
 function scheduleText(c:CitizenRecord){const s=c.schedule;return s?`${s.arrangement}; ${clock(s.startMinute)}-${clock(s.endMinute)}${s.overnight?' overnight':''}; ${s.days.length} fictional days/week; ${s.weeklyMinutes/60} hours/week`:null;}

@@ -8,11 +8,11 @@ export function classifyMemoryBindings(c:DecisionContext,d:SocialDecision|null):
  const rawRecallRefs=[...(d?.selection?.recallIds??[])],valid=new Set(c.memories.map((_,index)=>`memory-${index+1}`));
  const targetRequiredRefs=c.menu?.find(option=>option.id===d?.selection?.choiceId)?.memoryIndices.map(index=>`memory-${index+1}`)??[];
  const stanceRequiredRefs=d?.stance?c.memories.flatMap((memory,index)=>memory.eventId===d.stance!.exposureId?[`memory-${index+1}`]:[]):[];
- const issue=d?.issueUpdate&&(c.policy==='conversation-menu-v4'?['progress','resolve','withdraw']:['resolve','withdraw']).includes(d.issueUpdate.kind)?c.issues?.find(issue=>issue.id===d.issueUpdate!.issueId):undefined;
+ const issue=d?.issueUpdate&&((c.policy==='conversation-menu-v4'||c.policy==='conversation-menu-v5')?['progress','resolve','withdraw']:['resolve','withdraw']).includes(d.issueUpdate.kind)?c.issues?.find(issue=>issue.id===d.issueUpdate!.issueId):undefined;
  const selected=new Set([...targetRequiredRefs,...rawRecallRefs,...c.memories.flatMap((memory,index)=>d?.memoryIds.includes(memory.eventId)?[`memory-${index+1}`]:[])]);
  // Conservatively classify every actually selected source binding used by the issue.
  const sourceRequiredRefs=issue?c.memories.flatMap((memory,index)=>memory.itemIds.includes(issue.sourceEventId)&&selected.has(`memory-${index+1}`)?[`memory-${index+1}`]:[]):[];
- const evidenceItem=c.policy==='conversation-menu-v4'&&d?.issueUpdate&&/^item-([1-8])$/.exec(d.selection?.issueEvidence?.basisRef??'');
+ const evidenceItem=(c.policy==='conversation-menu-v4'||c.policy==='conversation-menu-v5')&&d?.issueUpdate&&/^item-([1-8])$/.exec(d.selection?.issueEvidence?.basisRef??'');
  const basis=evidenceItem?c.items[Number(evidenceItem[1])-1]:undefined;
  const evidenceRefs=basis?c.memories.flatMap((m,i)=>m.itemIds.includes(basis.id)&&selected.has(`memory-${i+1}`)?[`memory-${i+1}`]:[]):[];
  const issueRequiredRefs=[...new Set([...sourceRequiredRefs,...evidenceRefs])];

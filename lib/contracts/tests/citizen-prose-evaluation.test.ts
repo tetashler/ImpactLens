@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {evaluateCitizenProse} from '../../../scripts/testing/citizen-prose-evaluation.ts';
+test('same synthetic contract matrix improves legitimate coverage without accepting unsafe or ambiguous controls',()=>{const r=evaluateCitizenProse(),s=r.summary as any;assert.equal(s.v6.legitimate.rejected,0);assert.equal(s.v6.unsupported.accepted,0);assert.equal(s.v6.ambiguous.accepted,0);assert.ok(s.v5.legitimate.rejected>0);assert.ok(s.v5.unsupported.accepted>0);assert.equal(r.liveProviderEvidence,false);assert.equal(r.semanticVerification,'NOT_VERIFIED');});

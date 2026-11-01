@@ -21,8 +21,9 @@ export * from './contract.ts';
 function immutable(w:SocietyWorld):SocietyWorld{Object.freeze(w.events);Object.freeze(w.items);Object.freeze(w.ties);for(const a of w.agents){Object.freeze(a.memory);Object.freeze(a.seen);Object.freeze(a.notifications);Object.freeze(a);}Object.freeze(w.agents);return Object.freeze(w);}
 const bounded=(n:unknown,min:number,max:number)=>ensure(typeof n==='number'&&Number.isFinite(n)&&n>=min&&n<=max,'Invalid society bound.');
 export function createSociety(input:SocietyInput):SocietyWorld{
- ensure(!!input.citizenGrounding===(input.intelligence?.behaviour==='citizen-grounded-v1'),'CITIZEN_POLICY_REQUIRED');
+ ensure(!!input.citizenGrounding===['citizen-grounded-v1','citizen-menu-v2','citizen-menu-v3','citizen-menu-v4'].includes(input.intelligence?.behaviour??''),'CITIZEN_POLICY_REQUIRED');
  if(input.citizenGrounding)ensure(input.swarm?.multiDay&&(input.config?.steps??320)===320,'CITIZEN_PROFILE_REQUIRED');
+ if(input.citizenGrounding?.version===2)ensure(input.citizenGrounding.executionBundle==='hybrid-citizen-explore-v1'&&input.citizenGrounding.hybridBinding.question===input.question,'CITIZEN_HYBRID_QUESTION');
  if(input.communication)validateCommunication(input.communication);
  if(input.intelligence){validateIntelligence(input.intelligence);ensure(input.communication&&input.socialPolicy==='memory-aware-v1','Intelligence requires versioned communication.');}
  ensure(input.runId.length<=128&&input.seed.length>0&&input.seed.length<=128&&input.question.length<=2000&&/^population-[a-f0-9]{64}$/.test(input.population.id),'Invalid society identity.');ensure(input.roles.length<=4&&input.acceptedActions.length<=8,'Existing model-role/action limits exceeded.');
