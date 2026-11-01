@@ -1,3 +1,4 @@
+import {selectCitizenCohort,selectionDisclosure,type CitizenSelectionV2} from '../../citizen-grounding/selection.ts';
 /** Trusted question/plot orchestration. Browser data cannot supply facts, rosters or provider grants. */
 import {canonical,digest,ensure,freezeSnapshot} from '../../experiments/validation.ts';
 import {parseHybridExploreWire,parseHybridReview,type HybridReview} from '../../interventions/explore-contract.ts';
@@ -13,7 +14,7 @@ import {assertCitizenImpactBinding,type CitizenImpactRequest,type CitizenImpactP
 import {createCitizenGrounding,withHybridBinding,type CitizenGroundedInput} from '../../citizen-grounding/social.ts';
 import {initializeProviderPersonalities} from '../inference/personality.ts';
 import {createStructuredTransport,type InferenceCallRecord} from '../inference/deepseek.ts';
-import type {SocietyWorld} from '../../society/contract.ts';
+import type {SocietyWorld,SocietyInput} from '../../society/contract.ts';
 import {controlledIds} from '../../society/hybrid.ts';
 import {locatePlottedSites} from './location.ts';
 import {AiError} from '../ai/errors.ts';
@@ -33,7 +34,7 @@ export interface HybridGroundingPublic {
  interpretation:CallSummary;limitations:string[];
 }
 export interface PreparedHybridExplore {
- kind:'ready';citizenGrounding:(preview:SocietyWorld)=>Promise<CitizenGroundedInput>;
+ kind:'ready';citizenSelection:(input:SocietyInput)=>CitizenSelectionV2;citizenGrounding:(preview:SocietyWorld)=>Promise<CitizenGroundedInput>;
  publicGrounding:()=>HybridGroundingPublic;interpretationRecords:InferenceCallRecord[];
 }
 function usage(records:readonly InferenceCallRecord[]):CallSummary {
@@ -104,12 +105,15 @@ export async function prepareHybridExplore(value:unknown,dependencies:HybridExpl
  }
  const binding=handoff&&interpreted?await createHandoffBinding(legacyBinding,{context:handoff.snapshot,result:interpreted.wire,source:generation?'model':'deterministic',generation}):legacyBinding;signal?.throwIfAborted();
  let personalities:HybridGroundingPublic['personalities']={capable:0,background:0,modelGenerated:0,calls:0,inputTokens:0,outputTokens:0,costUsd:0};
+ let selected:CitizenSelectionV2|undefined;
+ const citizenSelection=(input:SocietyInput)=>{const result=selectCitizenCohort(impact.dataset,impact.run,binding,input.config?.agents??50,input.seed);if(selected)ensure(canonical(result)===canonical(selected),'CITIZEN_SELECTION_REBIND');selected=result;return result;};
  let initialization:Promise<CitizenGroundedInput>|undefined,initializationIdentity:string|undefined;
  const personalityRecords:InferenceCallRecord[]=[];
  const citizenGrounding=(preview:SocietyWorld):Promise<CitizenGroundedInput>=>{
   // The callback is server-only and receives the engine's actual preview after all eight accepted turns.
   const input=preview.genesis.input,active=preview.agents.map(a=>a.id),capable=controlledIds(preview);
-  const requestedIdentity=canonical({runId:input.runId,question:input.question,active,capable,acceptedActions:input.acceptedActions});
+  if(selected)ensure(canonical(input.citizenSelection)===canonical(selected),'CITIZEN_SELECTION_REBIND');
+  const requestedIdentity=canonical({runId:input.runId,question:input.question,active,capable,acceptedActions:input.acceptedActions,selection:input.citizenSelection??null});
   if(initialization){ensure(requestedIdentity===initializationIdentity,'HYBRID_INITIALIZATION_IDENTITY');return initialization;}
   initializationIdentity=requestedIdentity;
   initialization=(async()=>{
@@ -127,6 +131,6 @@ export async function prepareHybridExplore(value:unknown,dependencies:HybridExpl
   return initialization;
  };
  const acceptedIntent=intent;
- const publicGrounding=():HybridGroundingPublic=>freezeSnapshot({version:1,policy:'hybrid-citizen-explore-v1',...(handoff?{interpretationPolicy:'hybrid-map-v2' as const}:{}),bindingKey:handoff?.snapshot.bindingKey??context.bindingKey,type:acceptedIntent.type,classificationSource:acceptedIntent.classificationSource,geometryRevision:context.revision,impact:publicImpact,personalities,interpretation:usage(interpretationRecords),limitations:[...acceptedIntent.limitations,'Static calculated commute differences are scenario inputs, not observed journeys or validated behaviour.','Citizen employment and schedules are synthetic assumptions; personality styles are model-generated fictional traits.']});
- return {kind:'ready',citizenGrounding,publicGrounding,interpretationRecords};
+ const publicGrounding=():HybridGroundingPublic=>freezeSnapshot({version:1,policy:'hybrid-citizen-explore-v1',...(handoff?{interpretationPolicy:'hybrid-map-v2' as const}:{}),bindingKey:handoff?.snapshot.bindingKey??context.bindingKey,type:acceptedIntent.type,classificationSource:acceptedIntent.classificationSource,geometryRevision:context.revision,impact:publicImpact,personalities,interpretation:usage(interpretationRecords),limitations:[...acceptedIntent.limitations,'Static calculated commute differences are scenario inputs, not observed journeys or validated behaviour.','Citizen employment and schedules are synthetic assumptions; personality styles are model-generated fictional traits.',...(selected?[selectionDisclosure(selected)]:[])]});
+ return {kind:'ready',citizenSelection,citizenGrounding,publicGrounding,interpretationRecords};
 }

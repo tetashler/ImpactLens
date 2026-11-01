@@ -20,7 +20,7 @@ export function groundedMemoryBonus(w:SocietyWorld,actorId:string,queryItemId:st
  // Peer-authored metadata is never evidence about this actor. Only actual own model-authored
  // ancestors may supply an exact anchor for a reply in the same authorised conversation.
  const anchors=path.map(id=>actual(id)).filter((a):a is NonNullable<typeof a>=>a!==null);
- const context=presentCitizenGrounding(grounding,actorId),factIds=new Set(context.facts.filter(f=>f.value!==null).map(f=>f.id));
+ const context=presentCitizenGrounding(grounding,actorId,w.genesis.input.citizenSelection?.policy),factIds=new Set(context.facts.filter(f=>f.value!==null).map(f=>f.id));
  const links=(event:SocialEvent)=>new Set((event.citizenEvidence?.factLinks??[]).filter(link=>link.citizenId===actorId&&link.scenarioFingerprint===grounding.scenarioFingerprint&&factIds.has(link.factId)).map(link=>link.factId));
  const queryLinks=new Set(anchors.flatMap(a=>[...links(a.event)])),candidateLinks=links(candidate.event),factBonus=[...queryLinks].some(id=>candidateLinks.has(id))?1:0;
  const subjectId=candidate.event.citizenEvidence?.issueSubjectId;

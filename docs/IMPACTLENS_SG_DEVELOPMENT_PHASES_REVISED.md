@@ -972,3 +972,18 @@ Technical checks passed: 2,019 blocked tests, both TypeScript checks, build/25 a
 Closed partial: 31 OpenRouter completions, 173,536 tokens, US$0.02138311 reported, no new outstanding reservation, one Tavily credit, no retry/fallback/replacement. Older US$0.02 uncertainty remains reserved. V2 storage is 3/16 claims, 13 free; legacy 64-session history retained. Task servers/pages stopped; changes unstaged/uncommitted.
 
 **NO-GO for geographic/impact-aware selection or a larger paid evaluation.** Next: narrowly targeted offline prose-validation work for the two observed subreason families, preserving source/fact permissions and explicit declaration provenance. Behavioural/personality causality and substantive memory use remain unverified. Report: [Conversation-menu-v7 small verification](CONVERSATION_MENU_V7_SMALL_REAL_PROVIDER_VERIFICATION.md).
+
+
+## Geographic and impact-aware citizen selection ? offline acceptance (1 November 2026)
+
+Implemented `citizen-selection-v2` in the trusted MRT Explore path after the existing full-population commute calculation and before personality initialization. Deterministic impact priority and 2.5 km station-proxy proximity enrich only the discussion cohort; broader comparison citizens remain. Ordered IDs, source/scenario identity and reasons are frozen in immutable input. The original 10,000 citizens, weights and population-wide numerical results are unchanged; no extra inference or dataset generation was added.
+
+For Choa Chu Kang ? intermediate stop ? Sengkang, 50 agents comprise 4 impact-priority, 12 proximity-priority and 34 comparison citizens across 34 areas. The 100-agent cohort has 4/25/71 across 39 comparison areas. Both select all four calculated beneficiaries into capable slots, without hardcoded IDs or duplication. Unknown/not-applicable statuses remain honest. Existing Report limitations disclose enrichment and distinguish it from national estimates.
+
+Acceptance exposed a rich-worker actor context of 4,107 bytes against the existing 4,096-byte limit. Version-scoped compaction of repeated warnings fixes both direct and retrieval callers, preserving all facts, sources, subjects, historical projections and context ceilings. V7 prose validation and memory scoring are unchanged.
+
+Fresh PASS: 27 focused regressions; 2,030 network-blocked tests; both TypeScript checks; final build and 25 asset traces; full 350/700 mocked 320-tick cohorts; exact genesis, final-checkpoint and nonempty two-decision checkpoint-base replay; both desktop cohorts at 1440?900 and 1920?1080, Graph/Report and saved restoration; 20 qualifying historical worlds. All 11,281 protected original files remain unchanged. The pinned nonqualifying SOCIAL_STALE artifact remains unresolved. The previous fourteen-row matrix is reused only as historical evidence, with source-based proof that execution algorithms are unchanged; it was not rerun.
+
+Zero paid calls, no new paid authority, and the older US$0.02 uncertainty remains reserved. Original storage remains unchanged at 3/16 current claims. Task servers/pages are stopped; changes remain unstaged and uncommitted.
+
+**Current next action: GO for integrated testing of geographic/impact-aware selection with the unchanged V7 interface.** This follows the latest task scope: the prior real 70% V7 screen remains a known limitation; its optional factual-prose repair is DEFERRED and is not a prerequisite imposed on integrated testing. Any paid integrated evaluation requires separate explicit authorisation. Better cohort relevance is established offline; improved real-agent behaviour or real-world prediction accuracy is not demonstrated. See [selection implementation and acceptance](GEOGRAPHIC_IMPACT_AWARE_CITIZEN_SELECTION.md).

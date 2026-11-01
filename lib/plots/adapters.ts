@@ -117,7 +117,7 @@ export function buildPlottedMrt(geometry: ScenarioGeometry, settings: MrtPlotSet
   };
 }
 
-function groundDistance(a: PlotPosition, b: PlotPosition): number {
+export function groundDistance(a: PlotPosition, b: PlotPosition): number {
   const radians = Math.PI / 180;
   const latA = a.lat * radians, latB = b.lat * radians;
   const haversine = Math.sin((latB - latA) / 2) ** 2 + Math.cos(latA) * Math.cos(latB) * Math.sin((b.lon - a.lon) * radians / 2) ** 2;

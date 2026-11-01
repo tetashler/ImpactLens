@@ -22,7 +22,7 @@ import type {StakeholderSimulationRunV1} from '../../stakeholder-simulation/cont
 import {createSociety,stepSociety,multiDayComplete,restoreSocietyForInput,type SocietyWorld,type SocietyInput} from '../../society/engine.ts';
 import {prepareHybridStep,finishDecision,hybridBudget,replayHybrid,replayHybridFrom,decisionReservation,controlledIds} from '../../society/hybrid.ts';
 import {HYBRID_DEFAULTS,DECISION_LIMITS,decisionTokenCharge,type DecisionContext} from '../../society/decision-contract.ts';
-import {populationForActive} from './population.ts';
+import {populationForActive,populationForCitizenSelection} from './population.ts';
 import {buildSocietyGeography} from '../population/geography.ts';
 import {createSocialTransport} from '../inference/social.ts';
 import {acquireAiSlot} from '../ai/gate.ts';
@@ -32,6 +32,7 @@ export interface SocialDependencies {
  /** Trusted filesystem policy only; never accepted from a browser request. */
  storageBase?:string;storageAdmission?:StorageAdmission;
  /** Trusted initialization only. Never parsed from browser JSON; no provider dispatch is supplied here. */
+ citizenSelection?:(input:SocietyInput)=>import('../../citizen-grounding/selection.ts').CitizenSelectionV2;
  citizenGrounding?:(preview:SocietyWorld)=>Promise<CitizenGroundedInput>;
  /** Trusted current initialization selector; never parsed from browser JSON. Legacy callers retain v4. */
  citizenMenuPolicy?:'conversation-menu-v4'|'conversation-menu-v5'|'conversation-menu-v6'|'conversation-menu-v7';
@@ -177,6 +178,7 @@ export async function socialOperation(body:unknown,d:SocialDependencies={},signa
    const grant=swarm?.deep?initialAdmission(hybrid!,swarmHybrid(swarmPolicy(requested as 50|100)),d):undefined;
    if(swarm?.multiDay)swarm=multiDaySwarmPolicy(requested as 50|100,grant!.maxCalls,getExecutionProfile({swarm} as SocietyInput)!.steps as 160|320|672);
    const input:SocietyInput={runId:run.runId,question:plan.request.question,seed:plan.requestIdentity.slice(-32),population:populationForActive(swarm?.activeAgents??Number(process.env.SOCIAL_ACTIVE_AGENTS??24)),geography:buildSocietyGeography(),sharePolicy:'source-position-v1',socialPolicy:'memory-aware-v1',...(d.communication?{communication:d.communication,intelligence:swarm?.multiDay?QUALITY_POLICY:swarm?SWARM_INTELLIGENCE:TOPIC_POLICY}:{}),...(swarm?{swarm,hybrid:hybrid!}:!d.ruleOnly?{hybrid:{...HYBRID_DEFAULTS,maxCalls:Number(process.env.SOCIAL_MAX_DECISIONS??HYBRID_DEFAULTS.maxCalls),selectedAgents:Number(process.env.SOCIAL_CONTROLLED_AGENTS??HYBRID_DEFAULTS.selectedAgents)}}:{}),config:{agents:swarm?.activeAgents??Number(process.env.SOCIAL_ACTIVE_AGENTS??24),...(swarm?.multiDay?{steps:getExecutionProfile({swarm} as SocietyInput)!.steps}:{})},briefing:{assumptions:plan.draft.assumptions.slice(0,4).map(a=>a.text.slice(0,300)),sources:(plan.grounding?.sources??[]).slice(0,2).map(s=>({id:s.id,title:s.title,url:s.url,retrievedAt:s.retrievedAt,publishedAt:s.publishedAt,passage:s.passages[0].text.slice(0,600)}))},roles:plan.draft.agents,jurisdictions:plan.draft.jurisdictions,acceptedActions:run.events.map(e=>({id:e.id,roleId:e.roleId,statement:e.statement,position:e.position}))};
+   if(d.citizenSelection){ensure(d.citizenGrounding&&swarm?.multiDay,'CITIZEN_SELECTION_POLICY');input.citizenSelection=d.citizenSelection(input);input.population=populationForCitizenSelection(input.citizenSelection);}
    let world=createSociety(input);
    if(d.citizenGrounding){
     ensure(swarm?.multiDay&&d.communication,'CITIZEN_GROUNDING_POLICY');
