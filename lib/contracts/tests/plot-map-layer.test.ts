@@ -43,6 +43,7 @@ class MapSurface {
   removeSource(id) { this.sources.delete(id); }
   getLayer(id) { return this.layers.get(id); }
   addLayer(layer) { assert.ok(!this.layers.has(layer.id),'Layer IDs must be unique'); this.layers.set(layer.id,layer); }
+  setPaintProperty(id,key,value) { this.layers.get(id).paint[key]=value; }
   removeLayer(id) { this.layers.delete(id); }
   on(name,callback) { if(!this.events.has(name))this.events.set(name,new Set()); this.events.get(name).add(callback); }
   off(name,callback) { this.events.get(name)?.delete(callback); }
@@ -138,5 +139,24 @@ test('changing tools cancels a drag preview and prevents its later dragend from 
   layer.update({...current,mode:'explore'});
   assert.deepEqual(lineData(map).features[0].geometry.coordinates,[[103.8,1.3],[103.82,1.32]]);
   vertex.emit('dragend');assert.deepEqual(moved,[]);
+  layer.dispose();
+`));
+
+test('plot appearance changes repaint existing lines and markers without changing geometry or marker ownership', () => run(`
+  const map=new MapSurface(),layer=new PlotMapLayer(map,options);
+  const lines=()=>[...map.layers.values()].find(value=>value.id.endsWith('-lines'));
+  const pin=pointMarker(map,'pin'),created=map.createdMarkers,data=JSON.stringify(lineData(map));
+  assert.equal(lines().paint['line-color'],'#ffac79');
+  assert.deepEqual(lines().paint['line-dasharray'],[3,2]);
+  layer.update({...options,appearance:'light'});
+  assert.equal(lines().paint['line-color'],'#A96520');
+  assert.equal(pointMarker(map,'pin'),pin);assert.equal(map.createdMarkers,created);
+  assert.equal(pin.element.style.color,'#FFFFFF');
+  assert.equal(pin.element.children[0].style.background,'#A96520');
+  assert.equal(JSON.stringify(lineData(map)),data);
+  map.sources.clear();map.layers.clear();map.emit('style.load');
+  assert.equal(lines().paint['line-color'],'#A96520');
+  layer.update(options);
+  assert.equal(lines().paint['line-color'],'#ffac79');
   layer.dispose();
 `));

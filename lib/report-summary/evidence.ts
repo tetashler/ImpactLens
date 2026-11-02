@@ -2,6 +2,7 @@ import type {PublicExplore} from '../society/public-contract.ts';
 import {parseResearchBriefing,RESEARCH_PROMPT_SCOPE} from '../grounding/briefing.ts';
 import {canonical} from '../experiments/validation.ts';
 import {REPORT_SUMMARY_PROMPT_VERSION} from './contract.ts';
+import {reviewContext} from '../assumption-review/contract.ts';
 const text = (v: string, max = 800) => {
   const bytes = new TextEncoder().encode(v);
   return bytes.length <= max ? v : new TextDecoder().decode(bytes.slice(0, max));
@@ -12,6 +13,7 @@ const number = (v: number | null) => v !== null && Number.isFinite(v) ? v : null
 export function projectReportEvidence(run: PublicExplore) {
   const s = run.society, impact = run.grounding?.impact;
   const evidence = {
+    ...(run.assumptionReview?{assumptionReview:reviewContext(run.assumptionReview)}:{}),
     ...(run.research?{research:parseResearchBriefing(run.research),researchScope:RESEARCH_PROMPT_SCOPE}:{}),
     runId: run.runId, question: text(run.question, 2000), status: text(run.status, 80),
     revision: run.session?.revision ?? null,

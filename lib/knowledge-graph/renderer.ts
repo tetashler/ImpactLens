@@ -1,7 +1,7 @@
 import cytoscape from 'cytoscape';
 import type {Core,ElementDefinition,StylesheetJson,EdgeSingular} from 'cytoscape';
 import {parseKnowledgeGraph,type KnowledgeGraph} from './contract.ts';
-import {knowledgeEntityType,knowledgeNodeLabel,knowledgeRelationshipLabel,entityTypeColour} from './display.ts';
+import {knowledgeEntityType,knowledgeNodeLabel,knowledgeRelationshipLabel,graphEntityTypeColours,type GraphAppearance} from './display.ts';
 import {WorldPhysics,relationshipPairs,type PhysicsSnapshot} from './physics.ts';
 export {CATEGORY_COLOURS} from './palette.ts';
 export type GraphSelection={kind:'node'|'edge';id:string}|null;
@@ -18,7 +18,8 @@ export function graphPixelRatio(devicePixelRatio:unknown):number {
 }
 
 /** Display coordinates only: these are deterministic seeds, never geographic points. */
-export function graphElements(graph:KnowledgeGraph):ElementDefinition[]{
+export function graphElements(graph:KnowledgeGraph,appearance:GraphAppearance='dark'):ElementDefinition[]{
+  const typeColours=graphEntityTypeColours(graph,appearance);
   const degree=new Map<string,number>();
   for(const e of graph.edges){degree.set(e.source,(degree.get(e.source)??0)+1);degree.set(e.target,(degree.get(e.target)??0)+1);}
   const nodes=[...graph.nodes].sort((a,b)=>a.id.localeCompare(b.id));
@@ -30,7 +31,7 @@ export function graphElements(graph:KnowledgeGraph):ElementDefinition[]{
       const presentation=n.properties.presentationCategory;
       const hierarchy=presentation==='entity'||presentation==='role'||presentation==='person'||presentation==='aggregate'?presentation:'legacy';
       const size=hierarchy==='entity'?28+Math.min(8,connections):hierarchy==='role'?23:hierarchy==='aggregate'?31:hierarchy==='person'?12:n.category==='scenario'?14:12;
-      return {data:{id:n.id,label:n.label,displayLabel:knowledgeNodeLabel(n),category:n.category,entityType:knowledgeEntityType(n),colour:entityTypeColour(knowledgeEntityType(n)),size,degree:connections},
+      return {data:{id:n.id,label:n.label,displayLabel:knowledgeNodeLabel(n),category:n.category,entityType:knowledgeEntityType(n),colour:typeColours.get(knowledgeEntityType(n)),size,degree:connections},
         position:{x:Math.cos(angle)*radius,y:Math.sin(angle)*radius},classes:`${n.category==='scenario'?'hub ':''}presentation-${hierarchy}`};
     }),
     ...graph.edges.map(e=>({data:{id:e.id,source:e.source,target:e.target,label:knowledgeRelationshipLabel(e),directed:e.directed},classes:edgeClasses.get(e.id)})),
@@ -62,11 +63,39 @@ const stylesheet:StylesheetJson=[
   {selector:'.kg-hidden',style:{display:'none'}},
 ];
 
+/** Replace paint in place, retaining selector order, shapes and interaction rules. */
+function graphStylesheet(appearance:GraphAppearance):StylesheetJson {
+  if(appearance==='dark')return stylesheet;
+  const light:StylesheetJson=[
+    {selector:'node',style:{color:'#10212e','border-color':'#3d5264','text-opacity':1,'text-background-color':'#f8fafb'}},
+    {selector:'node.hub',style:{'border-color':'#0a5f86'}},
+    {selector:'node.presentation-entity',style:{'border-color':'#3d5264'}},
+    {selector:'node.presentation-role',style:{'border-color':'#3d5264'}},
+    {selector:'node.presentation-person',style:{'border-color':'#3d5264','text-opacity':1}},
+    {selector:'node.presentation-aggregate',style:{'border-color':'#3d5264'}},
+    {selector:'node.presentation-entity, node.presentation-role, node.presentation-aggregate',style:{color:'#10212e','text-background-color':'#f8fafb','text-background-opacity':.94}},
+    {selector:'edge',style:{'line-color':'#7d93a6',opacity:.8}},
+    {selector:'edge.edge-label',style:{color:'#3d5264','text-background-color':'#f8fafb','text-background-opacity':.96}},
+    {selector:'edge[?directed]',style:{'target-arrow-color':'#7d93a6'}},
+    {selector:'node.neighbour',style:{'border-color':'#0a5f86'}},
+    {selector:'node.search-match',style:{'text-background-color':'#dbeaf3','text-background-opacity':.98}},
+    {selector:'node.focused',style:{'border-color':'#10212e','text-background-color':'#f8fafb','text-background-opacity':.98}},
+    {selector:'edge.focused',style:{'line-color':'#0a5f86','target-arrow-color':'#0a5f86'}},
+    {selector:'node.hovered',style:{'border-color':'#0a5f86'}},
+  ];
+  return stylesheet.map(rule=>{
+    const replacement=light.find(item=>item.selector===rule.selector);
+    if(!replacement||!('style' in rule)||!('style' in replacement))return rule;
+    // Equal selectors retain the same node/edge style kind.
+    return {...rule,style:{...rule.style,...replacement.style}} as typeof rule;
+  });
+}
+
 /** An independently disposable real Cytoscape core. Undefined container is headless. */
-export function createGraphCore(input:KnowledgeGraph,container?:HTMLElement):Core {
+export function createGraphCore(input:KnowledgeGraph,container?:HTMLElement,appearance:GraphAppearance='dark'):Core {
   const graph=parseKnowledgeGraph(input);
-  const core=cytoscape({container,elements:graphElements(graph),headless:!container,styleEnabled:true,
-    style:stylesheet,layout:{name:'preset'},minZoom:.08,maxZoom:4,
+  const core=cytoscape({container,elements:graphElements(graph,appearance),headless:!container,styleEnabled:true,
+    style:graphStylesheet(appearance),layout:{name:'preset'},minZoom:.08,maxZoom:4,
     pixelRatio:container?graphPixelRatio(container.ownerDocument.defaultView?.devicePixelRatio):1,
     motionBlur:false,textureOnViewport:false,boxSelectionEnabled:false,selectionType:'single',autounselectify:true,desktopTapThreshold:3,touchTapThreshold:3});
   return core;
@@ -95,9 +124,9 @@ export class GraphRenderer {
   private presentationIds:ReadonlySet<string>;
   private allowedCategories:{values:Set<string>;mode:'category'|'entity-type'}|null=null;
   private cleanup:(()=>void)[]=[];
-  constructor(container:HTMLElement|undefined,graph:KnowledgeGraph,onSelect:(selection:GraphSelection)=>void){
+  constructor(container:HTMLElement|undefined,graph:KnowledgeGraph,onSelect:(selection:GraphSelection)=>void,appearance:GraphAppearance='dark'){
     this.onSelect=onSelect;
-    const start=performance.now();this.core=createGraphCore(graph,container);this.automatic=!!container;
+    const start=performance.now();this.core=createGraphCore(graph,container,appearance);this.automatic=!!container;
     this.presentationIds=new Set(graph.nodes.filter(node=>node.properties.presentationPrimary!==false).map(node=>node.id));
     this.applyVisibility();
     const coreNodes=this.core.nodes();

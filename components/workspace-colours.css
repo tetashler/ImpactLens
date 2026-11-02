@@ -1,0 +1,63 @@
+/* Semantic UI roles are independent of graph categories, source truth and fictional opinions. */
+.impactlens-polish .commute-change,
+.impactlens-polish .plot-line-key { display:none; }
+@media (min-width: 701px) {
+ .workspace-shell.scenario-experience.general-experience.map-first.impactlens-polish {
+  --colour-action:#8ed9cd;
+  --colour-info:#9dc7f4;
+  --colour-complete:#88c99b;
+  --colour-attention:#e8c07d;
+  --colour-error:#f29a94;
+  --colour-neutral:#b3c3ca;
+  --colour-boundary:#607985;
+  --colour-time-saved:#9dc7f4;
+  --colour-time-added:#e8c07d;
+
+  & :is(textarea,input:not([type='checkbox']):not([type='range']),select) { border-color:var(--colour-boundary); }
+  & :is(textarea,input,select):focus-visible { outline-color:var(--colour-action); }
+  & [data-ui-tone='info'] { --message-colour:var(--colour-info); }
+  & [data-ui-tone='complete'] { --message-colour:var(--colour-complete); }
+  & [data-ui-tone='attention'] { --message-colour:var(--colour-attention); }
+  & [data-ui-tone='error'] { --message-colour:var(--colour-error); }
+  & [data-ui-tone='neutral'] { --message-colour:var(--colour-neutral); }
+  & .map-exploration-status[data-ui-tone] { color:var(--message-colour); }
+  & .map-exploration-status[data-ui-tone] > span:not(.spinner) { color:var(--polish-secondary); }
+  & .society-map-controls[data-ui-tone] > strong { color:var(--message-colour); }
+  & p.society-map-controls[data-ui-tone] { color:var(--message-colour); border-left:3px solid var(--message-colour); }
+  &.report-view [data-ui-tone] { color:var(--message-colour); }
+  & .question-surface > p[data-ui-tone] { color:var(--message-colour); }
+  & .report-ai-summary [role='status'],
+  & .report-detailed [role='status'] { color:var(--colour-info); }
+  & :is(.report-ai-summary,.report-detailed,.kg-inspector) [role='alert'],
+  & .map-exploration-error { color:var(--colour-error); }
+  & .map-interpretation-guidance,
+  & .map-scenario-panel .map-interpretation-guidance > p:first-child,
+  & .society-warning { color:var(--colour-attention); border-color:var(--colour-attention); }
+  & [aria-label='Scenario research briefing'] > summary,
+  & [aria-label='Scenario research briefing'] a,
+  & .kg-source-details > summary,
+  & .kg-source-details a,
+  & .society-report .report-technical-details a { color:var(--colour-info); }
+  & [data-report-section='agreements'] h3,
+  & [data-report-section='disagreements'] h3 { color:var(--polish-text); font-weight:500; }
+  & [data-report-section='unknowns'] h3 { color:var(--colour-neutral); }
+  & [data-journey-tone='saved'],
+  & [data-journey-tone='reachable'] { --journey-colour:var(--colour-time-saved); }
+  & [data-journey-tone='added'] { --journey-colour:var(--colour-time-added); }
+  & [data-journey-tone='unchanged'],
+  & [data-journey-tone='unknown'] { --journey-colour:var(--colour-neutral); }
+  & .savings-card[data-journey-tone] strong { color:var(--journey-colour); }
+  & .impact-report tr[data-journey-tone] th { border-left:3px solid var(--journey-colour); padding-left:12px; }
+  & .impact-report tr[data-journey-tone] td { color:var(--polish-text); }
+  & .commute-change { display:block; margin:24px 0; padding:20px; background:var(--polish-bg); border-radius:8px; max-width:720px; }
+  & .commute-change figcaption { font-size:13px; line-height:20px; color:var(--polish-secondary); }
+  & .commute-change > p { margin:8px 0 16px; color:var(--journey-colour); font-size:18px; line-height:24px; font-variant-numeric:tabular-nums; }
+  & .commute-change-track { position:relative; height:16px; background:var(--polish-raised); }
+  & .commute-change-mark { position:absolute; height:100%; background:var(--journey-colour); }
+  & .commute-change-zero { position:absolute; left:50%; top:-4px; bottom:-4px; width:2px; background:var(--polish-text); }
+  & .commute-change-axis { display:grid; grid-template-columns:1fr auto 1fr; gap:8px; margin-top:12px; color:var(--colour-neutral); font-size:12px; line-height:20px; font-variant-numeric:tabular-nums; }
+  & .commute-change-axis > :last-child { text-align:right; }
+  & .plot-line-key { display:inline-flex; align-items:center; gap:8px; margin-left:12px; color:var(--polish-secondary); }
+  & .plot-line-key::before { content:''; width:24px; border-top:2px dashed #ffac79; }
+ }
+}

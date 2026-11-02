@@ -18,5 +18,5 @@ for(const field of ['anchors','timings','selection','serviceDate'] as const)test
 test('ordinary public client transmits only versioned plotting options and retains review',async()=>{
  const question='What if a polyclinic is added here?',review={version:1,kind:'hybrid-map-review',bindingKey:'a'.repeat(64),question,geometryRevision:1,interventionType:'new_polyclinic',analysisMode:'location-context',message:'Location context only.',limitations:['No healthcare outcome model is supplied.']};let sent:any;
  const session=new PublicScenarioSession();const result=await session.execute({version:1,question,geometry,geometryRevision:1},'fixture-review',async(_url,init)=>{sent=JSON.parse(String(init?.body));return Response.json(review);},1000,hybrid);
- assert.equal(sent.version,2);assert.deepEqual(sent.hybrid,hybrid);assert.equal(result?.kind,'hybrid-map-review');assert.equal(sent.request.question,question);assert.deepEqual(Object.keys(sent).sort(),['attemptId','hybrid','request','version']);
+ assert.equal(sent.version,3);assert.equal(sent.operation,'prepare');assert.deepEqual(sent.hybrid,hybrid);assert.equal(result?.kind,'hybrid-map-review');assert.equal(sent.request.question,question);assert.deepEqual(Object.keys(sent).sort(),['attemptId','hybrid','operation','request','version']);
 });

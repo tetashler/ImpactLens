@@ -1,3 +1,4 @@
+import {parseAssumptionReview,parseAssumptionReviewDraft,parseAssumptionDecisions,assumptionContextKey,type AssumptionReviewDraft,type AssumptionDecision} from '../assumption-review/contract.ts';
 import {parseHybridExploreOptions,parseHybridReview,parseHybridPublicGrounding,type HybridExploreOptions,type HybridReview} from '../interventions/explore-contract.ts';
 import {parseResearchBriefing} from '../grounding/briefing.ts';
 import {StakeholderRequestGate} from '../stakeholder-simulation/client.ts';
@@ -38,7 +39,8 @@ function parseClock(value:unknown,profile:Readonly<ExecutionProfile>,tick:number
 }
 
 export function parsePublicExplore(value:unknown):PublicExplore{
- const fields=['version','kind','attemptId','requestIdentity','runId','planId','question','status','request','graph','inspections','roles','initialActions','assumptions','limitations','sources','accounting','demographics','session','society'];const v=object(value,[...fields,'job','grounding','storage','locationContext','research'],fields);
+ const fields=['version','kind','attemptId','requestIdentity','runId','planId','question','status','request','graph','inspections','roles','initialActions','assumptions','limitations','sources','accounting','demographics','session','society'];const v=object(value,[...fields,'job','grounding','storage','locationContext','research','assumptionReview'],fields);
+ if(v.assumptionReview!==undefined)parseAssumptionReview(v.assumptionReview);
  if(v.research!==undefined)parseResearchBriefing(v.research);
  if(v.storage!==undefined){const storage=object(v.storage,['version','policy','disposition']);ensure(storage.version===1&&storage.policy==='storage-admission-v1'&&['active','historical-read-only'].includes(storage.disposition as string));}
  ensure(v.version===3&&v.kind==='summary-execution');ensure(typeof v.runId==='string'&&v.runId.length<=160&&typeof v.question==='string'&&v.question.length<=2000);parseKnowledgeGraph(v.graph);
@@ -68,5 +70,32 @@ export function parsePublicExplore(value:unknown):PublicExplore{
  return freezeSnapshot(v) as unknown as PublicExplore;
 }
 export class PublicScenarioSession extends StakeholderRequestGate{
- async execute(value:DynamicRequest,key:string,fetcher:typeof fetch=fetch,timeoutMs=125000,hybrid?:HybridExploreOptions):Promise<PublicExplore|DynamicFailure|HybridReview|null>{const input=parseDynamicRequest(value),ticket=this.begin(key),timer=setTimeout(()=>ticket.controller.abort(),timeoutMs);try{const r=await fetcher('/api/scenario-simulate',{method:'POST',headers:{'Content-Type':'application/json'},signal:ticket.controller.signal,body:JSON.stringify(hybrid?{version:2,attemptId:ticket.attemptId,request:input,hybrid:parseHybridExploreOptions(hybrid)}:{version:1,attemptId:ticket.attemptId,request:input})});const reader=r.body?.getReader();ensure(reader);const chunks:Uint8Array[]=[];let size=0;try{while(true){const part=await reader.read();if(part.done)break;size+=part.value.length;if(size>3_000_000){await reader.cancel();throw Error('Summary response exceeds its bound.');}chunks.push(part.value);}}finally{reader.releaseLock();}if(!this.accepts(ticket,key))return null;const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}const body=JSON.parse(new TextDecoder().decode(bytes));if(body.kind==='hybrid-map-review'){const review=parseHybridReview(body);ensure(review.question===input.question&&review.geometryRevision===input.geometryRevision);return review;}if(body.kind==='planning-failed'){const failed=await validateDynamicResponse(body,{version:1,attemptId:ticket.attemptId,request:input});ensure(failed.kind==='planning-failed');return failed;}ensure(r.ok);const accepted=parsePublicExplore(body);ensure(accepted.attemptId===ticket.attemptId&&accepted.requestIdentity===await digest('dynamic-request-',input),'Summary identity mismatch.');return accepted;}catch{if(!this.accepts(ticket,key))return null;throw Error('The scenario summary could not be prepared safely.');}finally{clearTimeout(timer);}}
+ private review:{draft:AssumptionReviewDraft;key:string;input:DynamicRequest}|null=null;
+ private async send(payload:unknown,key:string,fetcher:typeof fetch,timeoutMs:number){
+  const ticket=this.begin(key);let timedOut=false;const timer=setTimeout(()=>{timedOut=true;ticket.controller.abort();},timeoutMs);
+  try{
+   const response=await fetcher('/api/scenario-simulate',{method:'POST',headers:{'Content-Type':'application/json'},signal:ticket.controller.signal,body:JSON.stringify(payload)});
+   const reader=response.body?.getReader();ensure(reader,'Empty scenario response.');const chunks:Uint8Array[]=[];let size=0;
+   const cancel=()=>void reader.cancel().catch(()=>{});ticket.controller.signal.addEventListener('abort',cancel,{once:true});if(ticket.controller.signal.aborted)cancel();
+   try{while(true){const part=await reader.read();if(part.done)break;size+=part.value.byteLength;if(size>3_000_000){cancel();throw Error('Summary response exceeds its bound.');}chunks.push(part.value);}}finally{ticket.controller.signal.removeEventListener('abort',cancel);reader.releaseLock();}
+   if(timedOut)throw Error('Scenario request timed out. No automatic retry was made.');if(!this.accepts(ticket,key))return null;const bytes=new Uint8Array(size);let at=0;for(const c of chunks){bytes.set(c,at);at+=c.byteLength;}
+   return {response,body:JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes))};
+  }catch(error){if(timedOut)throw Error('Scenario request timed out. No automatic retry was made.');if(!this.accepts(ticket,key))return null;throw error;}finally{clearTimeout(timer);}
+ }
+ async execute(value:DynamicRequest,key:string,fetcher:typeof fetch=fetch,timeoutMs=125000,hybrid?:HybridExploreOptions):Promise<PublicExplore|DynamicFailure|HybridReview|AssumptionReviewDraft|null>{
+  const input=parseDynamicRequest(value);this.discard(fetcher);
+  // The transport's preparation attempt is an unguessable identity independent of UI revisions.
+  const attemptId='review-'+crypto.randomUUID(),result=await this.send({version:3,operation:'prepare',attemptId,request:input,...(hybrid?{hybrid:parseHybridExploreOptions(hybrid)}:{})},key,fetcher,Math.min(timeoutMs,130000));if(!result)return null;const {response,body}=result;
+  if(body.kind==='hybrid-map-review'){const r=parseHybridReview(body);ensure(r.question===input.question&&r.geometryRevision===input.geometryRevision);return r;}
+  if(body.kind==='planning-failed'){const failed=await validateDynamicResponse(body,{version:1,attemptId,request:input});ensure(failed.kind==='planning-failed');return failed;}
+  ensure(response.ok&&body.kind==='assumption-review','The assumptions could not be prepared safely.');const draft=parseAssumptionReviewDraft(body);
+  ensure(draft.attemptId===attemptId&&draft.question===input.question&&draft.contextKey===await assumptionContextKey(input,hybrid),'Review identity mismatch.');this.review={draft,key,input};return draft;
+ }
+ async startReviewed(decisions:AssumptionDecision[],key:string,fetcher:typeof fetch=fetch,timeoutMs=240000):Promise<PublicExplore|null>{
+  const held=this.review;ensure(held&&held.key===key&&Date.now()<Date.parse(held.draft.expiresAt),'This review expired. Prepare a new review.');parseAssumptionDecisions(decisions,held.draft.assumptions);this.review=null;
+  const result=await this.send({version:3,operation:'start',draftId:held.draft.draftId,token:held.draft.token,contextKey:held.draft.contextKey,decisions},key,fetcher,timeoutMs);if(!result)return null;
+  ensure(result.response.ok&&result.body.kind==='summary-execution','Execution could not complete. No automatic retry was made.');const accepted=parsePublicExplore(result.body);
+  ensure(accepted.attemptId===held.draft.attemptId&&accepted.requestIdentity===await digest('dynamic-request-',held.input)&&accepted.assumptionReview?.contextKey===held.draft.contextKey,'Reviewed result identity mismatch.');return accepted;
+ }
+ discard(fetcher:typeof fetch=fetch){const held=this.review;this.review=null;this.cancel();if(held)void fetcher('/api/scenario-simulate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:3,operation:'discard',draftId:held.draft.draftId,token:held.draft.token})}).catch(()=>{});}
 }

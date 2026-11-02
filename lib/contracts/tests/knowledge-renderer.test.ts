@@ -35,13 +35,20 @@ test('selection highlights one-hop neighbours and relationships without relayout
 
 test('filter hides incident edges, preserves coordinates and restores all categories',()=>{
   const renderer=new GraphRenderer(undefined,graph,()=>{}),before=renderer.snapshot().positions;
+  const colours=()=>renderer.core.nodes().map(node=>[node.id(),node.data('colour')]);
+  const originalColours=colours();
   renderer.filter(['scenario','assumption']);
   assert.equal(renderer.snapshot().visibleNodes,2);
   assert.equal(renderer.snapshot().visibleEdges,1);
   assert.deepEqual(renderer.snapshot().positions,before);
+  renderer.setSearchMatches(new Set(['station']));
+  renderer.setPresentationVisibility(new Set(['scenario','station']));
+  assert.deepEqual(colours(),originalColours,'Filtering and search retain the complete graph palette');
+  renderer.setPresentationVisibility(new Set(graph.nodes.map(node=>node.id)));
   renderer.filter(['scenario','assumption','infrastructure','source']);
   assert.equal(renderer.snapshot().visibleNodes,4);
   assert.equal(renderer.snapshot().visibleEdges,2);
+  assert.deepEqual(colours(),originalColours);
   renderer.dispose();
 });
 

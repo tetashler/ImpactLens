@@ -1,8 +1,8 @@
 /** Two registered planning stages + at most eight actions. No client-authored generated-role manifest is executable here. */
 import {retrieveScenarioResearch} from '../evidence/scenario-research.ts';
 import {researchLocality} from '../evidence/research-locality.ts';
-import {parseDynamicWire,dynamicAccounting,DYNAMIC_ERRORS} from '../../dynamic-scenarios/response.ts';
-import {createDynamicPlan,DYNAMIC_LIMITS} from '../../dynamic-scenarios/plan.ts';
+import {parseDynamicWire,dynamicAccounting,DYNAMIC_ERRORS,type DynamicResponse} from '../../dynamic-scenarios/response.ts';
+import {createDynamicPlan,validateDynamicPlan,DYNAMIC_LIMITS,type DynamicScenarioPlan} from '../../dynamic-scenarios/plan.ts';
 import {createDynamicInput} from '../../dynamic-scenarios/execution.ts';
 import {digest} from '../../experiments/validation.ts';
 import {readBody} from '../stakeholder-simulation/service.ts';
@@ -15,10 +15,20 @@ import {AiError} from '../ai/errors.ts';
 import {buildScenarioDemographicContext} from '../demographics/scenario-context.ts';
 import {PlannerValidationError} from '../../dynamic-scenarios/diagnostics.ts';
 import {summariseRetrieval,type RetrievalDiagnostic} from '../../grounding/diagnostics.ts';
-export interface DynamicDependencies {enabled?:boolean;key?:string;fetcher?:typeof fetch;groundingKey?:string;groundingFetcher?:typeof fetch;totalTimeoutMs?:number;plannerTimeoutMs?:number;groundingTimeoutMs?:number}
+export interface PreparedDynamic {plan:DynamicScenarioPlan;attemptId:string;requestIdentity:string;planningRecords:InferenceCallRecord[]}
+export interface DynamicDependencies {enabled?:boolean;key?:string;fetcher?:typeof fetch;groundingKey?:string;groundingFetcher?:typeof fetch;totalTimeoutMs?:number;plannerTimeoutMs?:number;groundingTimeoutMs?:number;/** Server callback only; never parsed from HTTP. */onPrepared?:(value:PreparedDynamic)=>Promise<Response>}
 const state=globalThis as typeof globalThis&{__dynamicAttempts?:Map<string,number>};const attempts=state.__dynamicAttempts??=new Map<string,number>();
 const json=(body:unknown,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
 function boundedTimeout(value:number|undefined,maximum:number):number{if(value===undefined)return maximum;if(!Number.isSafeInteger(value)||value<1||value>maximum)throw new AiError('','AI_CONFIG',503);return value;}
+/** Executes an already validated server plan without repeating research or planning. */
+export async function executePreparedDynamic(prepared:PreparedDynamic,dependencies:DynamicDependencies={},signal?:AbortSignal):Promise<DynamicResponse>{
+ signal?.throwIfAborted();const plan=await validateDynamicPlan(prepared.plan);
+ if(!(dependencies.enabled??process.env.STAKEHOLDER_LIVE_ENABLED==='true'))throw new AiError('','AI_CONFIG',503);
+ const key=dependencies.key??process.env.OPENROUTER_API_KEY??'';if(!key.trim())throw new AiError('','AI_CONFIG',503);
+ const records=prepared.planningRecords,input=await createDynamicInput(plan),transport=createDeepseekTransport({key,fetcher:dependencies.fetcher,maxOutputTokens:800});
+ const result=await executeLiveRun(input,prepared.attemptId,{enabled:true,key,transport,initialCostUsd:dynamicAccounting(records,[]).costUsd},signal);
+ return {version:2,kind:'dynamic-execution',attemptId:prepared.attemptId,requestIdentity:prepared.requestIdentity,plan,planning:{record:records.at(-1)!,records},...result,accounting:dynamicAccounting(records,result.inference.records)};
+}
 export async function handleDynamicRequest(request:Request,dependencies:DynamicDependencies={}){
  const planningRecords:InferenceCallRecord[]=[];let registration;
  let wire,planningRecord:InferenceCallRecord|null=null,requestIdentity='',retrieval:RetrievalDiagnostic|undefined;
@@ -53,9 +63,9 @@ export async function handleDynamicRequest(request:Request,dependencies:DynamicD
    stageStarted=Date.now();draft=(await createRelationshipPlanner(options,registered.draft,grounding).generate(wire.request,abort.signal)).value;
   }finally{release();}
   const plan=await createDynamicPlan(wire.request,draft,grounding,demographics,registration);if(abort.signal.aborted)throw new AiError('','AI_CANCELLED',499);
-  stage='execution';stageStarted=Date.now();const input=await createDynamicInput(plan),transport=createDeepseekTransport({key,fetcher:dependencies.fetcher,maxOutputTokens:800});
-  const result=await executeLiveRun(input,wire.attemptId,{enabled:true,key,transport,initialCostUsd:dynamicAccounting(planningRecords,[]).costUsd},abort.signal);
-  const body={version:2,kind:'dynamic-execution',attemptId:wire.attemptId,requestIdentity,plan,planning:{record:planningRecord,records:planningRecords},...result,accounting:dynamicAccounting(planningRecords,result.inference.records)};
+  const prepared={plan,attemptId:wire.attemptId,requestIdentity,planningRecords};
+  if(dependencies.onPrepared)return await dependencies.onPrepared(prepared);
+  stage='execution';stageStarted=Date.now();const body=await executePreparedDynamic(prepared,dependencies,abort.signal);
   return json(body);
  }catch(caught){
   const error=abort.signal.aborted?new AiError('',deadlineExpired?'AI_TIMEOUT':'AI_CANCELLED',deadlineExpired?504:499):caught;

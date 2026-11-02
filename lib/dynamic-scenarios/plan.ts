@@ -1,3 +1,4 @@
+import {parseAssumptionReview,assertReviewedAssumptions,type AssumptionReview} from '../assumption-review/contract.ts';
 /** Browser-safe generated proposals. None of this contract establishes verified world facts. */
 import {assertJsonData,canonical,digest,ensure,freezeSnapshot,object,text} from '../experiments/validation.ts';
 import {parseScenarioDemographicContext,type ScenarioDemographicContext} from '../demographics/scenario-context.ts';
@@ -23,7 +24,7 @@ export interface DynamicDraft {
  spatialRequirement:'none'|'geometry-for-quantitative-model'|'no-supported-quantitative-model';
  unsupportedQuantities:string[];horizonYears:number;progression:string;
 }
-export interface DynamicScenarioPlan {version:1|2;registration?:PlannerRegistration;grounding?:GroundingBundle;demographics?:ScenarioDemographicContext;attributionPolicy?:{version:1;mode:'retain-unverified-candidates'};kind:'model-generated-scenario-plan';planId:string;requestIdentity:string;request:DynamicRequest;draft:DynamicDraft}
+export interface DynamicScenarioPlan {assumptionReview?:AssumptionReview;version:1|2;registration?:PlannerRegistration;grounding?:GroundingBundle;demographics?:ScenarioDemographicContext;attributionPolicy?:{version:1;mode:'retain-unverified-candidates'};kind:'model-generated-scenario-plan';planId:string;requestIdentity:string;request:DynamicRequest;draft:DynamicDraft}
 const bounded=(v:unknown,max:number)=>{assertJsonData(v);ensure(new TextEncoder().encode(JSON.stringify(v)).byteLength<=max,'Dynamic scenario exceeds size limit.');};
 export function parseDynamicRequest(value:unknown):DynamicRequest {
  bounded(value,98304);const r=object(value,['version','question','geometry','geometryRevision']);ensure(r.version===1);text(r.question,2000);
@@ -60,25 +61,27 @@ export function parseDynamicDraft(value:unknown,requestValue:DynamicRequest,grou
  for(const field of fields)if(field!=='userConditions'||!completeSource)inspect(d[field],`draft.${field}`);
  return freezeSnapshot(value) as DynamicDraft;
 }
-export async function createDynamicPlan(requestValue:DynamicRequest,value:unknown,groundingValue?:GroundingBundle,demographicsValue?:ScenarioDemographicContext,registrationValue?:PlannerRegistration):Promise<DynamicScenarioPlan>{
+export async function createDynamicPlan(requestValue:DynamicRequest,value:unknown,groundingValue?:GroundingBundle,demographicsValue?:ScenarioDemographicContext,registrationValue?:PlannerRegistration,reviewValue?:AssumptionReview):Promise<DynamicScenarioPlan>{
  const grounding=groundingValue?planGuard('plan.grounding',()=>parseGroundingBundle(groundingValue)):undefined,request=planGuard('plan.request',()=>parseDynamicRequest(requestValue)),draft=parseDynamicDraft(value,request,grounding),requestIdentity=await digest('dynamic-request-',request);
  const demographics=demographicsValue?planGuard('plan.demographics',()=>parseScenarioDemographicContext(demographicsValue)):undefined;const version=draft.ontology?2:1;checkPlan(version===2||(!grounding&&!demographics),'plan.legacy_research_invalid','plan',value);
  const attributionPolicy=draft.ontology?.entities.some(e=>assessEntityAttribution(e,grounding).attribution.status==='unverified-candidate')?{version:1 as const,mode:'retain-unverified-candidates' as const}:undefined;
  const registration=registrationValue?parseRegistration(registrationValue,draft):undefined;
- const content={request,draft,...(registration?{registration}:{}),...(grounding?{grounding}:{} ),...(demographics?{demographics}:{}),...(attributionPolicy?{attributionPolicy}:{})};return freezeSnapshot({version,kind:'model-generated-scenario-plan',planId:await digest('dynamic-plan-',content),requestIdentity,...content});
+ const assumptionReview=reviewValue?parseAssumptionReview(reviewValue):undefined;assertReviewedAssumptions({request,draft,assumptionReview});
+ const content={request,draft,...(assumptionReview?{assumptionReview}:{}),...(registration?{registration}:{}),...(grounding?{grounding}:{} ),...(demographics?{demographics}:{}),...(attributionPolicy?{attributionPolicy}:{})};return freezeSnapshot({version,kind:'model-generated-scenario-plan',planId:await digest('dynamic-plan-',content),requestIdentity,...content});
 }
 export function parseDynamicPlan(value:unknown):DynamicScenarioPlan {
- planGuard('plan',()=>bounded(value,130000));const p=planObject(value,['version','kind','planId','requestIdentity','request','draft','grounding','demographics','attributionPolicy','registration'],'plan',['version','kind','planId','requestIdentity','request','draft']);checkPlan(p.version===1||p.version===2,'plan.unsupported_version','plan.version',p.version);checkPlan(p.kind==='model-generated-scenario-plan','plan.invalid_value','plan.kind',p.kind);
+ planGuard('plan',()=>bounded(value,130000));const p=planObject(value,['version','kind','planId','requestIdentity','request','draft','grounding','demographics','attributionPolicy','registration','assumptionReview'],'plan',['version','kind','planId','requestIdentity','request','draft']);checkPlan(p.version===1||p.version===2,'plan.unsupported_version','plan.version',p.version);checkPlan(p.kind==='model-generated-scenario-plan','plan.invalid_value','plan.kind',p.kind);
  checkPlan(typeof p.planId==='string'&&/^dynamic-plan-[a-f0-9]{64}$/.test(p.planId),'plan.invalid_identifier','plan.planId',p.planId);checkPlan(typeof p.requestIdentity==='string'&&/^dynamic-request-[a-f0-9]{64}$/.test(p.requestIdentity),'plan.invalid_identifier','plan.requestIdentity',p.requestIdentity);
  const request=planGuard('plan.request',()=>parseDynamicRequest(p.request)),grounding=p.grounding===undefined?undefined:planGuard('plan.grounding',()=>parseGroundingBundle(p.grounding)),draft=parseDynamicDraft(p.draft,request,grounding);checkPlan((p.version===2)===!!draft.ontology,'plan.unsupported_version','plan.version',p.version);checkPlan(p.version===2||(p.grounding===undefined&&p.demographics===undefined),'plan.legacy_research_invalid','plan',p);if(p.demographics!==undefined)planGuard('plan.demographics',()=>parseScenarioDemographicContext(p.demographics));
  const hasCandidate=!!draft.ontology?.entities.some(e=>assessEntityAttribution(e,grounding).attribution.status==='unverified-candidate');
  if(p.attributionPolicy!==undefined){const policy=planObject(p.attributionPolicy,['version','mode'],'plan.attributionPolicy');checkPlan(p.version===2&&hasCandidate&&policy.version===1&&policy.mode==='retain-unverified-candidates','plan.invalid_value','plan.attributionPolicy',p.attributionPolicy);}else checkPlan(!hasCandidate,'plan.required_field','plan.attributionPolicy');
  if(p.registration!==undefined)parseRegistration(p.registration,draft);
+ if(p.assumptionReview!==undefined)assertReviewedAssumptions({request,draft,assumptionReview:parseAssumptionReview(p.assumptionReview)});
  return freezeSnapshot(value) as DynamicScenarioPlan;
 }
 export async function validateDynamicPlan(value:unknown):Promise<DynamicScenarioPlan>{
  const p=parseDynamicPlan(value);
- const expected=await createDynamicPlan(p.request as DynamicRequest,p.draft,p.grounding,p.demographics,p.registration);checkPlan(canonical(expected)===canonical(value),'plan.identity_mismatch','plan.planId',p.planId);return expected;
+ const expected=await createDynamicPlan(p.request as DynamicRequest,p.draft,p.grounding,p.demographics,p.registration,p.assumptionReview);checkPlan(canonical(expected)===canonical(value),'plan.identity_mismatch','plan.planId',p.planId);return expected;
 }
 export function rolesForPlan(plan:DynamicScenarioPlan){return plan.draft.agents.map(a=>({id:a.id,title:`Fictional ${a.label}`,description:`${a.context} Proposed starting position: ${a.initialPosition}. Synthetic analytical role, never an authorised representative.`,interests:[...a.goals,...a.incentives],constraints:a.concerns,expertise:[a.category,...(a.jurisdictionId?[`Model-proposed affiliation: ${plan.draft.jurisdictions.find(j=>j.id===a.jurisdictionId)!.label}`]:[])],uncertainties:a.knowledgeLimits,classification:'fictional-role' as const}));}
 export function assumptionsForPlan(plan:DynamicScenarioPlan){return [{id:'user-condition',label:'User hypothetical question',value:plan.request.question.trim().slice(0,500),provenance:'user-authored' as const},...plan.draft.assumptions.map(a=>({id:`proposal-${a.id}`,label:'Model-proposed assumption',value:a.text,provenance:'model-proposed' as const}))];}

@@ -8,6 +8,10 @@ Open miniature Singapore and ask **What if...?** The real planning API explains 
 
 **Calculated impact** shows full-weight demographic comparisons and run-bound synthetic profiles; **Illustrative city** separately animates 180 invented citizens. Optional Gemini or OpenRouter integration provides bounded layouts, explanations and synthetic conversations. These do not change the deterministic calculations.
 
+Live **Explore** first prepares AI-proposed scenario assumptions for review. Choose **Allow** or **Do not allow** for every item, then **Start simulation**. Rejected assumptions remain unknown; conditional discussion is permitted. You may reject every item. If none are proposed, choose **Continue** explicitly. Numerical settings remain in their existing editors. Planning can use the configured AI/search APIs before review; stakeholder and social generation wait for your decisions.
+
+Reviews expire after 15 minutes and are invalidated by question, drawing or intervention-setting changes. **Back to editing** and **Cancel** discard the draft. Pending reviews are local to the server process and do not survive a restart. Accepted runs preserve both allowed and rejected choices in the report; approval does not verify AI claims.
+
 ## Run locally
 
 Install Node.js 24 or later, then run these commands from the repository root. The supplied GTFS, subzone and HDB data files must be present.
@@ -33,6 +37,8 @@ npm run build
 npm run mrt:validate
 npm run mrt:simulate
 ```
+
+Windows production verification for assumption review uses `npm run build -- --webpack`. The post-build step filters private runtime state out of trace manifests; official aggregate employment sources are included explicitly. The default Turbopack build was stopped after a prolonged compilation during this change; no default-bundler success is claimed.
 
 Validation reads the supplied GTFS and prints baseline checks. Simulation compares the baseline with the illustrative hypothetical line; it does not write raw data.
 

@@ -89,7 +89,7 @@ export default function ReportAiSummary({result, onPause, automaticReports}: {re
       {error && <p role="alert">{error}</p>}
       {!preparing && !current.loading && !current.summary && current.key && <button type="button" disabled={current.generating} onClick={() => void generate()}>{error?'Retry summary':'Generate summary'}</button>}
       {!preparing && !current.loading && !current.key && token && <button type="button" onClick={() => setReload(v => v + 1)}>Check saved summary again</button>}
-      {current.summary && <><small>Generated {new Date(current.summary.generatedAt).toLocaleString()}</small>{REPORT_SECTION_KEYS.map(key => <section key={key}><h3>{labels[key]}</h3><p className="report-ai-summary-text">{current.summary!.sections[key]}</p></section>)}</>}
+      {current.summary && <><small>Generated {new Date(current.summary.generatedAt).toLocaleString()}</small>{REPORT_SECTION_KEYS.map(key => <section key={key} data-report-section={key}><h3>{labels[key]}</h3><p className="report-ai-summary-text">{current.summary!.sections[key]}</p></section>)}</>}
     </>}
   </section>;
 }

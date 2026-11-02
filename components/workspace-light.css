@@ -1,0 +1,216 @@
+/* Muted paper planning workspace. Based on unslop by @heydamir, CC BY 4.0.
+ * Colour is a presentation role, never a policy verdict or evidence rating.
+ */
+@media (min-width: 701px) {
+ :root:has(.impactlens-light) { color-scheme:light; }
+ body:has(.impactlens-light) { background:#d3d9d0; }
+ .workspace-shell.scenario-experience.general-experience.map-first.impactlens-polish.impactlens-light {
+  color-scheme:light;
+  --bg:#d3d9d0;
+  --surface:#e4e8e0;
+  --surface-raised:#cbd5c9;
+  --line:#b6c1b5;
+  --text:#172b2b;
+  --muted:#43595a;
+  --teal:#00635a;
+  --blue:#245f8a;
+  --coral:#a96520;
+  --polish-bg:var(--bg);
+  --polish-surface:var(--surface);
+  --polish-raised:var(--surface-raised);
+  --polish-canvas:#dde3d9;
+  --polish-line:var(--line);
+  --polish-text:var(--text);
+  --polish-secondary:#43595a;
+  --polish-muted:var(--muted);
+  --polish-accent:var(--teal);
+  --polish-selected:#d4e3d8;
+  --colour-action:var(--teal);
+  --colour-info:#245f8a;
+  --colour-complete:#246544;
+  --colour-attention:#70490d;
+  --colour-error:#9b332f;
+  --colour-neutral:#43595a;
+  --colour-boundary:#63776d;
+  --colour-time-saved:#245f8a;
+  --colour-time-added:#70490d;
+  background:var(--bg);
+  color:var(--text);
+
+  /* Muted paper surfaces reduce large bright areas while retaining dark text. */
+  & .app-header,
+  & .map-scenario-sidebar,
+  & .kg-explorer,
+  & .kg-filters summary,
+  & .kg-inspector,
+  & .kg-full-dialog,
+  & .report-ai-summary,
+  & .report-detailed,
+  & .map-toolbar,
+  & .map-layers,
+  & .plot-tools-wrap,
+  & .building-credit-strip { background:var(--surface); color:var(--text); border-color:var(--line); }
+  & .map-scenario-panel,
+  & .kg-workspace,
+  & .society-report,
+  & .question-console { color:var(--text); }
+  & .map-frame { background:#cad6cf; }
+  & .map-frame::after { background:none; opacity:0; }
+  & .kg-stage,
+  & .kg-canvas-wrap { background:var(--polish-canvas); }
+  & .world-context-note { background:#d7dfd3; color:var(--polish-secondary); }
+  & .brand { filter:none; color:var(--text); }
+  & .brand-symbol,
+  & .brand strong span { color:var(--teal); }
+  & :is(h1,h2,h3) { color:var(--text); }
+  & label { color:var(--polish-secondary); }
+  & small { color:var(--muted); }
+
+  /* Native controls stay clear without a dark inset box. */
+  & :is(input:not([type='checkbox']):not([type='range']),textarea,select) { background:var(--surface); color:var(--text); border-color:var(--colour-boundary); }
+  & :is(input,textarea)::placeholder { color:var(--muted); opacity:1; }
+  & input[type='checkbox'] { accent-color:var(--teal); }
+  & input[type='range'] { accent-color:var(--teal); }
+  & button { background:var(--surface); color:var(--text); border-color:var(--line); box-shadow:none; }
+  & button:hover:not(:disabled) { background:var(--surface-raised); color:var(--text); border-color:#9aaba4; }
+  & button:disabled { background:#e4eae5; color:#5b6d66; border-color:#ccd6cf; opacity:1; }
+  & .brand,
+  & .brand:hover:not(:disabled) { background:transparent; border-color:transparent; }
+  & .general-tabs button { background:transparent; color:var(--polish-secondary); border-color:transparent; }
+  & .general-tabs button:hover { background:var(--surface-raised); }
+  & .general-tabs button[aria-current] { background:var(--polish-selected); color:var(--teal); border-color:transparent; border-bottom-color:var(--teal); }
+  & .map-scenario-panel .map-explore-button,
+  & .run-button { background:var(--teal); color:#ffffff; border-color:var(--teal); }
+  & .map-scenario-panel .map-explore-button:hover:not(:disabled),
+  & .run-button:hover:not(:disabled) { background:#005e55; color:#ffffff; border-color:#005e55; }
+  & .map-scenario-panel .map-explore-button:disabled { background:#e4eae5; color:#5b6d66; border-color:#ccd6cf; }
+  & .map-question-actions button[aria-expanded='true'],
+  & .plot-toolbar button[aria-pressed='true'],
+  & .map-toolbar button[aria-pressed='true'],
+  & .kg-search-results button[aria-pressed='true'] { background:var(--polish-selected); color:var(--teal); border-color:#8aa99e; }
+  & .map-toolbar button { border-color:transparent; }
+  & :is(button,a,input,textarea,select,summary):focus-visible { outline-color:var(--teal); }
+
+  /* The map is the visual; controls and attribution sit on muted paper. */
+  & .render-distance-control,
+  & .map-layers > div,
+  & .building-credit-strip { border-color:var(--line); }
+  & .render-distance-heading,
+  & .render-distance-value,
+  & .render-distance-track,
+  & .map-layers label,
+  & .map-layers summary,
+  & .building-credit-links a { color:var(--polish-secondary); }
+  & .map-layers small,
+  & .map-layers .building-status { color:var(--muted); }
+  & .plot-tool-hint { background:var(--surface-raised); color:var(--polish-secondary); border-color:var(--line); }
+  & .plot-tool-hint button { background:var(--surface); color:var(--text); }
+  & .plot-line-key::before { border-color:#a96520; }
+  & .plot-point-label,
+  & .plot-vertex-label { background:var(--surface); color:var(--text); border-color:var(--line); }
+  & .building-load-status,
+  & .map-loading,
+  & .map-legend { background:var(--surface); color:var(--polish-secondary); border-color:var(--line); box-shadow:0 1px 3px #172b2b14; }
+  & .map-notice { background:#e6dcc7; color:var(--colour-attention); border-color:#d5bc8b; }
+  & .maplibregl-popup-content { background:var(--surface); color:var(--text); border:1px solid var(--line); box-shadow:0 8px 24px #172b2b14; }
+  & .maplibregl-popup-content :is(p,strong,small,button) { color:var(--text); }
+  & .building-source-dialog { background:var(--surface); color:var(--text); border-color:var(--colour-boundary); box-shadow:0 12px 32px #172b2b20; }
+  & .building-source-dialog p { color:var(--polish-secondary); }
+  & .building-source-dialog a { color:var(--colour-info); }
+
+  /* Graph labels, categorical keys and source passages match the light canvas. */
+  & .kg-header h1 span,
+  & .kg-canvas-heading small,
+  & .kg-presentation-key > span,
+  & .kg-inspector header span,
+  & .kg-full-dialog header span,
+  & .kg-properties dt { color:var(--polish-secondary); }
+  & .kg-search label,
+  & .kg-explorer h2,
+  & .kg-filters summary,
+  & .kg-canvas-heading strong { color:var(--text); }
+  & .kg-search-results button { background:transparent; color:var(--text); border-color:transparent; }
+  & .kg-search-results button:hover { background:var(--surface-raised); border-color:var(--line); }
+  & .kg-search-results small,
+  & .kg-filters small,
+  & .kg-filters summary span,
+  & .kg-entity-index h2 span,
+  & .kg-properties dd,
+  & .kg-source-note,
+  & .kg-hint,
+  & .kg-index-note,
+  & .kg-source-url { color:var(--muted); }
+  & .kg-presentation-key { background:var(--surface); border-color:var(--line); }
+  & .kg-presentation-key i { background:#66858a; border-color:#435f65; }
+  & .kg-edge-labels { background:var(--surface); color:var(--polish-secondary); border-color:var(--line); }
+  & .kg-status { background:#d7dfd3; color:var(--polish-secondary); }
+  & .kg-status span { color:var(--muted); }
+  & .kg-inspector blockquote,
+  & .kg-full-dialog blockquote { background:#d7e1d3; color:var(--polish-secondary); border-color:var(--teal); }
+  & .kg-inspector :is(summary,dd),
+  & .kg-full-dialog :is(summary,dd) { color:var(--polish-secondary); }
+  & .kg-node-summary { color:var(--text); }
+  & .kg-workspace a { color:var(--colour-info); }
+  & .kg-demographic-profile :is(th,td) { color:var(--text); border-color:var(--line); }
+
+  /* Long reports read as documents. Generated text is left unchanged. */
+  & .society-report :is(details,table,th,td),
+  & .report-ai-summary > section,
+  & .report-technical-details { border-color:var(--line); }
+  & .society-report thead th { background:var(--surface-raised); color:var(--polish-secondary); }
+  & .society-report :is(th,td) { color:var(--text); }
+  & .society-report > .report-technical-details { background:transparent; }
+  & .report-technical-details > summary { color:var(--polish-secondary); }
+  & .report-ai-summary-text,
+  & .report-detailed-chapter p { color:var(--text); }
+  & .report-ai-summary :is(.report-ai-summary-note,small),
+  & .report-detailed-note,
+  & .report-detailed-metadata { color:var(--polish-secondary); opacity:1; }
+  & .society-platform-metrics > section,
+  & .society-summary-grid > div,
+  & .society-trajectories > section,
+  & .society-breakdowns > section { background:var(--surface-raised); border-color:var(--line); color:var(--text); }
+  & .society-platform-metrics :is(p,small),
+  & .society-summary-grid span { color:var(--polish-secondary); }
+  & .commute-change { background:#d7dfd3; }
+  & .commute-change-track { background:#d9e1da; }
+  & .commute-change-zero { background:var(--text); }
+  & .commute-change-axis { color:var(--colour-neutral); }
+
+  /* Existing calculator and drawing panels use the same material when opened. */
+  & :is(.editor-panel,.results-panel,.impact-panel,.general-plot-panel,.general-plot-scroll,.question-card,.general-summary,.scenario-plan-view,.scenario-plan-card) { background:var(--surface); color:var(--text); border-color:var(--line); }
+  & :is(.impact-body,.impact-heading,.panel-heading,.panel-body,.panel-section,.assumption-note,.impact-access,.impact-side,.result-facts) { background:transparent; color:var(--polish-secondary); border-color:var(--line); }
+  & :is(.native-model-tools,.map-scenario-panel details) { color:var(--polish-secondary); border-color:var(--line); }
+  & .impact-empty { color:var(--muted); border-color:var(--colour-boundary); }
+  & .impact-error { color:var(--colour-error); background:#e7d7d1; border-color:#d8a19b; }
+  & .savings-card { background:#d4e3d8; border-color:var(--line); }
+  & .savings-card :is(span,p) { color:var(--polish-secondary); }
+  & .dashboard-caption,
+  & .dashboard-kpi dt,
+  & .dashboard-kpi p,
+  & .dashboard-chart-basis,
+  & .dashboard-axis { color:var(--polish-secondary); }
+  & .dashboard-coverage { background:var(--surface-raised); border-color:var(--line); }
+  & .dashboard-bar-track { fill:#c2cfc2; }
+  & .dashboard-bar-fill { fill:var(--teal); }
+  & .dashboard-bar-grid { stroke:#aebdb4; }
+  & .society-warning { background:#e6dcc7; color:var(--colour-attention); }
+
+  /* Keep semantic foregrounds after the legacy surface overrides above. */
+  & .map-exploration-status[data-ui-tone],
+  & .society-map-controls[data-ui-tone] > strong,
+  & p.society-map-controls[data-ui-tone],
+  & .question-surface > p[data-ui-tone] { color:var(--message-colour); }
+  & :is(.report-ai-summary,.report-detailed,.kg-inspector) [role='alert'],
+  & .map-exploration-error { color:var(--colour-error); }
+  & .report-ai-summary [role='status'],
+  & .report-detailed [role='status'] { color:var(--colour-info); }
+  & [aria-label='Scenario research briefing'] > summary,
+  & [aria-label='Scenario research briefing'] a,
+  & .kg-source-details > summary,
+  & .kg-source-details a,
+  & .society-report .report-technical-details a { color:var(--colour-info); }
+  & [data-report-section='unknowns'] h3 { color:var(--colour-neutral); }
+  & .commute-change > p { color:var(--journey-colour); }
+ }
+}

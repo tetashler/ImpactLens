@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {type KnowledgeGraph} from '../../knowledge-graph/contract.ts';
+import {graphElements} from '../../knowledge-graph/renderer.ts';
 
 /** Exercise the actual React component with the repository's existing TSX loader.
  * Effects intentionally do not run during SSR; browser tests own the renderer and
@@ -81,4 +82,20 @@ test('empty graph renders an honest recovery action and hidden tab keeps semanti
   assert.doesNotMatch(html,/GraphRAG.*(?:completed|executed|operational)/i);
   const hidden=renderKnowledge(graph,false);
   assert.match(hidden,/<section class="kg-workspace" hidden="" aria-label="Knowledge Graph"/);
+});
+
+test('canvas, filter swatches and entity index share the complete graph categorical colours',()=>{
+ const names=['Community Facility','Discussion environment','Fictional participant aggregate','Grounded fictional citizen aggregate','MRT Line','Neighbourhood','Proposed Station','Resident','stakeholder'];
+ const fixture:KnowledgeGraph={...graph,nodes:names.map((entityType,i)=>({...graph.nodes[0],id:`colour-${i}`,label:`Entity ${i}`,entityType}))};
+ const html=renderKnowledge(fixture),canvas=graphElements(fixture);
+ const colours=names.map((name,i)=>{
+  const colour=canvas.find(item=>item.data.id===`colour-${i}`)!.data.colour;
+  const filter=html.match(new RegExp(`<label><input[^>]*\\/><i style="background:([^"]+)"[^>]*><\\/i><span>${name}<\\/span>`));
+  const index=html.match(new RegExp(`<button[^>]*data-entity-id="colour-${i}"[^>]*><i style="background:([^"]+)"`));
+  assert.equal(filter?.[1],colour,`${name} filter matches the canvas`);
+  assert.equal(index?.[1],colour,`${name} index matches the canvas`);
+  return colour;
+ });
+ assert.equal(new Set(colours).size,names.length);
+ assert.doesNotMatch(html,/Colour: entity type/);
 });

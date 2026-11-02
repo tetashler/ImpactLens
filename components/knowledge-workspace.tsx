@@ -4,7 +4,7 @@ import type {KnowledgeGraph,KnowledgeProvenance,KnowledgeNode,KnowledgeEdge} fro
 import type {WorldInspectionV1} from '../lib/world-graph/projection';
 import type {PublicExplore} from '../lib/society/public-contract';
 import type {GraphRenderer} from '../lib/knowledge-graph/renderer';
-import {entityTypeColour,graphEntityTypes,knowledgeEntityType,knowledgeRelationshipLabel} from '../lib/knowledge-graph/display';
+import {graphEntityTypes,knowledgeEntityType,knowledgeRelationshipLabel,type GraphAppearance} from '../lib/knowledge-graph/display';
 import {searchKnowledgeNodes} from '../lib/knowledge-graph/selectors';
 import {visibleGraphNodeIds} from '../lib/knowledge-graph/societal-presentation';
 import {nodeSummary,type NodeSummaryContext} from '../lib/knowledge-graph/node-summary';
@@ -76,7 +76,7 @@ export function KnowledgeInspectorContent({graph,node,edge,inspection,savedSumma
   </>;
 }
 
-export default function KnowledgeWorkspace({graph,visible,onReturn,archived=false,resultLabel='World entities and fictional stakeholders',inspections,emptyReason,focusAgentId,onMapAgent,reportRun,nodeSummaries,active=true}:{reportRun?:PublicExplore|null;nodeSummaries?:GraphSummaryClientState;active?:boolean;focusAgentId?:string|null;onMapAgent?:(id:string)=>void;graph:KnowledgeGraph|null;visible:boolean;onReturn:()=>void;archived?:boolean;resultLabel?:string;inspections?:Record<string,WorldInspectionV1>;emptyReason?:string}){
+export default function KnowledgeWorkspace({graph,visible,onReturn,archived=false,resultLabel='World entities and fictional stakeholders',inspections,emptyReason,focusAgentId,onMapAgent,reportRun,nodeSummaries,active=true,appearance='dark'}:{reportRun?:PublicExplore|null;nodeSummaries?:GraphSummaryClientState;active?:boolean;focusAgentId?:string|null;onMapAgent?:(id:string)=>void;graph:KnowledgeGraph|null;visible:boolean;onReturn:()=>void;archived?:boolean;resultLabel?:string;inspections?:Record<string,WorldInspectionV1>;emptyReason?:string;appearance?:GraphAppearance}){
   const matchingRun=reportRun&&graph?.executionIdentity===reportRun.runId&&graph.scenarioIdentity===reportRun.graph.scenarioIdentity?reportRun:null;
   const reportSummary=useGraphReportSummary(matchingRun,active&&!nodeSummaries,graph);
   const automaticState=nodeSummaries&&matchingRun&&nodeSummaries.runId===matchingRun.runId?nodeSummaries:undefined;
@@ -86,9 +86,10 @@ export default function KnowledgeWorkspace({graph,visible,onReturn,archived=fals
   const summaryContext:NodeSummaryContext|undefined=matchingRun?{question:matchingRun.question,socialCalls:matchingRun.society?.usage.calls,initialStatements:matchingRun.initialActions.length}:undefined;
   const container=useRef<HTMLDivElement>(null),renderer=useRef<GraphRenderer|null>(null),dialog=useRef<HTMLDialogElement>(null),launch=useRef<HTMLButtonElement>(null);
   const [selection,setSelection]=useState<Selection|null>(null),[size,setSize]=useState<'popup'|'expanded'|'full'>('popup');
-  const [query,setQuery]=useState(''),[hiddenTypes,setHiddenTypes]=useState<string[]>([]),[status,setStatus]=useState('Preparing relationships…');
+  const [query,setQuery]=useState(''),[explorerPanel,setExplorerPanel]=useState<'types'|'index'>('index'),[hiddenTypes,setHiddenTypes]=useState<string[]>([]),[status,setStatus]=useState('Preparing relationships…');
   const [edgeLabels,setEdgeLabels]=useState(false);
-  const entityTypes=useMemo(()=>graph?graphEntityTypes(graph):[],[graph]);
+  const entityTypes=useMemo(()=>graph?graphEntityTypes(graph,appearance):[],[graph,appearance]);
+  const typeColours=useMemo(()=>new Map(entityTypes.map(type=>[type.name,type.colour])),[entityTypes]);
   const categories=useMemo(()=>entityTypes.filter(t=>!hiddenTypes.includes(t.name)).map(t=>t.name),[entityTypes,hiddenTypes]);
   const graphIdentity=graph?JSON.stringify([graph.scenarioIdentity,graph.executionIdentity??null]):null;
   // Equivalent immutable projections can arrive as fresh objects after a map
@@ -98,6 +99,7 @@ export default function KnowledgeWorkspace({graph,visible,onReturn,archived=fals
   const latestCategories=useRef(categories);latestCategories.current=categories;
   const latestEdgeLabels=useRef(edgeLabels);latestEdgeLabels.current=edgeLabels;
   const builtGraph=useRef<string|null>(null);
+  const builtAppearance=useRef<GraphAppearance|null>(null);
   const selectedGraph=useRef<string|null>(null);
   const currentIdentity=useRef(graphIdentity);
   const presentationIds=useMemo(()=>{
@@ -117,18 +119,18 @@ export default function KnowledgeWorkspace({graph,visible,onReturn,archived=fals
   },[graphIdentity]);
   useEffect(()=>{
     if(!graph?.nodes.length){renderer.current?.dispose();renderer.current=null;builtGraph.current=null;setSelection(null);setSize('popup');setStatus('No valid graph is available for the current inputs.');return;}
-    if(builtGraph.current===graphContents&&renderer.current){renderer.current.setVisible(visible);if(visible)renderer.current.resize();return;}
+    if(builtGraph.current===graphContents&&builtAppearance.current===appearance&&renderer.current){renderer.current.setVisible(visible);if(visible)renderer.current.resize();return;}
     renderer.current?.dispose();renderer.current=null;
     if(!visible||!container.current)return;
     let disposed=false;setStatus('Arranging connected entities…');
     void import('../lib/knowledge-graph/renderer').then(({GraphRenderer})=>{
       if(disposed||!container.current)return;
-      const r=new GraphRenderer(container.current,graph,s=>{selectedGraph.current=graphIdentity;setSelection(s);});renderer.current=r;builtGraph.current=graphContents;r.setPresentationVisibility(latestPresentation.current);r.filter(latestCategories.current,'entity-type');r.setEdgeLabels(latestEdgeLabels.current);r.setSearchMatches(latestSearchMatches.current);r.setVisible(true);
+      const r=new GraphRenderer(container.current,graph,s=>{selectedGraph.current=graphIdentity;setSelection(s);},appearance);renderer.current=r;builtGraph.current=graphContents;builtAppearance.current=appearance;r.setPresentationVisibility(latestPresentation.current);r.filter(latestCategories.current,'entity-type');r.setEdgeLabels(latestEdgeLabels.current);r.setSearchMatches(latestSearchMatches.current);r.setVisible(true);
       if(selectedGraph.current===graphIdentity&&latestSelection.current)r.select(latestSelection.current.id);
       setLayoutMs(r.snapshot().layoutMs);setStatus(`${graph.nodes.length} entities · ${graph.edges.length} relationships`);
     }).catch(()=>{if(!disposed)setStatus('Visual network unavailable. The entity index and details remain usable.');});
     return()=>{disposed=true;};
-  },[graphContents,graphIdentity,visible]);
+  },[graphContents,graphIdentity,visible,appearance]);
   useEffect(()=>()=>{renderer.current?.dispose();renderer.current=null;},[]);
   useEffect(()=>{if(!container.current||!visible)return;const observer=new ResizeObserver(()=>renderer.current?.resize());observer.observe(container.current);return()=>observer.disconnect();},[visible]);
   useEffect(()=>{if(visible)renderer.current?.resize();},[visible,graph]);
@@ -158,13 +160,14 @@ export default function KnowledgeWorkspace({graph,visible,onReturn,archived=fals
   function details(full:boolean,compact=false){if(!selected||!graph)return null;return <>{node&&typeof node.properties.agentId==='string'&&<div className="kg-social-links">{onMapAgent&&<button onClick={()=>onMapAgent(node.properties.agentId as string)}>Open agent on Map</button>}</div>}<KnowledgeInspectorContent graph={graph} node={node} edge={edge} inspection={inspections?.[selected.id]} savedSummary={reportSummary?.nodeSummaries?.find(item=>item.nodeId===node?.id)?.summary} nodeSummaries={inspectorSummaries} summaryContext={summaryContext} compact={compact} full={full} onFocus={focus} onInspect={inspectEdge}/></>;}
   return <section className="kg-workspace" hidden={!visible} aria-label="Knowledge Graph">
     <header className="kg-header"><div><h1>Knowledge Graph <span>Relationship explorer</span></h1><p>{archived?'Archived experiment snapshot context; unrelated current simulation results are not attached.':'Explore the entities and interactions in this scenario.'}</p></div><button onClick={onReturn}>Back to Map</button></header>
-    <div className="kg-stage"><aside className="kg-explorer" aria-label="Graph exploration">
+    <div className="kg-stage"><aside className="kg-explorer" aria-label="Graph exploration" data-panel={query?'index':explorerPanel}>
       <label className="kg-search">Search graph<input type="search" placeholder="Find an entity, role or person…" value={query} onChange={e=>setQuery(e.target.value)}/></label>
       {automaticState&&<section aria-label="AI summary progress"><p className="kg-hint" role="status">{automaticState.phase==='idle'?'AI summaries will be prepared automatically after the simulation finishes.':automaticState.phase==='checking'?'Checking saved AI summaries…':`${automaticState.phase==='generating'?'Preparing AI summaries':'AI summaries'}: ${summarizedNodes} of ${graph?.nodes.length??0} ready.`}</p>{automaticState.phase==='error'&&<div role="alert"><p className="kg-hint">{automaticState.error||'AI summary preparation stopped.'}</p><button onClick={automaticState.retry}>Retry summaries</button></div>}</section>}
+      <div className="kg-explorer-tabs" role="group" aria-label="Explorer view"><button type="button" aria-pressed={query?true:explorerPanel==='index'} onClick={()=>setExplorerPanel('index')}>Entities</button><button type="button" aria-pressed={!query&&explorerPanel==='types'} onClick={()=>{setQuery('');setExplorerPanel('types');}}>Types</button></div>
       {backgroundPeople>0&&<p className="kg-discovery-note">{backgroundPeople} background {backgroundPeople===1?'person':'people'} available through search or connected relationships.</p>}
       <details className="kg-filters" open><summary>Entity types <span>{categories.length}/{entityTypes.length}</span></summary><div>{entityTypes.map(t=><label key={t.name}><input type="checkbox" checked={categories.includes(t.name)} onChange={e=>setHiddenTypes(v=>e.target.checked?v.filter(name=>name!==t.name):[...v,t.name])}/><i style={{background:t.colour}}/><span>{t.name}</span><small>{t.count}</small></label>)}</div></details>
-      <div className="kg-entity-index"><h2>{query?'Search results':'Entity index'} <span>{indexCandidates.length}</span></h2><div className="kg-search-results">{results.map(n=><button key={n.id} data-entity-id={n.id} onClick={()=>focus(n.id)} aria-pressed={node?.id===n.id}><i style={{background:entityTypeColour(knowledgeEntityType(n))}}/><span>{n.label}<small>{knowledgeEntityType(n)}</small>{query&&n.properties.presentationPrimary===false&&<small className="kg-result-context">Reveal person and connections</small>}{query&&!categories.includes(knowledgeEntityType(n))&&<small className="kg-result-context">Hidden by type filter · select to reveal</small>}</span></button>)}{!results.length&&<p>No matching entities. Adjust your search or filters.</p>}{indexCandidates.length>60&&<p className="kg-index-note">Showing 60 of {indexCandidates.length}. Refine your search to find a specific entity.</p>}</div></div>
-      <p className="kg-source-note">{archived?'Archived immutable context. Only its linked records are attached; no unrelated current calculation.':graph?.nodes.some(n=>n.id.startsWith('experiment-lab:')&&n.category==='source')?'Historical evidence replay attached. This view does not retrieve documents or execute stakeholder turns.':'Built from current structured inputs. This view does not retrieve documents or execute stakeholder turns.'}</p>
+      <div className="kg-entity-index"><h2>{query?'Search results':'Entity index'} <span>{indexCandidates.length}</span></h2><div className="kg-search-results">{results.map(n=><button key={n.id} data-entity-id={n.id} onClick={()=>focus(n.id)} aria-pressed={node?.id===n.id}><i style={{background:typeColours.get(knowledgeEntityType(n))}}/><span>{n.label}<small>{knowledgeEntityType(n)}</small>{query&&n.properties.presentationPrimary===false&&<small className="kg-result-context">Reveal person and connections</small>}{query&&!categories.includes(knowledgeEntityType(n))&&<small className="kg-result-context">Hidden by type filter · select to reveal</small>}</span></button>)}{!results.length&&<p>No matching entities. Adjust your search or filters.</p>}{indexCandidates.length>60&&<p className="kg-index-note">Showing 60 of {indexCandidates.length}. Refine your search to find a specific entity.</p>}</div></div>
+      {!archived&&<p className="kg-source-note">{graph?.nodes.some(n=>n.id.startsWith('experiment-lab:')&&n.category==='source')?'Historical evidence replay attached. This view does not retrieve documents or execute stakeholder turns.':'Built from current structured inputs. This view does not retrieve documents or execute stakeholder turns.'}</p>}
     </aside><div className="kg-canvas-wrap">
       <div className="kg-canvas" ref={container} role="img" aria-label="Interactive relationship network. Use the entity index for keyboard selection." data-layout-ms={layoutMs??''}/>
       <div className="kg-canvas-heading"><div><strong>World entities</strong><small>{graph?.executionIdentity?resultLabel:'No generated world available'}</small></div></div>

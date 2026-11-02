@@ -1,3 +1,3 @@
-import {handlePublicExplore} from '../../../lib/server/society/public-service.ts';
+import {handleAssumptionRequest} from '../../../lib/server/assumption-review/service.ts';
 export const runtime='nodejs';
-export async function POST(request:Request){return handlePublicExplore(request);}
+export async function POST(request:Request){return handleAssumptionRequest(request);}

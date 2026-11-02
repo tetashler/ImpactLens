@@ -5,7 +5,7 @@ import type {PopulationView,Resident} from '../population/contract.ts';
 import type {DynamicAgent} from '../dynamic-scenarios/plan.ts';
 import type {HybridConfig,HybridState} from './decision-contract.ts';
 import type {IntelligencePolicy} from './intelligence.ts';
-export interface SocietyBriefing {research?:import('../grounding/briefing.ts').ResearchBriefing;assumptions:string[];sources:{id:string;title:string;url:string;retrievedAt:string;publishedAt:string|null;passage:string}[]}
+export interface SocietyBriefing {assumptionReview?:import('../assumption-review/contract.ts').AssumptionReview;research?:import('../grounding/briefing.ts').ResearchBriefing;assumptions:string[];sources:{id:string;title:string;url:string;retrievedAt:string;publishedAt:string|null;passage:string}[]}
 export type Platform='reddit'|'instagram'|'whatsapp'|'telegram'|`channel:${string}`;
 export type SocialKind='post'|'read'|'comment'|'reply'|'like'|'upvote'|'downvote'|'follow'|'unfollow'|'share'|'opinion'|'activity'|'inactive'|'moderate'|'group-create'|'group-invite'|'group-join'|'group-leave'|'message'|'group-reply';
 export const SOCIETY_LIMITS=Object.freeze({agents:100,steps:144,events:8192,items:2048,memory:12,seen:64,edges:2048,activePerStep:16,renderAgents:64,savedBytes:8000000});

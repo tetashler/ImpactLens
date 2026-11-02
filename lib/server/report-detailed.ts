@@ -1,3 +1,4 @@
+import {ASSUMPTION_REVIEW_INSTRUCTION} from '../assumption-review/contract.ts';
 import {createHash} from 'node:crypto';
 import {existsSync, readFileSync, readdirSync, statSync} from 'node:fs';
 import {join, resolve} from 'node:path';
@@ -96,8 +97,8 @@ export function createDetailedReportService(deps: DetailedReportDependencies) {
 }
 
 export function createDetailedReportGenerator(options: DeepseekTransportOptions) {
-  const transport = createStructuredTransport<DetailedReportWriterEvidence, DetailedReportSections>({...options, timeoutMs: options.timeoutMs ?? 45000}, {
-    name: 'detailed_report_v1', system: DETAILED_REPORT_SYSTEM,
+  const make = (reviewed:boolean) => createStructuredTransport<DetailedReportWriterEvidence, DetailedReportSections>({...options, timeoutMs: options.timeoutMs ?? 45000}, {
+    name: 'detailed_report_v1', system: reviewed?DETAILED_REPORT_SYSTEM+' '+ASSUMPTION_REVIEW_INSTRUCTION:DETAILED_REPORT_SYSTEM,
     schema: () => ({type: 'object', additionalProperties: false, required: [...DETAILED_REPORT_SECTION_KEYS], properties: Object.fromEntries(DETAILED_REPORT_SECTION_KEYS.map(key => [key, {type: 'string', minLength: 1, maxLength: 12000}]))}),
     encode: evidence => {
       const encoded = JSON.stringify(evidence);
@@ -108,7 +109,8 @@ export function createDetailedReportGenerator(options: DeepseekTransportOptions)
     // The shared configured transport has a hard 6,000-token ceiling.
     outputLimit: 6000, defaultOutput: 6000, contentBytes: 60000, timeoutLimit: 45000,
   });
-  return async (evidence: DetailedReportWriterEvidence) => (await transport.generate(evidence)).value;
+  const transport=make(false);let reviewed:ReturnType<typeof make>|undefined;
+  return async(evidence:DetailedReportWriterEvidence)=>(await (evidence.assumptionReview?(reviewed??=make(true)):transport).generate(evidence)).value;
 }
 
 const defaultService = createDetailedReportService({

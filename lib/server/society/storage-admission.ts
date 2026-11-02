@@ -86,6 +86,8 @@ function writeExclusive(path:string,value:unknown){
  // Failed writes remain consumed evidence. No slot is deleted or reclaimed.
  try{writeFileSync(fd,JSON.stringify(value));fsyncSync(fd);}finally{closeSync(fd);}
 }
+/** Read-only capacity check for pending human reviews; never consumes a claim. */
+export function availableStorageAdmissionSlots(base=storageBase()){inspectStorageAdmission(base);return STORAGE_ADMISSION_SLOTS-inventory(base).length;}
 export function reserveStorageAdmission(attemptId:string,requestHash:string,base=storageBase()):StorageClaim {
  ensure(typeof attemptId==='string'&&attemptId.length<=64&&/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(attemptId)&&/^[a-f0-9]{64}$/.test(requestHash),'STORAGE_ADMISSION_INPUT');
  inspectStorageAdmission(base);const attemptHash=hash(attemptId);ensure(!legacyAttemptUsed(attemptHash,base),'STORAGE_ADMISSION_DUPLICATE');mkdirSync(directory(base),{recursive:true,mode:0o700});

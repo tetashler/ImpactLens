@@ -21,7 +21,7 @@ import {AiError} from '../ai/errors.ts';
 import {INFERENCE_REJECTION_MESSAGES} from '../../stakeholder-simulation/inference-errors.ts';
 
 export interface HybridExploreDependencies {
- key:string;enabled?:boolean;fetcher?:typeof fetch;
+ key:string;enabled?:boolean;fetcher?:typeof fetch;executionSignal?:()=>AbortSignal|undefined;
  catalog?:(serviceDate:string)=>NetworkCatalog|Promise<NetworkCatalog>;
  impact?:(request:CitizenImpactRequest)=>Promise<PrivateCitizenImpact>;
  personality?:typeof initializeProviderPersonalities;
@@ -117,13 +117,13 @@ export async function prepareHybridExplore(value:unknown,dependencies:HybridExpl
   if(initialization){ensure(requestedIdentity===initializationIdentity,'HYBRID_INITIALIZATION_IDENTITY');return initialization;}
   initializationIdentity=requestedIdentity;
   initialization=(async()=>{
-   signal?.throwIfAborted();ensure(dependencies.enabled===true,'HYBRID_PROVIDER_DISABLED');ensure(typeof dependencies.key==='string'&&dependencies.key.trim().length>0,'HYBRID_PERSONALITY_KEY');
+   (dependencies.executionSignal?.()??signal)?.throwIfAborted();ensure(dependencies.enabled===true,'HYBRID_PROVIDER_DISABLED');ensure(typeof dependencies.key==='string'&&dependencies.key.trim().length>0,'HYBRID_PERSONALITY_KEY');
    ensure(preview.tick===0&&!preview.hybrid?.records.length&&!preview.hybrid?.pending&&!input.citizenGrounding&&input.question===context.question&&input.acceptedActions.length===8&&new Set(input.acceptedActions.map(a=>a.id)).size===8&&input.roles.length===4&&input.roles.every(r=>input.acceptedActions.filter(a=>a.roleId===r.id).length===2),'HYBRID_INITIAL_RUN_INCOMPLETE');
    ensure(input.population.id===impact.dataset.populationId&&active.length>=1&&capable.length>=1&&capable.every(id=>active.includes(id))&&active.every(id=>impact.dataset.records.some(c=>c.id===id)),'HYBRID_CITIZEN_ROSTER');
    const background=active.filter(id=>!capable.includes(id));
-   const roster=await (dependencies.personality??initializeProviderPersonalities)({runId:input.runId,capableIds:capable,backgroundIds:background,seed:'hybrid-citizen:'+binding.fingerprint},{key:dependencies.key,fetcher:dependencies.fetcher,onRecord:r=>personalityRecords.push(structuredClone(r))},signal);
-   signal?.throwIfAborted();ensure(roster.generation.mode==='real-provider'&&roster.generation.status==='accepted'&&roster.generation.fallback===false&&roster.generation.uncertain===false&&roster.profiles.filter(p=>p.origin==='model-generated').length===capable.length,'HYBRID_PERSONALITY_PROVENANCE');
-   const grounded=await withHybridBinding(await createCitizenGrounding(impact.dataset,impact.run,roster,active,capable),binding);signal?.throwIfAborted();
+   const roster=await (dependencies.personality??initializeProviderPersonalities)({runId:input.runId,capableIds:capable,backgroundIds:background,seed:'hybrid-citizen:'+binding.fingerprint},{key:dependencies.key,fetcher:dependencies.fetcher,onRecord:r=>personalityRecords.push(structuredClone(r))},dependencies.executionSignal?.()??signal);
+   (dependencies.executionSignal?.()??signal)?.throwIfAborted();ensure(roster.generation.mode==='real-provider'&&roster.generation.status==='accepted'&&roster.generation.fallback===false&&roster.generation.uncertain===false&&roster.profiles.filter(p=>p.origin==='model-generated').length===capable.length,'HYBRID_PERSONALITY_PROVENANCE');
+   const grounded=await withHybridBinding(await createCitizenGrounding(impact.dataset,impact.run,roster,active,capable),binding);(dependencies.executionSignal?.()??signal)?.throwIfAborted();
    personalities=freezeSnapshot({capable:capable.length,background:background.length,modelGenerated:capable.length,calls:1,inputTokens:roster.generation.inputTokens,outputTokens:roster.generation.outputTokens,costUsd:roster.generation.costUsd});
    return grounded;
   })().catch(error=>{safeFailure('HYBRID_INITIALIZATION_SAFE',error,personalityRecords);throw error;});

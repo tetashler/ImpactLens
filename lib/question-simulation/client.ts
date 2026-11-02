@@ -1,3 +1,4 @@
+import {parseAssumptionDecisions,type AssumptionReviewDraft,type AssumptionDecision} from '../assumption-review/contract.ts';
 import {parseHybridExploreOptions,type HybridExploreOptions,type HybridReview} from '../interventions/explore-contract.ts';
 import {PublicScenarioSession,parsePublicExplore} from './public-session.ts';
 import type {PublicExplore} from '../society/public-contract.ts';
@@ -22,10 +23,11 @@ import {parseInferenceStatus,type InferenceStatusV1} from '../stakeholder-simula
 import {selectQuestionLiveDomain,prepareQuestionLiveInput,createQuestionLiveExecution,type QuestionLiveExecutionV1} from './live.ts';
 import {questionRunErrorMessage} from './errors.ts';
 
-export type QuestionSimulationPhase = 'idle' | 'interpreting' | 'preparing' | 'executing' | 'completed' | 'partial' | 'failed' | 'unsupported' | 'needs-map-review' | 'cancelled' | 'error';
+export type QuestionSimulationPhase = 'idle' | 'reviewing-assumptions' | 'interpreting' | 'preparing' | 'executing' | 'completed' | 'partial' | 'failed' | 'unsupported' | 'needs-map-review' | 'cancelled' | 'error';
 export type QuestionExecutionChoice='live'|'scripted'|'dynamic';
 export interface QuestionSimulationContext { question: string; geometry: ScenarioGeometry; geometryRevision: number;hybrid?:HybridExploreOptions }
 interface QuestionResult {
+  assumptionReview?:AssumptionReviewDraft|null;
   hybridReview?:HybridReview|null;
   publicRun?:PublicExplore|null;
   question: string;
@@ -68,7 +70,7 @@ const SAFE_LIVE_ERRORS=new Set([
   'This attempt was already used. Start a new attempt.',
 ]);
 
-function emptyResult(question = ''): QuestionResult { return { question,hybridReview:null, scope: null, plan: null, record: null, run: null, linked: null,publicRun:null,live:null,dynamic:null,dynamicFailure:null,executionMode:null }; }
+function emptyResult(question = ''): QuestionResult { return { question,assumptionReview:null,hybridReview:null, scope: null, plan: null, record: null, run: null, linked: null,publicRun:null,live:null,dynamic:null,dynamicFailure:null,executionMode:null }; }
 function initial(history: QuestionSimulationArchive[] = [], revision = 0): QuestionSimulationSnapshot {
   return freezeSnapshot({ ...emptyResult(), phase: 'idle', revision, attemptId: null, error: null, history, selectedArchiveId: null,inferenceStatus:null });
 }
@@ -96,7 +98,7 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
     const previous = active;
     active = null;
     session.cancel();
-    liveSession.cancel();dynamicSession.cancel();publicSession.cancel();statusEpoch++;statusController?.abort();statusController=null;
+    liveSession.cancel();dynamicSession.cancel();publicSession.discard(options.fetcher??fetch);statusEpoch++;statusController?.abort();statusController=null;
     if (previous) { if (previous.timer !== null) clearTimeout(previous.timer); previous.resolve(); }
   }
   async function checked<T>(attempt: Attempt, work: Promise<T>): Promise<T> {
@@ -141,7 +143,7 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
   }
   async function prepare(attempt: Attempt, context: QuestionSimulationContext) {
     try {
-      if(attempt.mode==='dynamic'&&options.publicOnly){publish({phase:'preparing'});const response=await checked(attempt,publicSession.execute({version:1,question:context.question,geometry:context.geometry,geometryRevision:context.geometryRevision},`${attempt.id}:${attempt.revision}`,options.fetcher??fetch,Math.max(1,Math.min(context.hybrid?235000:125000,attempt.deadline-Date.now())),context.hybrid));if(!response)return;if(response.kind==='hybrid-map-review'){publish({...emptyResult(context.question),executionMode:'dynamic',phase:'needs-map-review',hybridReview:response,error:response.message});return;}if(response.kind==='planning-failed'){publish({...emptyResult(context.question),executionMode:'dynamic',phase:'error',dynamicFailure:response,error:response.error.message});return;}finish(attempt,{...emptyResult(context.question),executionMode:'dynamic',publicRun:response},response.status==='completed'?'completed':response.initialActions.length?'partial':'failed');return;}
+      if(attempt.mode==='dynamic'&&options.publicOnly){publish({phase:'preparing'});const response=await checked(attempt,publicSession.execute({version:1,question:context.question,geometry:context.geometry,geometryRevision:context.geometryRevision},`${attempt.id}:${attempt.revision}`,options.fetcher??fetch,Math.max(1,Math.min(context.hybrid?235000:125000,attempt.deadline-Date.now())),context.hybrid));if(!response)return;if(response.kind==='assumption-review'){publish({...emptyResult(context.question),executionMode:'dynamic',phase:'reviewing-assumptions',assumptionReview:response});return;}if(response.kind==='hybrid-map-review'){publish({...emptyResult(context.question),executionMode:'dynamic',phase:'needs-map-review',hybridReview:response,error:response.message});return;}if(response.kind==='planning-failed'){publish({...emptyResult(context.question),executionMode:'dynamic',phase:'error',dynamicFailure:response,error:response.error.message});return;}finish(attempt,{...emptyResult(context.question),executionMode:'dynamic',publicRun:response},response.status==='completed'?'completed':response.initialActions.length?'partial':'failed');return;}
       if(attempt.mode==='dynamic'){
         publish({phase:'preparing'});
         const response=await checked(attempt,dynamicSession.execute({version:1,question:context.question,geometry:context.geometry,geometryRevision:context.geometryRevision},`${attempt.id}:${attempt.revision}`,options.fetcher??fetch,Math.max(1,Math.min(125000,attempt.deadline-Date.now()))));
@@ -234,20 +236,36 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
     void prepare(attempt, input);
     return promise;
   }
-  function cancel() { stop(); publish({ phase: 'cancelled', run: null, linked: null,publicRun:null,live:null,dynamic:null,dynamicFailure:null, error: null }); }
+  function startReviewed(decisions:AssumptionDecision[]):Promise<void>{
+    if(active?.mode==='dynamic')return active.promise;
+    const draft=state.assumptionReview;if(!input||!draft||state.phase!=='reviewing-assumptions')return Promise.resolve();
+    try{parseAssumptionDecisions(decisions,draft.assumptions);}catch{publish({error:'Choose Allow or Do not allow for every assumption.'});return Promise.resolve();}
+    if(Date.now()>=Date.parse(draft.expiresAt)){stop();publish({phase:'error',assumptionReview:null,error:'This review expired. Prepare a new review.'});return Promise.resolve();}
+    let resolve=()=>{};const promise=new Promise<void>(done=>resolve=done),id=state.attemptId!;
+    const attempt:Attempt={id,revision,mode:'dynamic',geographicConfirmed:false,deadline:Date.now()+240000,promise,resolve,timer:null};active=attempt;
+    publish({phase:'executing',assumptionReview:null,error:null});
+    attempt.timer=setTimeout(()=>{if(!owns(attempt))return;stop();publish({phase:'error',error:'Reviewed execution timed out. No automatic retry was made.'});},240000);
+    void(async()=>{try{
+      const response=await checked(attempt,publicSession.startReviewed(decisions,`${id}:${revision}`,options.fetcher??fetch,240000));if(!response)return;
+      finish(attempt,{...emptyResult(response.question),executionMode:'dynamic',publicRun:response},response.status==='completed'?'completed':response.initialActions.length?'partial':'failed');
+    }catch{if(owns(attempt))publish({phase:'error',error:'The reviewed simulation could not complete safely. No automatic retry was made.'});}
+    finally{if(active===attempt){if(attempt.timer!==null)clearTimeout(attempt.timer);active=null;}attempt.resolve();}})();return promise;
+  }
+  function reviseReview(){stop();publish({...emptyResult(input?.question??state.question),phase:'idle',attemptId:null,error:null,selectedArchiveId:null});}
+  function cancel() { stop(); publish({ assumptionReview:null, phase: 'cancelled', run: null, linked: null,publicRun:null,live:null,dynamic:null,dynamicFailure:null, error: null }); }
   function inspectArchive(id: string | null) {
     if (id !== null && !state.history.some(archive => archive.id === id)) return;
     if (id !== null) {
-      const pending=active!==null;stop();
+      const pending=active!==null||!!state.assumptionReview;stop();
       // Inspecting history must not erase a completed current run. Pending work is still cancelled.
-      publish(pending?{ phase: 'cancelled', run: null, linked: null,publicRun:null,live:null,dynamic:null,dynamicFailure:null, error: null, selectedArchiveId: id }:{selectedArchiveId:id});
+      publish(pending?{ assumptionReview:null, phase: 'cancelled', run: null, linked: null,publicRun:null,live:null,dynamic:null,dynamicFailure:null, error: null, selectedArchiveId: id }:{selectedArchiveId:id});
     }
     else publish({ selectedArchiveId: null });
   }
   return {restorePublicHistory:(values:PublicExplore[])=>{const history=values.slice(0,4).map(value=>{const p=parsePublicExplore(value);return {...emptyResult(p.question),publicRun:p,id:p.runId,attemptId:p.attemptId,revision:0,phase:(p.status==='completed'?'completed':'partial') as 'completed'|'partial',createdAt:new Date().toISOString()};});publish({history});},
     getSnapshot: () => state,
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
-    invalidate, start, cancel, inspectArchive,refreshInferenceStatus,
+    invalidate, start, startReviewed, reviseReview, cancel, inspectArchive,refreshInferenceStatus,
     dispose: () => { stop(); revision++; input = null; inputKey = ''; state = initial(state.history, revision); listeners.clear(); },
   };
 }

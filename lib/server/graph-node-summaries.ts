@@ -1,3 +1,4 @@
+import {ASSUMPTION_REVIEW_INSTRUCTION} from '../assumption-review/contract.ts';
 import {createHash} from 'node:crypto';
 import {existsSync, readFileSync, readdirSync, statSync} from 'node:fs';
 import {join, resolve} from 'node:path';
@@ -102,8 +103,8 @@ For other nodes, use two to four sentences. When attributable discussion exists,
 All participants and discussions are fictional, not measured public opinion, observed outcomes or causal policy effects. Use supplied calculated estimates with units, signs, denominators and assumptions. Never infer healthcare outcomes, capacity, staffing, cost or feasibility from location alone. Do not use graph sizes, overlap bookkeeping, clock steps, activity totals or authored-item score descriptions as the narrative. Avoid generic filler and repeated disclaimers.`;
 
 export function createGraphNodeSummaryGenerator(options:DeepseekTransportOptions) {
-  const transport=createStructuredTransport<GraphSummaryWriterEvidence,GraphNodeSummary[]>({...options,timeoutMs:options.timeoutMs??45000},{
-    name:'graph_node_summaries_v1',system:GRAPH_NODE_SUMMARY_SYSTEM,
+  const make=(reviewed:boolean)=>createStructuredTransport<GraphSummaryWriterEvidence,GraphNodeSummary[]>({...options,timeoutMs:options.timeoutMs??45000},{
+    name:'graph_node_summaries_v1',system:reviewed?GRAPH_NODE_SUMMARY_SYSTEM+' '+ASSUMPTION_REVIEW_INSTRUCTION:GRAPH_NODE_SUMMARY_SYSTEM,
     schema:evidence=>({type:'object',additionalProperties:false,required:['summaries'],properties:{summaries:{type:'array',minItems:evidence.nodes.length,maxItems:evidence.nodes.length,items:{type:'object',additionalProperties:false,required:['nodeId','summary'],properties:{nodeId:{type:'string',enum:evidence.nodes.map(n=>n.nodeId)},summary:{type:'string',minLength:1,maxLength:1200}}}}}}),
     encode:evidence=>{
       if(!evidence.nodes.length||evidence.nodes.length>GRAPH_SUMMARY_BATCH_SIZE||new Set(evidence.nodes.map(n=>n.nodeId)).size!==evidence.nodes.length)throw new AiError('Invalid graph summary batch.','GRAPH_SUMMARY_INPUT',413);
@@ -114,7 +115,8 @@ export function createGraphNodeSummaryGenerator(options:DeepseekTransportOptions
     parse:(value,evidence)=>parseGraphNodeSummaryBatch(value,new Set(evidence.nodes.map(n=>n.nodeId))),
     outputLimit:6000,defaultOutput:6000,contentBytes:65000,timeoutLimit:45000,
   });
-  return async(evidence:GraphSummaryWriterEvidence)=>(await transport.generate(evidence)).value;
+  const transport=make(false);let reviewed:ReturnType<typeof make>|undefined;
+  return async(evidence:GraphSummaryWriterEvidence)=>(await (evidence.assumptionReview?(reviewed??=make(true)):transport).generate(evidence)).value;
 }
 
 const defaultService=createGraphNodeSummaryService({

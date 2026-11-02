@@ -1,3 +1,4 @@
+import {ASSUMPTION_REVIEW_INSTRUCTION} from '../assumption-review/contract.ts';
 import {createHash} from 'node:crypto';
 import {existsSync, readFileSync, statSync, readdirSync} from 'node:fs';
 import {join, resolve} from 'node:path';
@@ -86,12 +87,13 @@ export function createReportSummaryService(deps: ReportSummaryDependencies) {
 }
 
 export function createReportSummaryGenerator(options: DeepseekTransportOptions) {
-    const transport = createStructuredTransport<ReportWriterEvidence, ReportNarrative>(options, {
-      name: 'report_summary_v1', system: REPORT_SUMMARY_SYSTEM,
+    const make = (reviewed:boolean) => createStructuredTransport<ReportWriterEvidence, ReportNarrative>(options, {
+      name: 'report_summary_v1', system: reviewed?REPORT_SUMMARY_SYSTEM+' '+ASSUMPTION_REVIEW_INSTRUCTION:REPORT_SUMMARY_SYSTEM,
       schema: e => {const ids=e.publicDiscussion?.nodes.map(n=>n.nodeId)??[];return {type:'object',additionalProperties:false,required:[...REPORT_SECTION_KEYS,'nodeSummaries'],properties:{...Object.fromEntries(REPORT_SECTION_KEYS.map(k=>[k,{type:'string',minLength:1,maxLength:2400}])),nodeSummaries:{type:'array',minItems:ids.length,maxItems:ids.length,items:{type:'object',additionalProperties:false,required:['nodeId','summary'],properties:{nodeId:{type:'string',...(ids.length?{enum:ids}:{maxLength:200})},summary:{type:'string',minLength:1,maxLength:650}}}}}};},
       encode: e => JSON.stringify(e), parse: (v,e)=>parseReportNarrative(v,new Set(e.publicDiscussion?.nodes.map(n=>n.nodeId)??[])), outputLimit: 4000, defaultOutput: 4000, contentBytes: 32000,
     });
-    return async (evidence: ReportEvidence) => (await transport.generate(evidence)).value;
+    const transport=make(false);let reviewed:ReturnType<typeof make>|undefined;
+  return async(evidence:ReportEvidence)=>(await (evidence.assumptionReview?(reviewed??=make(true)):transport).generate(evidence)).value;
 }
 const defaultService = createReportSummaryService({
   readSnapshot: async (runId, token) => (await import('./society/public-service.ts')).readPublicReportSnapshot(runId, token),

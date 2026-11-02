@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1",
     "build": "next build",
+    "postbuild": "node scripts/sanitize-build-traces.ts",
     "start": "next start --hostname 127.0.0.1",
     "prepare:map": "node scripts/prepare-map-data.ts",
     "buildings:download": "node scripts/prepare-buildings.ts --download",

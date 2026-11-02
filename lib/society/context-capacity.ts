@@ -5,10 +5,11 @@ import {DECISION_LIMITS} from './decision-contract.ts';
 import {isDeep} from './deep-policy.ts';
 import {deepConversationMetadata} from './deep-context.ts';
 import {threadPath} from './exposure.ts';
-import {buildDecisionMenu,replyMenuMetrics,encodeMenuContext,type DecisionOption} from './decision-menu.ts';
+import {buildDecisionMenu,replyMenuMetrics,type DecisionOption} from './decision-menu.ts';
+import {encodeSocialContext} from '../assumption-review/social-context.ts';
 
 export interface ContextCapacityPacking {policy:'deep-byte-pack-v1';changed:boolean;fits:boolean;droppedMemoryReferences:number;droppedItemBodies:number;collapsedThreadRows:number}
-export const decisionContextBytes=(c:DecisionContext)=>{const internal=new TextEncoder().encode(canonical(c)).length;return (c.policy==='conversation-menu-v3'||c.policy==='conversation-menu-v4'||c.policy==='conversation-menu-v5'||c.policy==='conversation-menu-v6'||c.policy==='conversation-menu-v7')?Math.max(internal,new TextEncoder().encode(encodeMenuContext(c)).length):internal;};
+export const decisionContextBytes=(c:DecisionContext)=>{const internal=new TextEncoder().encode(canonical(c)).length;return c.sharedBriefing?.assumptionReview||(c.policy==='conversation-menu-v3'||c.policy==='conversation-menu-v4'||c.policy==='conversation-menu-v5'||c.policy==='conversation-menu-v6'||c.policy==='conversation-menu-v7')?Math.max(internal,new TextEncoder().encode(encodeSocialContext(c)).length):internal;};
 const bytes=decisionContextBytes;
 const replyActions=new Set(['comment','reply','group-reply']);
 

@@ -1,3 +1,4 @@
+import {reviewContext,ASSUMPTION_REVIEW_INSTRUCTION} from '../../assumption-review/contract.ts';
 import {stakeholderChoices,stakeholderMenuSchema,decodeStakeholderChoice} from './stakeholder-menu.ts';
 import {createResearchBriefing,researchForActor} from '../../grounding/briefing.ts';
 import {createHash} from 'node:crypto';
@@ -32,7 +33,7 @@ export function encodeTurnContext(context:TurnContext):string {
  const affiliation=plan?.draft.jurisdictions.find(j=>j.id===plan.draft.agents.find(a=>a.id===context.role.id)?.jurisdictionId)?.label??null;
  const research=plan?.grounding?createResearchBriefing(plan.grounding):undefined;
  const role=plan?.draft.agents.find(a=>a.id===context.role.id);
- return encodeInput({...context,...(plan?.demographics?{demographicContext:contextForAgent(plan.demographics,affiliation)}:{}),
+ return encodeInput({...context,...(plan?.assumptionReview?{assumptionReview:reviewContext(plan.assumptionReview)}:{}),...(plan?.demographics?{demographicContext:contextForAgent(plan.demographics,affiliation)}:{}),
   ...(research?{researchContext:researchForActor(research,role?[role.label,role.context,...role.goals,...role.concerns].join(' '):context.role.title)}:{}),
   interactionRequirements:{mustReferenceOtherParticipant:context.round>1,availableOtherEventIds:context.previousEvents.filter(e=>e.roleId!==context.role.id).map(e=>e.id),ownPriorEventIds:context.previousEvents.filter(e=>e.roleId===context.role.id).map(e=>e.id),previousPosition:context.memory.position},
   ...(context.input.version===2?{actionChoices:stakeholderChoices(context),actionPolicy:'turn-menu-v1'}:{}),input:{...context.input,...(context.input.version===2?{scenarioPlan:{planId:context.input.scenarioPlan.planId,description:context.input.scenarioPlan.draft.description,trigger:context.input.scenarioPlan.draft.trigger,jurisdictions:context.input.scenarioPlan.draft.jurisdictions,entities:context.input.scenarioPlan.draft.entities,relationships:context.input.scenarioPlan.draft.relationships}}:{}),stakeholderRoles:context.input.stakeholderRoles.map(({id,title,classification})=>({id,title,classification}))},
@@ -64,7 +65,7 @@ const identityError=()=>new AiError('The required model/provider serving identit
 const cost=(v:unknown):number|null=>typeof v==='number'&&Number.isFinite(v)&&v>=0?v:null;
 const generationId=(v:unknown):string|null=>typeof v==='string'&&/^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/.test(v)?v:null;
 const digitalOcean=(v:unknown)=>typeof v==='string'&&v.toLowerCase()==='digitalocean';
-export interface StructuredSpec<C,T>{name:string;system:string;schema:(context:C)=>unknown;encode:(context:C)=>string;parse:(value:unknown,context:C)=>T;outputLimit:number;defaultOutput:number;contentBytes:number;timeoutLimit?:number;planner?:boolean;validateRecord?:(record:Readonly<InferenceCallRecord>)=>void;diagnose?:(error:unknown)=>string|{rule:string;path:string}|undefined}
+export interface StructuredSpec<C,T>{name:string;system:string;systemFor?:(context:C)=>string;schema:(context:C)=>unknown;encode:(context:C)=>string;parse:(value:unknown,context:C)=>T;outputLimit:number;defaultOutput:number;contentBytes:number;timeoutLimit?:number;planner?:boolean;validateRecord?:(record:Readonly<InferenceCallRecord>)=>void;diagnose?:(error:unknown)=>string|{rule:string;path:string}|undefined}
 export function createStructuredTransport<C,T>(options:DeepseekTransportOptions,spec:StructuredSpec<C,T>){
   if(typeof options.key!=='string'||!options.key.trim()||/[\r\n]/.test(options.key))throw new AiError('OPENROUTER_API_KEY is not configured.','AI_CONFIG',503);
   const timeoutMs=options.timeoutMs??30000,maxOutputTokens=options.maxOutputTokens??spec.defaultOutput;
@@ -96,7 +97,7 @@ export function createStructuredTransport<C,T>(options:DeepseekTransportOptions,
       const prepareRequest=async(boundedSignal:AbortSignal,deadline=Infinity)=>{
         active(boundedSignal,deadline);
         const prompt=spec.encode(context);
-        const requestBody={model:MODEL,provider:{only:[PROVIDER],allow_fallbacks:false,require_parameters:true},stream:false,reasoning:{effort:'none',exclude:true},max_tokens:maxOutputTokens,response_format:{type:'json_schema',json_schema:{name:spec.name,strict:true,schema:spec.schema(context)}},messages:[{role:'system',content:spec.system},{role:'user',content:prompt}]};
+        const requestBody={model:MODEL,provider:{only:[PROVIDER],allow_fallbacks:false,require_parameters:true},stream:false,reasoning:{effort:'none',exclude:true},max_tokens:maxOutputTokens,response_format:{type:'json_schema',json_schema:{name:spec.name,strict:true,schema:spec.schema(context)}},messages:[{role:'system',content:spec.systemFor?.(context)??spec.system},{role:'user',content:prompt}]};
         const url='https://openrouter.ai/api/v1/chat/completions';
         if(options.beforeDispatch)await options.beforeDispatch({requestBody:structuredClone(requestBody),requestBodySha256:createHash('sha256').update(canonical(requestBody)).digest('hex'),url,method:'POST'});
         active(boundedSignal,deadline);
@@ -182,4 +183,4 @@ export function createStructuredTransport<C,T>(options:DeepseekTransportOptions,
 }
 
 /** Existing action limits and validators stay separate from planning. */
-export function createDeepseekTransport(options:DeepseekTransportOptions){return createStructuredTransport<TurnContext,StakeholderTurnOutput>(options,{name:'stakeholder_turn_v1',system:SYSTEM,schema:c=>c.input.version===2?stakeholderMenuSchema(c):turnSchema(c),encode:encodeTurnContext,parse:(v,c)=>parseStakeholderTurnOutput(c.input.version===2?decodeStakeholderChoice(v,c):v,c),outputLimit:1200,defaultOutput:1000,contentBytes:8000});}
+export function createDeepseekTransport(options:DeepseekTransportOptions){return createStructuredTransport<TurnContext,StakeholderTurnOutput>(options,{name:'stakeholder_turn_v1',system:SYSTEM,systemFor:c=>c.input.version===2&&c.input.scenarioPlan.assumptionReview?SYSTEM+' '+ASSUMPTION_REVIEW_INSTRUCTION:SYSTEM,schema:c=>c.input.version===2?stakeholderMenuSchema(c):turnSchema(c),encode:encodeTurnContext,parse:(v,c)=>parseStakeholderTurnOutput(c.input.version===2?decodeStakeholderChoice(v,c):v,c),outputLimit:1200,defaultOutput:1000,contentBytes:8000});}

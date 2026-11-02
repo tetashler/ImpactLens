@@ -4,6 +4,7 @@ import { geometryGeoJSON, isPlotPosition, type PlotPosition, type ScenarioGeomet
 
 export type PlotSelection = { id: string; vertex?: number } | null;
 export interface PlotMapOptions {
+  appearance?: 'light' | 'dark';
   active: boolean;
   geometry: ScenarioGeometry;
   mode: 'explore' | 'point' | 'station' | 'line' | 'edit' | 'anchor';
@@ -54,12 +55,12 @@ export class PlotMapLayer {
       id: this.haloId, type: 'line', source: this.sourceId,
       filter: ['==', ['get', 'selected'], true],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#ffb07a', 'line-width': 12, 'line-opacity': 0.23 },
+      paint: { 'line-color': this.options.appearance === 'light' ? '#A96520' : '#ffb07a', 'line-width': 12, 'line-opacity': 0.23 },
     });
     if (!this.map.getLayer(this.lineId)) this.map.addLayer({
       id: this.lineId, type: 'line', source: this.sourceId,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#ffac79', 'line-width': 3, 'line-opacity': 0.95 },
+      paint: { 'line-color': this.options.appearance === 'light' ? '#A96520' : '#ffac79', 'line-width': 3, 'line-opacity': 0.95, 'line-dasharray': [3, 2] },
     });
     this.drawLines();
   };
@@ -174,6 +175,7 @@ export class PlotMapLayer {
   }
 
   private styleMarker(entry: PlotMarker, title: string, label: string, glyph: string, anchored: boolean) {
+    const light = this.options.appearance === 'light';
     const selected = this.options.selection?.id === entry.target.id && this.options.selection.vertex === entry.target.vertex;
     const vertex = entry.target.vertex !== undefined, editable = this.options.mode === 'edit';
     entry.element.title = title;
@@ -187,10 +189,15 @@ export class PlotMapLayer {
     entry.glyph.style.width = vertex ? '12px' : '26px';
     entry.glyph.style.height = vertex ? '12px' : '26px';
     entry.glyph.style.borderRadius = vertex ? '3px' : '50%';
-    entry.glyph.style.background = anchored ? '#6ed9c5' : '#ffad7b';
-    entry.glyph.style.outline = selected ? '2px solid #f2f6e9' : 'none';
+    entry.element.style.color = light ? '#FFFFFF' : '#142b32';
+    entry.glyph.style.background = light ? anchored ? '#00635A' : '#A96520' : anchored ? '#6ed9c5' : '#ffad7b';
+    entry.glyph.style.border = light ? '2px solid #172B2B' : '2px solid #132b34';
+    entry.glyph.style.outline = selected ? light ? '2px solid #172B2B' : '2px solid #f2f6e9' : 'none';
     entry.glyph.style.outlineOffset = '2px';
     entry.label.textContent = label;
+    entry.label.style.color = light ? '#172B2B' : '#e7f0ed';
+    entry.label.style.background = light ? '#f8fafb' : '#10242ce8';
+    entry.glyph.style.boxShadow = light ? '0 1px 3px #0e203033' : '0 2px 7px #07151f80';
     entry.label.style.display = vertex ? 'none' : 'block';
     entry.marker.setDraggable(editable);
   }
@@ -229,13 +236,18 @@ export class PlotMapLayer {
     if (this.disposed) return;
     const previous = this.previous;
     this.options = options;
+    if (previous && previous.appearance !== options.appearance) {
+      for (const [id, darkColor] of [[this.lineId, '#ffac79'], [this.haloId, '#ffb07a']]) {
+        if (this.map.getLayer(id)) this.map.setPaintProperty(id, 'line-color', options.appearance === 'light' ? '#A96520' : darkColor);
+      }
+    }
     const cancelledDrag = this.drag !== null && (!options.active || options.mode !== 'edit' || options.geometry !== this.drag.geometry);
     if (cancelledDrag) this.drag = null;
     if (!options.active) {
       this.clearMarkers();
     } else if (!previous?.active || previous.geometry !== options.geometry || previous.mode !== options.mode
       || previous.anchors !== options.anchors || previous.selection?.id !== options.selection?.id
-      || previous.selection?.vertex !== options.selection?.vertex) this.syncMarkers();
+      || previous.selection?.vertex !== options.selection?.vertex || previous.appearance !== options.appearance) this.syncMarkers();
     if (!previous || cancelledDrag || previous.active !== options.active || previous.geometry !== options.geometry
       || previous.selection?.id !== options.selection?.id) this.drawLines();
     this.previous = options;
