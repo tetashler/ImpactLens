@@ -3,7 +3,7 @@ import {storageBase,storageBundle,reserveStorageAdmission,bindStorageAdmission,f
 import {mkdirSync,existsSync,readFileSync,writeFileSync,readdirSync,statSync} from 'node:fs';import {join} from 'node:path';import {randomBytes,createHash,timingSafeEqual} from 'node:crypto';
 import {handleDynamicRequest,type DynamicDependencies} from '../inference/dynamic-service.ts';
 import {socialOperation,readSocialSession,readSocialSessionReadonly,checkpointSocialSession,type SocialDependencies,type SocialState} from './service.ts';
-import {extractPublicDiscussionEvidence,emptyPublicDiscussionEvidence} from '../report-discussion-evidence.ts';
+import {extractPublicDiscussionEvidence,extractDetailedReportDiscussionEvidence,emptyPublicDiscussionEvidence} from '../report-discussion-evidence.ts';
 import type {PublicDiscussionEvidence} from '../../report-summary/discussion-contract.ts';
 import {startCoordinator,coordinatorStatus,controlCoordinator,type CoordinatorDriver,type CoordinatorProgress} from './coordinator.ts';
 import {publicSociety,summaryGraph} from './summary.ts';
@@ -75,6 +75,13 @@ export async function readPublicReportSnapshot(runId:string,token:string,d:Publi
 }
 /** Authenticated internal report input only. Never recovers, simulates, publishes or writes a retained run. */
 export async function readPublicReportDiscussion(runId:string,token:string,expectedRevision:number,expectedTick:number,d:PublicDependencies={}):Promise<PublicDiscussionEvidence>{
+ return readReportDiscussionProjection(runId,token,expectedRevision,expectedTick,d,extractPublicDiscussionEvidence);
+}
+/** Same read-only access checks, with fuller accepted public excerpts for long-form reporting. */
+export async function readPublicDetailedReportDiscussion(runId:string,token:string,expectedRevision:number,expectedTick:number,d:PublicDependencies={}):Promise<PublicDiscussionEvidence>{
+ return readReportDiscussionProjection(runId,token,expectedRevision,expectedTick,d,extractDetailedReportDiscussionEvidence);
+}
+async function readReportDiscussionProjection(runId:string,token:string,expectedRevision:number,expectedTick:number,d:PublicDependencies,project:typeof extractPublicDiscussionEvidence):Promise<PublicDiscussionEvidence>{
  const resolved=resolveStorage(runId,d),stored=read(runId,token,resolved),run=stored.publicRun;
  ensure(Number.isSafeInteger(expectedRevision)&&expectedRevision>=0&&Number.isSafeInteger(expectedTick)&&expectedTick>=0&&stored.revision===expectedRevision&&(run.session?.revision??stored.revision)===expectedRevision&&(run.society?.tick??0)===expectedTick,'REPORT_DISCUSSION_STALE');
  if(!stored.sessionId||!run.session||!run.society)return emptyPublicDiscussionEvidence(run);
@@ -82,7 +89,7 @@ export async function readPublicReportDiscussion(runId:string,token:string,expec
  const state=await readSocialSessionReadonly(stored.sessionId,resolved);
  ensure(state.sessionId===stored.sessionId&&state.world.genesis.input.runId===runId&&state.world.genesis.id===run.society.worldId,'REPORT_DISCUSSION_IDENTITY');
  ensure(state.revision===expectedRevision&&state.world.tick===expectedTick,'REPORT_DISCUSSION_STALE');
- return extractPublicDiscussionEvidence(run,state.world);
+ return project(run,state.world);
 }
 /** Called only after server-side authoritative inference/validation; not an HTTP operation. */
 export async function registerAcceptedExecution(value:DynamicResponse,d:PublicDependencies={}):Promise<PublicExplore>{

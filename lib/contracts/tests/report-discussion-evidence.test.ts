@@ -10,8 +10,8 @@ import {worldFixtures} from '../../world-graph/fixtures.ts';
 import {publicSociety} from '../../server/society/summary.ts';
 import {HYBRID_DEFAULTS} from '../../society/decision-contract.ts';
 import {prepareHybridStep} from '../../society/hybrid.ts';
-import {extractPublicDiscussionEvidence} from '../../server/report-discussion-evidence.ts';
-import {readPublicReportDiscussion} from '../../server/society/public-service.ts';
+import {extractPublicDiscussionEvidence,extractDetailedReportDiscussionEvidence} from '../../server/report-discussion-evidence.ts';
+import {readPublicReportDiscussion,readPublicDetailedReportDiscussion} from '../../server/society/public-service.ts';
 import {readSocialSessionReadonly} from '../../server/society/service.ts';
 import type {PublicExplore} from '../../society/public-contract.ts';
 import type {KnowledgeNode} from '../../knowledge-graph/contract.ts';
@@ -59,6 +59,23 @@ test('initial-only evidence makes the missing followup discussion explicit',()=>
  assert.match(evidence.scope,/no.*follow.?up/i);assert.match(evidence.scope,/not.*public opinion/i);
 });
 
+test('detailed evidence retains fuller public reasoning and chronology without changing the quick pack',()=>{
+ const {run,world}=fixture();
+ add(world,'opening','The engineer proposes phased work. '.repeat(40),{minute:30});
+ add(world,'reply','The resident requests a stable sheltered route. '.repeat(30),{type:'reply',parentId:'opening',minute:45},{parentId:'opening'});
+ for(let i=0;i<45;i++)add(world,`later-${i}`,'Specific later public reasoning '.repeat(40),{minute:60+i});
+ add(world,'private-detail','PRIVATE_DETAIL',{platform:'whatsapp',groupId:'private-group'},{platform:'whatsapp',groupId:'private-group'});
+ const before=extractPublicDiscussionEvidence(run,world),expanded=extractDetailedReportDiscussionEvidence(run,world);
+ assert.equal(before.statements.length,32);assert.equal(expanded.statements.length,51);
+ assert.ok(expanded.statements.find(s=>s.id==='opening')!.text.length>700);
+ const reply=expanded.statements.find(s=>s.id==='reply') as any;
+ assert.equal(reply.minute,45);assert.equal(reply.replyToId,'opening');
+ assert.ok(expanded.statements.every(s=>s.text.length<=1600));
+ assert.doesNotMatch(JSON.stringify(expanded),/PRIVATE_/);
+ assert.deepEqual(extractPublicDiscussionEvidence(run,world),before);
+ assert.ok(!Object.hasOwn(before.statements[0],'minute'));
+});
+
 test('bounded selection preserves initial roles and followup breadth without copying property bags',()=>{
  const {run,world}=fixture();
  for(let i=0;i<50;i++)add(world,`frequent-${i}`,'Opening hours '.repeat(100));
@@ -91,6 +108,8 @@ test('authenticated report discussion reads preserve journal, reservation and di
  const f=storedFixture();try{
   const archive=readFileSync(f.archive),journal=readFileSync(f.journal),files=readdirSync(f.deps.directory);
   const evidence=await readPublicReportDiscussion(f.run.runId,f.run.session!.token,3,f.world.tick,f.deps);
+  const detailed=await readPublicDetailedReportDiscussion(f.run.runId,f.run.session!.token,3,f.world.tick,f.deps);
+  assert.equal(detailed.initialStatements,4);
   assert.equal(evidence.initialStatements,4);assert.equal(evidence.followupStatements,0);
   assert.deepEqual(readFileSync(f.archive),archive);assert.deepEqual(readFileSync(f.journal),journal);assert.deepEqual(readdirSync(f.deps.directory),files);
   const state=await readSocialSessionReadonly(sessionId,f.deps);assert.equal(state.revision,3);

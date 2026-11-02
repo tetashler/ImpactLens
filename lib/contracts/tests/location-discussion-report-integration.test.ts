@@ -20,5 +20,7 @@ test('report leads with the question and readable summary while technical record
  const html=render(true);
  assert.match(html,/<h1>Scenario report<\/h1>/);assert.match(html,/<details class="report-technical-details"><summary>Detailed results and methodology<\/summary>/);
  assert.ok(html.indexOf('AI-generated summary')<html.indexOf('Detailed results and methodology'));
+ assert.ok(html.indexOf('Detailed AI report')>html.indexOf('AI-generated summary'));
+ assert.ok(html.indexOf('Detailed AI report')<html.indexOf('Detailed results and methodology'));
  assert.doesNotMatch(html,/<details[^>]*class="report-technical-details"[^>]*open/);
 });
