@@ -22,6 +22,6 @@ export function projectGraphSummaryContext(run:PublicExplore){
    metrics:conversation?{}:metrics,limitations:conversation?[]:node.limitations.slice(0,3).map(value=>clip(value,300)),evidenceScope:conversation?'server-only-anonymous-conversation-excerpts':privateContext?'public-metadata-only':aggregate?'attributable-public-statements-only':'public-context-and-accepted-public-statements'};
  });
  const base=projectReportEvidence(run);
- return {...(base.assumptionReview?{assumptionReview:base.assumptionReview}:{}),...(base.research?{research:base.research,researchScope:base.researchScope}:{}),runId:run.runId,question:run.question.slice(0,2000),runStatus:run.job?.status??run.society?.phase??run.status,revision:run.session?.revision??null,tick:run.society?.tick??null,nodes,calculatedCommute:base.calculatedCommute,limitations:run.limitations.slice(0,12).map(value=>clip(value,600))};
+ return {...(base.assumptionReview?{assumptionReview:base.assumptionReview}:{}),...(base.locationContext?{locationContext:base.locationContext}:{}),...(base.research?{research:base.research,researchScope:base.researchScope}:{}),runId:run.runId,question:run.question.slice(0,2000),runStatus:run.job?.status??run.society?.phase??run.status,revision:run.session?.revision??null,tick:run.society?.tick??null,nodes,calculatedCommute:base.calculatedCommute,limitations:run.limitations.slice(0,12).map(value=>clip(value,600))};
 }
 export type GraphSummaryContext=ReturnType<typeof projectGraphSummaryContext>;

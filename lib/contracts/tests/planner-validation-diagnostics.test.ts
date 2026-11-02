@@ -10,6 +10,14 @@ import {MODEL} from '../../server/inference/deepseek.ts';
 import {worldDraftSchema} from '../../dynamic-scenarios/schema.ts';
 import {parsePlannerDiagnostic,plannerDiagnostic} from '../../dynamic-scenarios/diagnostics.ts';
 
+test('site-location conflicts expose a bounded semantic diagnostic without generated location prose',()=>{
+ const diagnostic=plannerDiagnostic('plan.site_location_conflict','draft.assumptions[0].text','A private contradictory location.');
+ assert.equal(diagnostic.category,'semantic');
+ assert.equal(diagnostic.expected,'semantic-constraint');
+ assert.deepEqual(parsePlannerDiagnostic(diagnostic),diagnostic);
+ assert.ok(!JSON.stringify(diagnostic).includes('private contradictory'));
+});
+
 const cases:[string,(d:any)=>void,string,string][]=[
  ['missing field',d=>delete d.description,'plan.required_field','draft.description'],
  ['wrong type',d=>d.agents='private-marker','plan.invalid_field_type','draft.agents'],
