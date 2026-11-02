@@ -4,22 +4,36 @@ import {processTone} from './colour-semantics';
 import {questionRunErrorMessage} from '../lib/question-simulation/errors';
 import AssumptionReviewPanel from './assumption-review-panel';
 import type {AssumptionDecision} from '../lib/assumption-review/contract';
+import {useSpeechInput} from './use-speech-input';
 
 export function WorkspaceViews({current,onMap,onGraph,onReport}:{current:'map'|'knowledge'|'report';onMap:()=>void;onGraph:()=>void;onReport:()=>void}){
  return <nav className="general-tabs" aria-label="Workspace views"><button type="button" aria-current={current==='map'?'page':undefined} onClick={onMap}>Map</button><button type="button" aria-current={current==='knowledge'?'page':undefined} onClick={onGraph}>Knowledge Graph</button><button type="button" aria-current={current==='report'?'page':undefined} onClick={onReport}>Report</button></nav>;
 }
-export default function MapScenarioPanel({question,state,toolsOpen,result,onQuestion,onExplore,onCancel,onToggleTools,onGraph,onReport,onArchive,onReviewPlot,onStartReviewed,onReviseReview}:{question:string;state:QuestionSimulationSnapshot;toolsOpen:boolean;result:'completed'|'partial'|null;onQuestion:(q:string)=>void;onExplore:()=>void;onCancel:()=>void;onToggleTools:()=>void;onGraph:()=>void;onReport:()=>void;onArchive:(id:string|null)=>void;onReviewPlot?:()=>void;onStartReviewed?:(decisions:AssumptionDecision[])=>void;onReviseReview?:()=>void}){
+export default function MapScenarioPanel({question,state,toolsOpen,result,active=true,onQuestion,onExplore,onCancel,onToggleTools,onGraph,onReport,onArchive,onReviewPlot,onStartReviewed,onReviseReview}:{question:string;state:QuestionSimulationSnapshot;toolsOpen:boolean;result:'completed'|'partial'|null;active?:boolean;onQuestion:(q:string)=>void;onExplore:()=>void;onCancel:()=>void;onToggleTools:()=>void;onGraph:()=>void;onReport:()=>void;onArchive:(id:string|null)=>void;onReviewPlot?:()=>void;onStartReviewed?:(decisions:AssumptionDecision[])=>void;onReviseReview?:()=>void}){
  const current=state.question===question,busy=current&&['interpreting','preparing','executing'].includes(state.phase);
  const assumptionReview=current&&state.phase==='reviewing-assumptions'?state.assumptionReview:null;
+ const speechBusy=['interpreting','preparing','executing'].includes(state.phase);
+ const speech=useSpeechInput({question,onQuestion,active:active&&!speechBusy&&!assumptionReview});
+ const micLabel=speech.state.status==='recording'?'Stop recording and transcribe':speech.state.status==='requesting'?'Cancel microphone request':'Record question';
  const review=current&&state.phase==='needs-map-review'?state.hybridReview:null;
  const error=current&&!review?(state.run?.error?questionRunErrorMessage(state.run):state.error):null;
  const mrtReview=review?.analysisMode==='clarification'&&(review.interventionType==='new_mrt_line'||/\b(?:mrt|rail(?:way)?|metro|train)\b/i.test(question));
  return <section className="map-scenario-panel" aria-label="Scenario exploration">
   {assumptionReview?<AssumptionReviewPanel key={assumptionReview.draftId} draft={assumptionReview} onStart={decisions=>onStartReviewed?.(decisions)} onRevise={()=>onReviseReview?.()} onCancel={onCancel}/>:<><h1>Explore a scenario</h1>
-  <form onSubmit={e=>{e.preventDefault();onExplore();}}>
+  <form onSubmit={e=>{e.preventDefault();if(active&&!busy&&!speech.isPending()&&question.trim())onExplore();}}>
    <label htmlFor="map-question">Your scenario question</label>
-   <textarea id="map-question" value={question} maxLength={2000} rows={4} onChange={e=>onQuestion(e.target.value)} placeholder="What would you like to explore?"/>
-   <div className="map-question-actions"><button type="button" aria-expanded={toolsOpen} aria-controls="map-plot-controls" onClick={onToggleTools}>Plot Tools</button><button className="map-explore-button" disabled={!question.trim()||busy} type="submit">Explore</button></div>
+   <div className="map-question-frame">
+    <textarea id="map-question" value={question} maxLength={2000} rows={4} onChange={e=>speech.editQuestion(e.target.value)} placeholder="What would you like to explore?" aria-describedby="map-speech-status"/>
+    <button className="map-speech-microphone" type="button" aria-label={micLabel} title={micLabel} aria-pressed={speech.state.status==='recording'} aria-describedby="map-speech-status" disabled={!active||speechBusy||['stopping','transcribing','overflow'].includes(speech.state.status)} onClick={speech.toggle}>
+     <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8"/></svg>
+    </button>
+   </div>
+   <div className="map-speech-feedback">
+    <p id="map-speech-status" role="status" aria-live="polite" data-error={speech.state.status==='error'||undefined}>{speech.state.message||'Audio is sent to OpenRouter for transcription.'}</p>
+    {speech.pending&&speech.state.status!=='overflow'&&<button type="button" className="map-speech-cancel" onClick={speech.cancel}>Cancel</button>}
+   </div>
+   {speech.state.status==='overflow'&&<div className="map-speech-recovery"><textarea aria-label="Transcript to copy" readOnly value={speech.state.transcript} rows={3}/><div><button type="button" onClick={speech.insertRecovered}>Add transcript again</button><button type="button" onClick={speech.cancel}>Discard transcript</button></div></div>}
+   <div className="map-question-actions"><button type="button" aria-expanded={toolsOpen} aria-controls="map-plot-controls" onClick={onToggleTools}>Plot Tools</button><button className="map-explore-button" disabled={!question.trim()||busy||speech.pending} type="submit">Explore</button></div>
   </form></>}
   <div className="map-exploration-status" role="status" aria-live="polite" data-ui-tone={processTone(busy?'running':result==='completed'?(state.publicRun?.job?.status??state.publicRun?.society?.phase??'completed'):result==='partial'?'partial':review?'needs-map-review':current&&state.phase==='cancelled'?'cancelled':error?'failed':undefined)}>{busy?<><span className="spinner"/> Exploring…</>:result==='completed'?<>Exploration complete <span>{state.publicRun?.initialActions.length??state.run?.events.length} accepted turns</span></>:result==='partial'?<>Exploration interrupted <span>{state.publicRun?.initialActions.length??state.run?.events.length} accepted turns retained</span></>:review?review.analysisMode==='location-context'?'Location context available':'Map review needed':current&&state.phase==='cancelled'?'Exploration cancelled':error?'Exploration could not complete':null}</div>
   {busy&&<button type="button" className="map-cancel-button" onClick={onCancel}>Cancel</button>}
