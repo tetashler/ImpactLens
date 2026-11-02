@@ -4,6 +4,7 @@ import type {HybridExploreOptions} from '../lib/interventions/explore-contract';
 
 import {useSociety} from './use-society';
 import {useAutomaticReports} from './use-automatic-reports';
+import {useAutomaticGraphSummaries} from './use-automatic-graph-summaries';
 import CommunicationReport,{CommunicationStatus} from './communication-report';
 import {isArchivedGraphView} from '../lib/knowledge-graph/display';
 import {startQuestionWork} from '../lib/dynamic-scenarios/client';
@@ -328,6 +329,7 @@ export default function Workspace() {
   const displayedFlow=archive?{...flow.state,...archive}:flow.state;
   const society=useSociety(displayedFlow.publicRun,flow.state.publicRun?.runId??null,!!archive);
   const automaticReports=useAutomaticReports(society.result??displayedFlow.publicRun,true);
+  const graphNodeSummaries=useAutomaticGraphSummaries(society.result??displayedFlow.publicRun,true);
   const automaticReportMessage=automaticReports.stage==='writing-summary'?'Writing your quick summary automatically...':automaticReports.stage==='writing-detailed'?'Writing your detailed report automatically...':['checking-summary','checking-detailed'].includes(automaticReports.stage)?'Checking saved reports...':automaticReports.stage==='complete'?(Object.keys(automaticReports.errors).length?'Automatic report preparation needs attention. Open Report to retry.':automaticReports.summary==='available'&&automaticReports.detailed==='available'?'Your quick summary and detailed report are ready.':'Reports were already attempted. Open Report to check or retry.') : '';
   const editQuestion=(question:string)=>{setStage('general');invalidatePlot();rawPlanner.setQuestion(question);flow.controller.invalidate({question,geometry:plot.geometry,geometryRevision:plot.revision});};
   const openQuestionGraph=async()=>{
@@ -378,7 +380,7 @@ export default function Workspace() {
 
       <AacEditor state={aac} hidden={exploring||stage==='general'||interventionMode!=='aac'||(guided&&stage!=='configure')} onCalculate={()=>{if(guided)setStage('calculate');pendingGraphAac.current=graphIdentity;void aac.calculate();}}/>
       <section ref={mapPanel} className="map-panel" aria-label="Singapore network map">
-        <SingaporeMap society={{snapshot:society.result?.society?.map,selected:society.selected,visible:!!society.result?.society&&!plotToolsOpen&&tab==='general'&&experienceView==='map',onSelect:society.setSelected}} exploring={exploring} editing={!!catalog&&plotToolsOpen&&(stage==='configure'||stage==='workspace')} visible={tab==='general'&&(experienceView==='map'||exploring)} cameraCommand={cameraCommand} plotting={plotting} focusKey={mapFocus} aac={aacOptions} citizens={citizenOptions} catalog={catalog??LOADING_NETWORK} draft={draft} disabledSegments={disabledSegments} mode={mode} comparison={comparison}
+        <SingaporeMap society={{snapshot:society.result?.society?.map,selected:society.selected,visible:false,onSelect:society.setSelected}} exploring={exploring} editing={!!catalog&&plotToolsOpen&&(stage==='configure'||stage==='workspace')} visible={tab==='general'&&(experienceView==='map'||exploring)} cameraCommand={cameraCommand} plotting={plotting} focusKey={mapFocus} aac={aacOptions} citizens={citizenOptions} catalog={catalog??LOADING_NETWORK} draft={draft} disabledSegments={disabledSegments} mode={mode} comparison={comparison}
           onStation={id => { if (mode === 'anchor') addExisting(id); else setMessage('Use Interchange mode to add an existing station. Click an empty map location for a new station.'); }} onPlace={addPoint} onMove={(key, p) => { patchStop(key, p); setMessage('Hypothetical location updated. Review segment times before rerunning.'); }} />
         {!catalog&&<div className="network-map-status" role="status">{networkError?<><span>MRT catalogue unavailable. Geography remains usable.</span><button onClick={()=>location.reload()}>Retry catalogue</button></>:<><span className="spinner"/> Loading MRT station catalogue…</>}</div>}
         {plotToolsOpen&&plotting.active&&<div id="map-plot-controls"><PlotToolbar mode={plot.mode} onMode={next=>{if(stage!=='general')enterGeneral();changePlotMode(next);}} canUndo={plot.canUndo} canRedo={plot.canRedo} onUndo={()=>editPlot(plot.undo)} onRedo={()=>editPlot(plot.redo)} onClear={()=>editPlot(plot.clear)} drawing={!!plot.activeLineId} onFinish={()=>editPlot(plot.finishLine)} onCancel={()=>editPlot(plot.cancel)}/></div>}
@@ -422,9 +424,9 @@ export default function Workspace() {
     </div>
     <StakeholderWorkspace open={stakeholderOpen&&!exploring} experiment={executionRecord} experiments={experiment.state.records} contextToken={stakeholderContext} question={planner.question} scenarioIdentity={experiment.state.scenarioIdentity??''} onClose={()=>{graphAttempt.current++;prepareAttempt.current++;setStakeholderOpen(false);}} onUseExample={()=>{}} onGraph={showStandaloneGraph} onLinkedGraph={showLinkedGraph}/>
 
-    {tab==='knowledge'&&graphArchived&&<button className="archive-return" onClick={()=>setGraphScope({kind:'current'})}>Return to current scenario graph</button>}
+
     {tab==='knowledge'&&<p className="world-context-note">Entity types follow this scenario. Model suggestions and fictional interactions remain distinct from retrieved source passages; check each relationship's provenance. Missing evidence does not mean zero relevant entities.</p>}
-    <KnowledgeWorkspace reportRun={society.result??displayedFlow.publicRun??null} active={tab==='knowledge'} focusAgentId={society.selected} onMapAgent={id=>{society.setSelected(id);openMapView();}} graph={primaryGraph} inspections={socialInspections} emptyReason={worldEmptyReason} archived={graphArchived} resultLabel={graphScope.kind==='run'?displayedFlow.publicRun?`Summary-only synthetic run; ${displayedFlow.publicRun.initialActions.length} accepted stakeholder actions`:worldRunLabel(displayedFlow.run,graphScope.graph.executionIdentity):undefined} visible={tab==='knowledge'} onReturn={openMapView}/>
+    <KnowledgeWorkspace nodeSummaries={graphNodeSummaries} reportRun={society.result??displayedFlow.publicRun??null} active={tab==='knowledge'} focusAgentId={society.selected} onMapAgent={id=>{society.setSelected(id);openMapView();}} graph={primaryGraph} inspections={socialInspections} emptyReason={worldEmptyReason} archived={graphArchived} resultLabel={graphScope.kind==='run'?displayedFlow.publicRun?`Summary-only synthetic run; ${displayedFlow.publicRun.initialActions.length} accepted stakeholder actions`:worldRunLabel(displayedFlow.run,graphScope.graph.executionIdentity):undefined} visible={tab==='knowledge'} onReturn={openMapView}/>
     <footer className="app-footer"><span><span className="live-dot" /> Evidence-informed scenario modelling</span><span>Pre-hackathon prototype · Proposed infrastructure is hypothetical</span><span>ImpactLens SG / MRT + AAC</span></footer>
   </main>;
 }

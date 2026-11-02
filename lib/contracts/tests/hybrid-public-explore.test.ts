@@ -69,10 +69,10 @@ function setup(options:{legacy?:boolean;malformedPersonality?:boolean;handoff?:b
   if(options.malformedPersonality)profiles.pop();
   return Response.json({id:'gen-hybrid-personality-fixture',model:body.model,provider:'DigitalOcean',choices:[{finish_reason:'stop',message:{role:'assistant',content:JSON.stringify({profiles})}}],usage:{prompt_tokens:1800,completion_tokens:2200,total_tokens:4000,cost:0.003,completion_tokens_details:{reasoning_tokens:0}}});
  };
- const dynamicDependencies={enabled:true,key:'offline-fixture',fetcher,groundingKey:'offline-fixture',groundingFetcher:async(_url:unknown,init?:RequestInit)=>{searches++;const body=JSON.parse(String(init?.body));assert.ok(body.query.includes(scenarioQuestion));assert.equal(body.max_results,5);return Response.json({results:[{title:'OFFLINE rail planning guidance',url:'https://www.lta.gov.sg/',content:sourceText,published_date:'2025-01-01'}],usage:{credits:1}});}};
+ const dynamicDependencies={enabled:true,key:'offline-fixture',fetcher,groundingKey:'offline-fixture',groundingFetcher:async(_url:unknown,init?:RequestInit)=>{searches++;const body=JSON.parse(String(init?.body));assert.ok(body.query.includes(scenarioQuestion));assert.equal(body.max_results,5);return Response.json({results:[{title:'OFFLINE rail planning guidance',url:searches===1?'https://www.lta.gov.sg/':`https://www.lta.gov.sg/offline-facet-${searches}`,content:sourceText,published_date:'2025-01-01'}],usage:{credits:1}});}};
  const socialDependencies={...(!options.currentMenu?{citizenMenuPolicy:'conversation-menu-v4' as const}:{}),enabled:true,key:'offline-fixture',fetcher,directory:join(directory,'sessions'),storeDirectory:join(directory,'accepted'),admission:{maxCalls:0},hybrid:{key:'offline-fixture',catalog:()=>catalog,impact:async(input:CitizenImpactRequest)=>{impactCalls++;return sharedActualImpact(input);}}};
  const accepted=()=>{const files=readdirSync(socialDependencies.storeDirectory).filter(f=>f.endsWith('.json'));assert.equal(files.length,1);return JSON.parse(readFileSync(join(socialDependencies.storeDirectory,files[0]),'utf8'));};
- return {wire,dynamicDependencies,socialDependencies,stages,contexts,accepted,counts:()=>({searches,socialCalls,impactCalls})};
+ return {wire,dynamicDependencies,socialDependencies,stages,contexts,accepted,expectedSearches:options.polyclinic?5:7,counts:()=>({searches,socialCalls,impactCalls})};
 }
 function privateFieldsAbsent(value:unknown){
  const encoded=JSON.stringify(value);for(const marker of [initialSentinel,'"profiles"','"traits"','"communicationStyle"','"uncertaintyTolerance"','"fieldProvenance"','"jobTitle"','"homeProxy"','"seedDigest"','gen-hybrid-personality-fixture'])assert.ok(!encoded.includes(marker),'Public summary leaked '+marker);
@@ -83,7 +83,7 @@ test('ordinary version-two Explore preserves the actual plotted MRT binding thro
  try{
   const response=await handlePublicExplore(request(f.wire),f.dynamicDependencies,f.socialDependencies),body=await response.json();
   assert.equal(response.status,200);assert.equal(body.kind,'summary-execution');assert.equal(body.initialActions.length,8);
-  assert.deepEqual(f.stages,['dynamic_entities_v3','dynamic_relationships_v2',...Array(8).fill('stakeholder_turn_v1'),'citizen_personalities_v1']);assert.deepEqual(f.counts(),{searches:1,socialCalls:0,impactCalls:1});
+  assert.deepEqual(f.stages,['dynamic_entities_v3','dynamic_relationships_v2',...Array(8).fill('stakeholder_turn_v1'),'citizen_personalities_v1']);assert.deepEqual(f.counts(),{searches:f.expectedSearches,socialCalls:0,impactCalls:1});
   assert.equal(body.accounting.planningCalls,2);assert.equal(body.accounting.actionCalls,8);assert.equal(body.society.totalSteps,320);assert.equal(body.society.tick,0);assert.equal(body.society.swarm.activeAgents,50);assert.equal(body.society.swarm.llmCapableAgents,35);assert.equal(body.society.swarm.maxCalls,350);
   assert.equal(body.grounding.personalities.modelGenerated,35);assert.equal(body.grounding.personalities.calls,1);assert.equal(body.grounding.interpretation.calls,0);
   const commuteNodes=body.graph.nodes.filter((n:any)=>n.properties.recordType==='citizen-commute-aggregate');assert.equal(commuteNodes.length,1,'Ordinary Explore must connect its authoritative commute aggregate to the graph');
@@ -115,7 +115,7 @@ test('ordinary v2 handoff Explore freezes validated selection through citizen ge
 test('historical version-one Explore retains its original planning and society path without personalities',async()=>{
  const f=setup({legacy:true});try{
   const response=await handlePublicExplore(request(f.wire),f.dynamicDependencies,f.socialDependencies),body=await response.json();assert.equal(response.status,200);assert.equal(body.initialActions.length,8);
-  assert.deepEqual(f.stages,['dynamic_entities_v3','dynamic_relationships_v2',...Array(8).fill('stakeholder_turn_v1')]);assert.deepEqual(f.counts(),{searches:1,socialCalls:0,impactCalls:0});assert.ok(!Object.hasOwn(body,'grounding'));
+  assert.deepEqual(f.stages,['dynamic_entities_v3','dynamic_relationships_v2',...Array(8).fill('stakeholder_turn_v1')]);assert.deepEqual(f.counts(),{searches:f.expectedSearches,socialCalls:0,impactCalls:0});assert.ok(!Object.hasOwn(body,'grounding'));
   const state=await readSocialSession(body.session.id,f.socialDependencies);assert.equal(state.world.genesis.version,5);assert.ok(!state.world.genesis.input.citizenGrounding);assert.equal(state.world.genesis.input.intelligence?.context,'conversation-menu-v3');privateFieldsAbsent(body);
  }finally{await stopCoordinators(join(f.socialDependencies.storeDirectory,'jobs'));}
 });
@@ -144,7 +144,7 @@ test('plotted polyclinic continues into fictional stakeholder discussion without
  try{
   const response=await handlePublicExplore(request(f.wire),f.dynamicDependencies,f.socialDependencies),body=await response.json();
   assert.equal(response.status,200);assert.equal(body.kind,'summary-execution');assert.equal(body.status,'completed');assert.equal(body.initialActions.length,8);assert.ok(body.session);assert.ok(body.society);
-  assert.deepEqual(f.stages,['dynamic_entities_v3','dynamic_relationships_v2',...Array(8).fill('stakeholder_turn_v1')]);assert.deepEqual(f.counts(),{searches:1,socialCalls:0,impactCalls:0});
+  assert.deepEqual(f.stages,['dynamic_entities_v3','dynamic_relationships_v2',...Array(8).fill('stakeholder_turn_v1')]);assert.deepEqual(f.counts(),{searches:f.expectedSearches,socialCalls:0,impactCalls:0});
   assert.equal(body.attemptId,f.wire.attemptId);assert.equal(body.question,original.question);assert.deepEqual(body.request,{question:original.question,geometry:original.geometry,geometryRevision:original.geometryRevision});
   assert.equal(body.locationContext.analysisMode,'location-context');assert.equal(body.locationContext.interventionType,'new_polyclinic');assert.equal(body.locationContext.question,original.question);assert.equal(body.locationContext.geometryRevision,7);assert.deepEqual(body.locationContext.locations.map((l:any)=>l.pointId),['site']);
   assert.match(body.limitations[0],/fictional.*discussion/i);assert.match(body.limitations[0],/location context/i);assert.match(body.limitations[0],/healthcare|wait times|capacity/i);assert.match(body.limitations[0],/not citizen-grounded/i);
@@ -152,7 +152,7 @@ test('plotted polyclinic continues into fictional stakeholder discussion without
   const stored=f.accepted();assert.deepEqual(stored.execution.plan.request,original);assert.deepEqual(stored.execution.plan.draft.userConditions,[original.question]);assert.deepEqual(stored.publicRun.locationContext,body.locationContext);assert.deepEqual(stored.publicRun.limitations,body.limitations);
   const world=(await readSocialSession(body.session.id,f.socialDependencies)).world;assert.ok(!world.genesis.input.citizenGrounding);assert.ok(!world.genesis.input.citizenSelection);assert.equal(world.genesis.input.question,original.question);privateFieldsAbsent(body);
   const before=[...f.stages],passive=await handlePublicSocial(new Request(`http://localhost/api/social-simulate?runId=${body.runId}&token=${body.session.token}`),f.socialDependencies),retained=await passive.json();assert.equal(passive.status,200);assert.deepEqual(retained.locationContext,body.locationContext);assert.deepEqual(retained.limitations,body.limitations);privateFieldsAbsent(retained);assert.deepEqual(f.stages,before);
-  const duplicate=await handlePublicExplore(request(f.wire),f.dynamicDependencies,f.socialDependencies);assert.equal(duplicate.status,409);assert.equal((await duplicate.json()).code,'DUPLICATE_ATTEMPT');assert.deepEqual(f.stages,before);assert.deepEqual(f.counts(),{searches:1,socialCalls:0,impactCalls:0});
+  const duplicate=await handlePublicExplore(request(f.wire),f.dynamicDependencies,f.socialDependencies);assert.equal(duplicate.status,409);assert.equal((await duplicate.json()).code,'DUPLICATE_ATTEMPT');assert.deepEqual(f.stages,before);assert.deepEqual(f.counts(),{searches:f.expectedSearches,socialCalls:0,impactCalls:0});
  }finally{await stopCoordinators(join(f.socialDependencies.storeDirectory,'jobs'));}
 });
 
@@ -160,7 +160,7 @@ test('plotted polyclinic preserves the configured fifty-agent cohort and thirty-
  const f=setup({polyclinic:true,handoff:true}),social={...f.socialDependencies,admission:{maxCalls:30,deadlineMs:1}};
  try{
   const response=await handlePublicExplore(request(f.wire),f.dynamicDependencies,social),body=await response.json();assert.equal(response.status,200);assert.equal(body.kind,'summary-execution');assert.equal(body.society.swarm.activeAgents,50);assert.equal(body.job.admittedCalls,30);
-  const state=await readSocialSession(body.session.id,social);assert.equal(state.admission.maxCalls,30);assert.equal(state.admission.calls,0);assert.deepEqual(f.counts(),{searches:1,socialCalls:0,impactCalls:0});
+  const state=await readSocialSession(body.session.id,social);assert.equal(state.admission.maxCalls,30);assert.equal(state.admission.calls,0);assert.deepEqual(f.counts(),{searches:f.expectedSearches,socialCalls:0,impactCalls:0});
  }finally{await stopCoordinators(join(f.socialDependencies.storeDirectory,'jobs'));}
 });
 
@@ -177,14 +177,14 @@ test('bounded storage admission retains plotted polyclinic discussion context',a
   const binding=findStorageBinding(accepted.runId,base);assert.equal(binding?.binding?.sessionId,accepted.session?.id);assert.equal(binding?.claim.sessionId,accepted.session?.id);
   const archives=readdirSync(bundle.archives).filter(name=>name.endsWith('.json'));assert.equal(archives.length,1);const stored=JSON.parse(readFileSync(join(bundle.archives,archives[0]),'utf8'));assert.deepEqual(stored.execution.plan.request,f.wire.request);assert.deepEqual(stored.publicRun.locationContext,accepted.locationContext);
   const state=await readSocialSession(accepted.session!.id,{...social,directory:bundle.sessions});assert.equal(state.admission.maxCalls,30);assert.equal(state.admission.calls,0);assert.ok(!state.world.genesis.input.citizenGrounding);assert.ok(!state.world.genesis.input.citizenSelection);assert.ok(!accepted.grounding);assert.ok(!accepted.graph.nodes.some(node=>node.properties.recordType==='citizen-commute-aggregate'));privateFieldsAbsent(accepted);
-  const before=[...f.stages],passive=await handlePublicSocial(new Request(`http://localhost/api/social-simulate?runId=${accepted.runId}&token=${accepted.session!.token}`),social);assert.equal(passive.status,200);const retained=parsePublicExplore(await passive.json());assert.deepEqual(retained.locationContext,accepted.locationContext);assert.deepEqual(retained.limitations,accepted.limitations);assert.equal(retained.society?.swarm?.activeAgents,50);assert.equal(retained.job?.admittedCalls,30);privateFieldsAbsent(retained);assert.deepEqual(f.stages,before);assert.deepEqual(f.counts(),{searches:1,socialCalls:0,impactCalls:0});assert.ok(!f.stages.includes('citizen_personalities_v1'));
+  const before=[...f.stages],passive=await handlePublicSocial(new Request(`http://localhost/api/social-simulate?runId=${accepted.runId}&token=${accepted.session!.token}`),social);assert.equal(passive.status,200);const retained=parsePublicExplore(await passive.json());assert.deepEqual(retained.locationContext,accepted.locationContext);assert.deepEqual(retained.limitations,accepted.limitations);assert.equal(retained.society?.swarm?.activeAgents,50);assert.equal(retained.job?.admittedCalls,30);privateFieldsAbsent(retained);assert.deepEqual(f.stages,before);assert.deepEqual(f.counts(),{searches:f.expectedSearches,socialCalls:0,impactCalls:0});assert.ok(!f.stages.includes('citizen_personalities_v1'));
  }finally{await stopCoordinators(bundle.jobs);}
 });
 
 test('malformed personality output preserves all eight accepted initial records without a society or retry',async()=>{
  const f=setup({malformedPersonality:true});try{
   const response=await handlePublicExplore(request(f.wire),f.dynamicDependencies,f.socialDependencies),body=await response.json();assert.equal(response.status,200);assert.equal(body.kind,'summary-execution');assert.equal(body.initialActions.length,8);assert.equal(body.society,null);assert.equal(body.session,null);assert.ok(!body.grounding);
-  assert.deepEqual(f.stages,['dynamic_entities_v3','dynamic_relationships_v2',...Array(8).fill('stakeholder_turn_v1'),'citizen_personalities_v1']);assert.deepEqual(f.counts(),{searches:1,socialCalls:0,impactCalls:1});
+  assert.deepEqual(f.stages,['dynamic_entities_v3','dynamic_relationships_v2',...Array(8).fill('stakeholder_turn_v1'),'citizen_personalities_v1']);assert.deepEqual(f.counts(),{searches:f.expectedSearches,socialCalls:0,impactCalls:1});
   const stored=f.accepted();assert.equal(stored.execution.run.events.length,8);assert.equal(stored.execution.run.status,'completed');assert.ok(stored.execution.inference.records.every((r:any)=>r.status==='accepted'));assert.equal(readdirSync(f.socialDependencies.directory).filter(n=>n.endsWith('.jsonl')).length,0);privateFieldsAbsent(body);
   const before=[...f.stages],passive=await handlePublicSocial(new Request(`http://localhost/api/social-simulate?runId=${body.runId}&token=${stored.token}`),f.socialDependencies);assert.equal(passive.status,200);assert.deepEqual(f.stages,before);
   const duplicate=await handlePublicExplore(request(f.wire),f.dynamicDependencies,f.socialDependencies);assert.equal(duplicate.status,409);assert.deepEqual(f.stages,before);

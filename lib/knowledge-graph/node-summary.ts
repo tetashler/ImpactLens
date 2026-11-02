@@ -20,9 +20,8 @@ export function nodeSummary(node:KnowledgeNode,context:NodeSummaryContext={}):st
       parts.push(`Coverage: ${number(p.unknownAgents)} unknown; ${number(p.notApplicableAgents)} not applicable citizen records.`);
       break;
     case 'fictional-agent-aggregate':
-      parts.push(`A calculated group of ${number(p.members??p.representedAgents)} fictional participants shown together to keep the graph readable. They do not represent assigned scenario roles.`);
-      parts.push(sentence(text(p.countScope)??'Search can reveal participants already counted here; do not add them again to aggregate totals.'));
-      fact('recordedEvents','Recorded fictional events');
+      parts.push(`These ${number(p.members??p.representedAgents)} fictional participants provide background perspectives${question?` on the question “${question}”`:' in this scenario'}.`);
+      parts.push('Their public statements can help explain the concerns they expressed, but their presence in the graph does not establish a shared position. Without a summary of their public discussion, we cannot assess whether they support the proposal, oppose it, or agree with each other.');
       break;
     case 'communication-platform':
       parts.push(`${node.label} is a simulated discussion space for fictional participants${question?` exploring the question “${question}”`: ' to discuss the scenario'}.`);

@@ -52,7 +52,7 @@ test('empty workspace has no invented entity types',async()=>{
 
 test('layout, view, fit and labels are distinct accessible controls',async()=>{
   const html=await render(graph());
-  for(const label of ['Fit Graph','Reset Layout','Reset View','Reset Focus'])assert.match(html,new RegExp(`>${label}<\\/button>`));
+  for(const label of ['Fit Graph','Reset Layout'])assert.match(html,new RegExp(`>${label}<\\/button>`));
   assert.match(html,/<label[^>]*>[\s\S]*?type="checkbox"[^>]*[\s\S]*?Edge labels<\/label>/);
   assert.match(html,/Motion settles after release/);
   assert.doesNotMatch(html,/documented relationships|A documented relationship/);

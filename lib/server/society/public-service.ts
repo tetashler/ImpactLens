@@ -1,10 +1,13 @@
 import {replacePrivateCheckpoint,privateStoreDirectory,verifyPrivateStore} from './storage.ts';
+import {createResearchBriefing} from '../../grounding/briefing.ts';
 import {storageBase,storageBundle,reserveStorageAdmission,bindStorageAdmission,findStorageBinding,assertStorageAdmission,inspectStorageAdmission,STORAGE_ADMISSION_POLICY} from './storage-admission.ts';
 import {mkdirSync,existsSync,readFileSync,writeFileSync,readdirSync,statSync} from 'node:fs';import {join} from 'node:path';import {randomBytes,createHash,timingSafeEqual} from 'node:crypto';
 import {handleDynamicRequest,type DynamicDependencies} from '../inference/dynamic-service.ts';
 import {socialOperation,readSocialSession,readSocialSessionReadonly,checkpointSocialSession,type SocialDependencies,type SocialState} from './service.ts';
 import {extractPublicDiscussionEvidence,extractDetailedReportDiscussionEvidence,emptyPublicDiscussionEvidence} from '../report-discussion-evidence.ts';
 import type {PublicDiscussionEvidence} from '../../report-summary/discussion-contract.ts';
+import {projectGraphNodeDiscussion,projectGraphSummaryWriterEvidence,type GraphSummaryWriterEvidence} from '../graph-summary-evidence.ts';
+import {extractGraphChannelDiscussions} from '../graph-channel-discussions.ts';
 import {startCoordinator,coordinatorStatus,controlCoordinator,type CoordinatorDriver,type CoordinatorProgress} from './coordinator.ts';
 import {publicSociety,summaryGraph} from './summary.ts';
 import {projectPrimaryWorldGraph} from '../../world-graph/projection.ts';
@@ -81,6 +84,21 @@ export async function readPublicReportDiscussion(runId:string,token:string,expec
 export async function readPublicDetailedReportDiscussion(runId:string,token:string,expectedRevision:number,expectedTick:number,d:PublicDependencies={}):Promise<PublicDiscussionEvidence>{
  return readReportDiscussionProjection(runId,token,expectedRevision,expectedTick,d,extractDetailedReportDiscussionEvidence);
 }
+/** Per-batch graph input, with the same passive access and immutable-prefix checks as reports. */
+export async function readPublicGraphSummaryEvidence(runId:string,token:string,expectedRevision:number,expectedTick:number,nodeIds:string[],d:PublicDependencies={}):Promise<GraphSummaryWriterEvidence>{
+ const resolved=resolveStorage(runId,d),stored=read(runId,token,resolved),run=jobProjection(stored,resolved);
+ ensure(nodeIds.length>0&&nodeIds.length<=12&&new Set(nodeIds).size===nodeIds.length&&nodeIds.every(id=>run.graph.nodes.some(node=>node.id===id)),'GRAPH_SUMMARY_NODE');
+ ensure(Number.isSafeInteger(expectedRevision)&&expectedRevision>=0&&Number.isSafeInteger(expectedTick)&&expectedTick>=0&&stored.revision===expectedRevision&&(run.session?.revision??stored.revision)===expectedRevision&&(run.society?.tick??0)===expectedTick,'REPORT_DISCUSSION_STALE');
+ if(!stored.sessionId||!run.session||!run.society)return projectGraphSummaryWriterEvidence(run,nodeIds,{...emptyPublicDiscussionEvidence(run),nodes:[]});
+ ensure(stored.sessionId===run.session.id&&run.society.runId===runId,'REPORT_DISCUSSION_IDENTITY');
+ const state=await readSocialSessionReadonly(stored.sessionId,resolved);
+ ensure(state.sessionId===stored.sessionId&&state.world.genesis.input.runId===runId&&state.world.genesis.id===run.society.worldId,'REPORT_DISCUSSION_IDENTITY');
+ ensure(state.revision===expectedRevision&&state.world.tick===expectedTick,'REPORT_DISCUSSION_STALE');
+ const publicPlatforms=new Set<string>(state.world.genesis.input.communication?.channels.filter(channel=>['public-discussion','public-feed'].includes(channel.style)).map(channel=>channel.id));
+ const publicChannelNodes=run.graph.nodes.filter(node=>typeof node.properties.platformId==='string'&&publicPlatforms.has(node.properties.platformId)).map(node=>node.id);
+ const hasEntity=nodeIds.some(id=>{const node=run.graph.nodes.find(node=>node.id===id)!;return !node.properties.agentId&&!node.properties.roleId&&(node.properties.recordType==='world-entity'||['infrastructure','geography'].includes(node.category));});
+ return projectGraphSummaryWriterEvidence(run,nodeIds,projectGraphNodeDiscussion(run,state.world,nodeIds),extractGraphChannelDiscussions(run,state.world,nodeIds),hasEntity?extractGraphChannelDiscussions(run,state.world,publicChannelNodes):[]);
+}
 async function readReportDiscussionProjection(runId:string,token:string,expectedRevision:number,expectedTick:number,d:PublicDependencies,project:typeof extractPublicDiscussionEvidence):Promise<PublicDiscussionEvidence>{
  const resolved=resolveStorage(runId,d),stored=read(runId,token,resolved),run=stored.publicRun;
  ensure(Number.isSafeInteger(expectedRevision)&&expectedRevision>=0&&Number.isSafeInteger(expectedTick)&&expectedTick>=0&&stored.revision===expectedRevision&&(run.session?.revision??stored.revision)===expectedRevision&&(run.society?.tick??0)===expectedTick,'REPORT_DISCUSSION_STALE');
@@ -100,7 +118,7 @@ export async function registerAcceptedExecution(value:DynamicResponse,d:PublicDe
  // Reconstruct event links from metadata; never forward original dialogue descriptions/properties.
  primary.graph.edges=primary.graph.edges.map(e=>primary.inspections[e.id]?.kind==='recorded-interaction'?{...e,description:'Recorded fictional stakeholder interaction. Accepted chronology is retained internally; no conversation text is disclosed.'}:e);
  for(const [id,i]of Object.entries(primary.inspections))primary.inspections[id]={version:1,kind:i.kind,affiliation:i.affiliation,sources:i.sources,interactions:[],assumptions:i.assumptions,...(i.sourceAttribution?{sourceAttribution:i.sourceAttribution}:{}),...(i.demographicContext?{demographicContext:i.demographicContext}:{})};
- const publicRun:PublicExplore={version:3,kind:'summary-execution',attemptId:value.attemptId,requestIdentity:value.requestIdentity,runId:run.runId,planId:plan.planId,question:plan.request.question,status:run.status,request:{question:plan.request.question,geometryRevision:plan.request.geometryRevision,geometry:plan.request.geometry},graph:primary.graph,inspections:primary.inspections,roles:plan.draft.agents.map(a=>({id:a.id,label:a.label,goals:a.goals})),initialActions:run.events.map(e=>({id:e.id,roleId:e.roleId,type:e.type,round:e.round,position:e.position,previousEventIds:e.previousEventIds})),assumptions:run.inputSnapshot.assumptions.map(a=>a.value),limitations:run.limitations,sources:(plan.grounding?.sources??[]).map(s=>({id:s.id,title:s.title,url:s.url,publisher:s.publisher,publishedAt:s.publishedAt,retrievedAt:s.retrievedAt})),accounting:{planningCalls:value.accounting.planningCalls,actionCalls:value.accounting.actionCalls,inputTokens:value.accounting.inputTokens,outputTokens:value.accounting.outputTokens,costUsd:value.accounting.costUsd},demographics:plan.demographics??null,session:null,society:null};
+ const publicRun:PublicExplore={...(plan.grounding?.research?{research:createResearchBriefing(plan.grounding)}:{}),version:3,kind:'summary-execution',attemptId:value.attemptId,requestIdentity:value.requestIdentity,runId:run.runId,planId:plan.planId,question:plan.request.question,status:run.status,request:{question:plan.request.question,geometryRevision:plan.request.geometryRevision,geometry:plan.request.geometry},graph:primary.graph,inspections:primary.inspections,roles:plan.draft.agents.map(a=>({id:a.id,label:a.label,goals:a.goals})),initialActions:run.events.map(e=>({id:e.id,roleId:e.roleId,type:e.type,round:e.round,position:e.position,previousEventIds:e.previousEventIds})),assumptions:run.inputSnapshot.assumptions.map(a=>a.value),limitations:run.limitations,sources:(plan.grounding?.sources??[]).map(s=>({id:s.id,title:s.title,url:s.url,publisher:s.publisher,publishedAt:s.publishedAt,retrievedAt:s.retrievedAt})),accounting:{planningCalls:value.accounting.planningCalls,actionCalls:value.accounting.actionCalls,inputTokens:value.accounting.inputTokens,outputTokens:value.accounting.outputTokens,costUsd:value.accounting.costUsd},demographics:plan.demographics??null,session:null,society:null};
  if(d.locationContext){const context=parseHybridReview(d.locationContext);ensure(context.question===plan.request.question&&context.geometryRevision===plan.request.geometryRevision&&context.analysisMode==='location-context'&&context.interventionType==='new_polyclinic'&&!!context.locations?.length,'LOCATION_CONTEXT_BINDING');publicRun.locationContext=context;publicRun.limitations=['Fictional stakeholder discussion only. Plotted sites provide location context; healthcare outcomes, wait times and service capacity are not quantified. This discussion is not citizen-grounded.',...publicRun.limitations];}
  if(d.storageAdmission)publicRun.storage={version:1,policy:STORAGE_ADMISSION_POLICY,disposition:'active'};
  const s:Stored={baseGraph:primary.graph,version:1,token:randomBytes(32).toString('hex'),execution:value,publicRun,sessionId:null,revision:0};await write(s,d);

@@ -1,6 +1,6 @@
 /** Two registered planning stages + at most eight actions. No client-authored generated-role manifest is executable here. */
-import {retrieveTavilyGrounding} from '../evidence/tavily.ts';
-import {buildRetrievalQuery} from '../evidence/retrieval-query.ts';
+import {retrieveScenarioResearch} from '../evidence/scenario-research.ts';
+import {researchLocality} from '../evidence/research-locality.ts';
 import {parseDynamicWire,dynamicAccounting,DYNAMIC_ERRORS} from '../../dynamic-scenarios/response.ts';
 import {createDynamicPlan,DYNAMIC_LIMITS} from '../../dynamic-scenarios/plan.ts';
 import {createDynamicInput} from '../../dynamic-scenarios/execution.ts';
@@ -39,9 +39,10 @@ export async function handleDynamicRequest(request:Request,dependencies:DynamicD
   for(const [id,time]of attempts)if(Date.now()-time>86400000)attempts.delete(id);
   if(attempts.has(wire.attemptId))throw new AiError('','AI_DUPLICATE',409);if(attempts.size>=2048)throw new AiError('','AI_BUSY',429);
   const demographics=buildScenarioDemographicContext(wire.request.question,wire.request.geometry);
+  const locality=researchLocality(wire.request.geometry,demographics.planningArea?.name);
   const release=acquireAiSlot(`dynamic-plan:${wire.attemptId}`);attempts.set(wire.attemptId,Date.now());let draft;let grounding;
   try{
-   stage='retrieval';stageStarted=Date.now();grounding=await retrieveTavilyGrounding(buildRetrievalQuery(wire.request.question,demographics.planningArea?.name,'balanced-question-v1'),abort.signal,{key:dependencies.groundingKey,fetcher:dependencies.groundingFetcher,timeoutMs:groundingTimeoutMs,passagePolicy:'locality-window-v1',locality:demographics.planningArea?.name});
+   stage='retrieval';stageStarted=Date.now();grounding=await retrieveScenarioResearch(wire.request.question,locality,abort.signal,{key:dependencies.groundingKey,fetcher:dependencies.groundingFetcher,timeoutMs:groundingTimeoutMs,passagePolicy:'locality-window-v1',locality});
    retrieval=summariseRetrieval(grounding,Date.now()-stageStarted);
    stage='planning';stageStarted=Date.now();
    const fetcher:typeof fetch=async(url,init)=>{const response=await (dependencies.fetcher??fetch)(url,init);upstreamStatus=response.status;return response;};

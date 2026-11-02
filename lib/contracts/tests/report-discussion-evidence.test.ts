@@ -9,9 +9,12 @@ import {buildPopulation,populationView} from '../../server/population/store.ts';
 import {worldFixtures} from '../../world-graph/fixtures.ts';
 import {publicSociety} from '../../server/society/summary.ts';
 import {HYBRID_DEFAULTS} from '../../society/decision-contract.ts';
+import {BALANCED_POLICY} from '../../society/intelligence.ts';
 import {prepareHybridStep} from '../../society/hybrid.ts';
 import {extractPublicDiscussionEvidence,extractDetailedReportDiscussionEvidence} from '../../server/report-discussion-evidence.ts';
-import {readPublicReportDiscussion,readPublicDetailedReportDiscussion} from '../../server/society/public-service.ts';
+import {readPublicReportDiscussion,readPublicDetailedReportDiscussion,readPublicGraphSummaryEvidence} from '../../server/society/public-service.ts';
+import {projectGraphNodeDiscussion} from '../../server/graph-summary-evidence.ts';
+import {entityFirstGraph} from '../../server/society/entity-graph.ts';
 import {readSocialSessionReadonly} from '../../server/society/service.ts';
 import type {PublicExplore} from '../../society/public-contract.ts';
 import type {KnowledgeNode} from '../../knowledge-graph/contract.ts';
@@ -76,6 +79,41 @@ test('detailed evidence retains fuller public reasoning and chronology without c
  assert.ok(!Object.hasOwn(before.statements[0],'minute'));
 });
 
+test('graph evidence attributes background statements only to its actual non-role complement',()=>{
+ const original=fixture(),world=structuredClone(createSociety({...original.world.genesis.input,config:{...original.world.genesis.config,agents:6}})),run=original.run;
+ const background=world.agents.find(agent=>!agent.role)!;assert.ok(background);
+ add(world,'background-remark','A background participant asks for sheltered access.',{actorId:background.id});
+ add(world,'role-remark','A scenario role asks about opening hours.',{actorId:world.agents.find(agent=>!!agent.role)!.id});
+ add(world,'private-remark','PRIVATE_ONLY',{platform:'whatsapp',groupId:'private-group'},{platform:'whatsapp',groupId:'private-group'});
+ run.society=publicSociety(world);run.graph=entityFirstGraph(run.graph,run.society);
+ const aggregate=run.graph.nodes.find(node=>node.properties.recordType==='fictional-agent-aggregate');assert.ok(aggregate);
+ const pack=projectGraphNodeDiscussion(run,world,[aggregate.id]);
+ assert.ok(pack.statements.find(statement=>statement.id==='background-remark')?.nodeIds.includes(aggregate.id));
+ assert.ok(!pack.statements.find(statement=>statement.id==='role-remark')?.nodeIds.includes(aggregate.id));
+ assert.doesNotMatch(JSON.stringify(pack),/PRIVATE_ONLY/);
+ const privatePack=projectGraphNodeDiscussion(run,world,['private-group']);assert.deepEqual(privatePack.statements,[]);
+});
+test('later graph nodes retain their own evidence even when public discussion exceeds the report cap',()=>{
+ const original=fixture(),world=structuredClone(createSociety({...original.world.genesis.input,socialPolicy:'memory-aware-v1',intelligence:{...BALANCED_POLICY},config:{...original.world.genesis.config,agents:80}})),run=original.run;
+ world.events=[];world.items=[];
+ for(const [index,actor]of world.agents.entries())add(world,`public-${index}`,`Public concern specific to participant ${index}.`,{actorId:actor.id});
+ run.society=publicSociety(world);run.graph=entityFirstGraph(run.graph,run.society);
+ const last=world.agents.at(-1)!,target=run.graph.nodes.find(node=>node.properties.agentId===last.id)!;
+ assert.ok(target);
+ const pack=projectGraphNodeDiscussion(run,world,[target.id]);
+ assert.ok(pack.statements.some(statement=>statement.nodeIds.includes(target.id)&&statement.text.includes('participant 79')));
+ assert.ok(pack.statements.length<=64);
+});
+test('entity summaries receive recorded discussion mentioning the entity rather than generic role descriptions',()=>{
+ const {run,world}=fixture();
+ run.graph.nodes.push({...run.graph.nodes.find(node=>node.id==='clinic')!,id:'existing-private-clinic',label:'Existing private clinic'});
+ add(world,'continuity','Keeping a private clinic preserves the familiar doctor relationship.');
+ add(world,'subsidies','The proposed polyclinic may make subsidised follow-ups easier.');
+ const pack=projectGraphNodeDiscussion(run,world,['existing-private-clinic']);
+ assert.ok(pack.statements.find(statement=>statement.id==='continuity')?.nodeIds.includes('existing-private-clinic'));
+ assert.ok(!pack.statements.find(statement=>statement.id==='subsidies')?.nodeIds.includes('existing-private-clinic'));
+});
+
 test('bounded selection preserves initial roles and followup breadth without copying property bags',()=>{
  const {run,world}=fixture();
  for(let i=0;i<50;i++)add(world,`frequent-${i}`,'Opening hours '.repeat(100));
@@ -114,6 +152,21 @@ test('authenticated report discussion reads preserve journal, reservation and di
   assert.deepEqual(readFileSync(f.archive),archive);assert.deepEqual(readFileSync(f.journal),journal);assert.deepEqual(readdirSync(f.deps.directory),files);
   const state=await readSocialSessionReadonly(sessionId,f.deps);assert.equal(state.revision,3);
   assert.deepEqual(readFileSync(f.journal),journal);assert.doesNotMatch(JSON.stringify(evidence),/PRIVATE_/);
+ }finally{cleanup(f.directory);}
+});
+
+test('all-node graph evidence reads retain private boundaries and never recover or rewrite the run',async()=>{
+ const f=storedFixture();try{
+  const archive=readFileSync(f.archive),journal=readFileSync(f.journal);
+  const ids=['clinic','private-platform','private-group'];
+  const evidence=await readPublicGraphSummaryEvidence(f.run.runId,f.run.session!.token,3,f.world.tick,ids,f.deps);
+  assert.deepEqual(evidence.nodes.map(node=>node.nodeId).sort(),[...ids].sort());
+  assert.ok(evidence.scenarioConversations?.length,'entities receive anonymous public conversation context for ordinary-language references');
+  assert.ok(evidence.scenarioConversations!.every(channel=>channel.visibility==='public'));
+  assert.doesNotMatch(JSON.stringify(evidence),/PRIVATE_/);
+  await assert.rejects(()=>readPublicGraphSummaryEvidence(f.run.runId,'b'.repeat(64),3,f.world.tick,ids,f.deps),/PUBLIC_ACCESS/);
+  await assert.rejects(()=>readPublicGraphSummaryEvidence(f.run.runId,f.run.session!.token,2,f.world.tick,ids,f.deps),/REPORT_DISCUSSION_STALE/);
+  assert.deepEqual(readFileSync(f.archive),archive);assert.deepEqual(readFileSync(f.journal),journal);
  }finally{cleanup(f.directory);}
 });
 

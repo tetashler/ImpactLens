@@ -2,6 +2,7 @@ import type {IssueUpdate,SocialIssue} from './episodic.ts';
 import type {InferenceCallRecord} from '../server/inference/deepseek.ts';
 import type {Platform,SocialKind} from './contract.ts';
 import type {SocietyBriefing} from './contract.ts';
+export interface DecisionContext {researchContext?:import('../grounding/briefing.ts').ActorResearchContext}
 export interface HybridConfig {selectedAgents:number;maxCalls:number;reservedTokens:number;costUsd:number}
 export const HYBRID_DEFAULTS:HybridConfig=Object.freeze({selectedAgents:4,maxCalls:8,reservedTokens:200000,costUsd:0.2});
 export const DECISION_LIMITS=Object.freeze({contextBytes:24000,outputTokens:600,unknownCostUsd:0.02,items:8,memories:6,timeoutMs:30000});

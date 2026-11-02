@@ -56,7 +56,11 @@ export function extractPublicDiscussionEvidence(run:PublicExplore,world:SocietyW
 export function extractDetailedReportDiscussionEvidence(run:PublicExplore,world:SocietyWorld):PublicDiscussionEvidence {
  return extractDiscussion(run,world,true);
 }
-function extractDiscussion(run:PublicExplore,world:SocietyWorld,detailed:boolean):PublicDiscussionEvidence {
+/** Graph-only selection: retain batch-attributable statements before applying the bounded report excerpt size. */
+export function extractGraphTargetDiscussionEvidence(run:PublicExplore,world:SocietyWorld,actorIds:ReadonlySet<string>,platformIds:ReadonlySet<string>,mentions?:(text:string)=>boolean):PublicDiscussionEvidence {
+ return extractDiscussion(run,world,true,candidate=>actorIds.has(candidate.event.actorId)||platformIds.has(candidate.event.platform??'')||!!mentions?.(candidate.event.text??''));
+}
+function extractDiscussion(run:PublicExplore,world:SocietyWorld,detailed:boolean,priority?:(candidate:Candidate)=>boolean):PublicDiscussionEvidence {
  const limits=detailed?detailedLimits:quickLimits;
  if(world.genesis.input.runId!==run.runId)throw Error('REPORT_DISCUSSION_IDENTITY');
  const channels=world.genesis.input.communication?.channels??[];
@@ -81,7 +85,8 @@ function extractDiscussion(run:PublicExplore,world:SocietyWorld,detailed:boolean
   candidates.push({event,item,roleId,nodeIds:[...new Set([...platformNodes,...actorNodes].map(n=>n.id))],actor,phase:event.source==='accepted-model-action'?'initial':'followup'});
  }
  const initial=candidates.filter(c=>c.phase==='initial'),followup=candidates.filter(c=>c.phase==='followup');
- const ordered=[...breadth(initial,c=>c.roleId??c.event.actorId),...breadth(followup,c=>`${c.event.actorId}|${c.event.platform}`)];
+ const usualOrder=[...breadth(initial,c=>c.roleId??c.event.actorId),...breadth(followup,c=>`${c.event.actorId}|${c.event.platform}`)];
+ const ordered=priority?[...usualOrder.filter(priority),...usualOrder.filter(candidate=>!priority(candidate))]:usualOrder;
  let statementBytes=0;
  const selected=ordered.slice(0,limits.statements).filter(candidate=>{
   if(!detailed)return true;

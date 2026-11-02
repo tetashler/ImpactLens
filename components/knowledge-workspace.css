@@ -56,3 +56,16 @@
 .kg-inspector blockquote,.kg-full-dialog blockquote{margin:10px 0;padding:10px 12px;border-left:2px solid #719caa;background:#0b1725;color:#c1d3e0;overflow-wrap:anywhere}
 .kg-source-url,.kg-interaction-details small{font-size:10px;color:#8ca5b8;overflow-wrap:anywhere}
 .kg-demographic-profile{overflow-x:auto;margin-top:12px}.kg-demographic-profile table{width:100%;border-collapse:collapse;font-size:11px}.kg-demographic-profile th,.kg-demographic-profile td{text-align:left;padding:6px;border-bottom:1px solid #2c3e53}
+.kg-map-controls{right:18px;bottom:66px;max-width:none;align-items:center}.kg-map-controls>*{flex-shrink:0;white-space:nowrap}
+@media(max-width:650px){.kg-map-controls{left:10px;right:10px;bottom:84px}}
+@media(min-width:651px){
+ .workspace-shell.scenario-experience.general-experience.map-first.knowledge-active{height:100dvh;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+ .knowledge-active>.app-header,.knowledge-active>.world-context-note{flex-shrink:0}
+ .knowledge-active>.kg-workspace{display:flex;flex-direction:column;flex:1;min-height:0}
+ .knowledge-active .kg-header,.knowledge-active .kg-boundary{flex-shrink:0}
+ .knowledge-active .kg-stage{flex:1;height:auto;min-height:0;max-height:none}
+ .knowledge-active .kg-boundary{margin:6px 3px 8px;line-height:1.4}
+ .kg-explorer>.kg-filters{max-height:150px}
+ .kg-explorer>.kg-entity-index{flex:1 1 0;min-height:160px}
+ .kg-explorer>:not(.kg-entity-index){flex-shrink:0}
+}

@@ -1,4 +1,5 @@
 import type {PublicExplore} from '../society/public-contract.ts';
+import {parseResearchBriefing,RESEARCH_PROMPT_SCOPE} from '../grounding/briefing.ts';
 import {canonical} from '../experiments/validation.ts';
 import {REPORT_SUMMARY_PROMPT_VERSION} from './contract.ts';
 const text = (v: string, max = 800) => {
@@ -11,6 +12,7 @@ const number = (v: number | null) => v !== null && Number.isFinite(v) ? v : null
 export function projectReportEvidence(run: PublicExplore) {
   const s = run.society, impact = run.grounding?.impact;
   const evidence = {
+    ...(run.research?{research:parseResearchBriefing(run.research),researchScope:RESEARCH_PROMPT_SCOPE}:{}),
     runId: run.runId, question: text(run.question, 2000), status: text(run.status, 80),
     revision: run.session?.revision ?? null,
     job: run.job ? {status: run.job.status, reason: run.job.reason, tick: run.job.tick, totalSteps: run.job.totalSteps} : null,
@@ -46,7 +48,7 @@ export function projectReportEvidence(run: PublicExplore) {
     }} : {}),
     evidenceLimits: 'Bounded public report excerpt. Private dialogue, memories, individual profiles and private groups are excluded. Accepted public fictional statements, when available, are supplied separately by the server. Activity counts and topic tags do not establish substantive agreement or disagreement. Omitted details are unavailable.',
   };
-  if (new TextEncoder().encode(JSON.stringify(evidence)).length > 60000) throw Error('REPORT_INPUT_SIZE');
+  if (new TextEncoder().encode(JSON.stringify(evidence)).length > (run.research?180000:60000)) throw Error('REPORT_INPUT_SIZE');
   return evidence;
 }
 export type ReportEvidence = ReturnType<typeof projectReportEvidence>;

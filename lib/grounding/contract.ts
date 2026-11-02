@@ -1,8 +1,15 @@
 /** Browser-safe retrieval data. Neither retrieval nor exact quotation verifies a claim. */
 import {checkPlan,planGuard,planObject,planText} from '../dynamic-scenarios/diagnostics.ts';
-export const GROUNDING_LIMITS = { query: 500, sources: 5, passagesPerSource: 1, passage: 800, title: 240, url: 2048, limitations: 8 } as const;
+export const GROUNDING_LIMITS = { query: 500, sources: 16, passagesPerSource: 1, passage: 800, title: 240, url: 2048, limitations: 8 } as const;
 export interface GroundingPassage { id: string; text: string }
 export interface GroundingSource { id: string; title: string; url: string; publisher: string; publishedAt: string | null; retrievedAt: string; passages: GroundingPassage[] }
+export interface ScenarioResearch {
+  version: 1;
+  budgetCredits: 30;
+  reservedCredits: number;
+  stopReason: 'coverage' | 'budget' | 'exhausted' | 'timeout' | 'unavailable' | 'not-configured' | 'uncertain-usage';
+  queries: { query: string; topic: string; status: 'retrieved' | 'failed' | 'not-configured'; credits: number | null; sourceIds: string[] }[];
+}
 export interface GroundingBundle {
   version: 1;
   bundleId: string;
@@ -12,6 +19,7 @@ export interface GroundingBundle {
   sources: GroundingSource[];
   limitations: string[];
   usage: { searches: number; credits: number | null };
+  research?: ScenarioResearch;
 }
 export interface GroundingSupport { sourceId: string; passageId: string; quote: string }
 const invalid = (): never => { throw new Error('Invalid grounding data.'); };
@@ -66,16 +74,16 @@ export function groundingContentId(prefix: string, content: string): string {
   return `${prefix}_${(first >>> 0).toString(16).padStart(8, '0')}${(second >>> 0).toString(16).padStart(8, '0')}`;
 }
 function bundleIdentity(bundle: Omit<GroundingBundle, 'version' | 'bundleId'>): string {
-  return groundingContentId('g1', JSON.stringify({ status: bundle.status, query: bundle.query, sources: bundle.sources.map(source => ({ id: source.id, title: source.title, url: source.url, publisher: source.publisher, publishedAt: source.publishedAt, passages: source.passages.map(passage => ({ id: passage.id, text: passage.text })) })), limitations: bundle.limitations, usage: { searches: bundle.usage.searches, credits: bundle.usage.credits } }));
+  return groundingContentId('g1', JSON.stringify({ status: bundle.status, query: bundle.query, sources: bundle.sources.map(source => ({ id: source.id, title: source.title, url: source.url, publisher: source.publisher, publishedAt: source.publishedAt, passages: source.passages.map(passage => ({ id: passage.id, text: passage.text })) })), limitations: bundle.limitations, usage: { searches: bundle.usage.searches, credits: bundle.usage.credits }, ...(bundle.research ? {research:{version:bundle.research.version,budgetCredits:bundle.research.budgetCredits,reservedCredits:bundle.research.reservedCredits,stopReason:bundle.research.stopReason,queries:bundle.research.queries.map(q=>({query:q.query,topic:q.topic,status:q.status,credits:q.credits,sourceIds:q.sourceIds}))}} : {}) }));
 }
 export function createGroundingBundle(input: Omit<GroundingBundle, 'version' | 'bundleId'>): GroundingBundle {
   // Canonical field construction also prevents caller property order affecting the identity.
-  const candidate = { version: 1, bundleId: 'temporary', status: input.status, query: input.query, retrievedAt: input.retrievedAt, sources: input.sources, limitations: input.limitations, usage: input.usage };
+  const candidate = { version: 1, bundleId: 'temporary', status: input.status, query: input.query, retrievedAt: input.retrievedAt, sources: input.sources, limitations: input.limitations, usage: input.usage, ...(input.research ? {research:input.research} : {}) };
   candidate.bundleId = bundleIdentity(input);
   return parseGroundingBundle(candidate);
 }
 export function parseGroundingBundle(input: unknown): GroundingBundle {
-  const data = exact(input, ['version', 'bundleId', 'status', 'query', 'retrievedAt', 'sources', 'limitations', 'usage']);
+  const data = exact(input, ['version', 'bundleId', 'status', 'query', 'retrievedAt', 'sources', 'limitations', 'usage', ...(Object.hasOwn(record(input),'research')?['research']:[])]);
   if (data.version !== 1 || typeof data.status !== 'string' || !['retrieved', 'not-configured', 'failed'].includes(data.status)) return invalid();
   const sources: GroundingSource[] = list(data.sources, GROUNDING_LIMITS.sources).map(inputSource => {
     const source = exact(inputSource, ['id', 'title', 'url', 'publisher', 'publishedAt', 'retrievedAt', 'passages']);
@@ -91,15 +99,36 @@ export function parseGroundingBundle(input: unknown): GroundingBundle {
   });
   unique(sources.map(source => source.id)); unique(sources.map(source => source.url));
   const usage = exact(data.usage, ['searches', 'credits']);
-  if ((usage.searches !== 0 && usage.searches !== 1) || (usage.credits !== null && (typeof usage.credits !== 'number' || !Number.isFinite(usage.credits) || usage.credits < 0 || usage.credits > 100))) return invalid();
+  if (!Number.isSafeInteger(usage.searches) || (usage.searches as number)<0 || (usage.searches as number)>30 || (usage.credits !== null && (typeof usage.credits !== 'number' || !Number.isFinite(usage.credits) || usage.credits < 0 || usage.credits > 100))) return invalid();
   const bundle: GroundingBundle = {
     version: 1, bundleId: id(data.bundleId), status: data.status as GroundingBundle['status'], query: text(data.query, GROUNDING_LIMITS.query), retrievedAt: date(data.retrievedAt), sources,
-    limitations: list(data.limitations, GROUNDING_LIMITS.limitations).map(value => text(value, 500)), usage: { searches: usage.searches, credits: usage.credits as number | null },
+    limitations: list(data.limitations, GROUNDING_LIMITS.limitations).map(value => text(value, 500)), usage: { searches: usage.searches as number, credits: usage.credits as number | null },
   };
+  if(Object.hasOwn(data,'research'))bundle.research=parseResearch(data.research,bundle);
   if (bundle.status !== 'retrieved' && sources.length !== 0) return invalid();
   if (bundle.status === 'not-configured' && (bundle.usage.searches !== 0 || bundle.usage.credits !== null)) return invalid();
   if (bundle.bundleId !== bundleIdentity(bundle)) return invalid();
   return bundle;
+}
+
+function parseResearch(input:unknown,bundle:GroundingBundle):ScenarioResearch {
+  const data=exact(input,['version','budgetCredits','reservedCredits','stopReason','queries']);
+  if(data.version!==1||data.budgetCredits!==30||!Number.isSafeInteger(data.reservedCredits)||(data.reservedCredits as number)<0||(data.reservedCredits as number)>30||typeof data.stopReason!=='string'||!['coverage','budget','exhausted','timeout','unavailable','not-configured','uncertain-usage'].includes(data.stopReason))return invalid();
+  const queries:ScenarioResearch['queries']=list(data.queries,30).map(inputQuery=>{
+    const q=exact(inputQuery,['query','topic','status','credits','sourceIds']);
+    if(typeof q.status!=='string'||!['retrieved','failed','not-configured'].includes(q.status)||q.credits!==null&&(typeof q.credits!=='number'||!Number.isFinite(q.credits)||q.credits<0||q.credits>1))return invalid();
+    const sourceIds=list(q.sourceIds,GROUNDING_LIMITS.sources).map(id);unique(sourceIds);
+    if(sourceIds.some(sourceId=>!bundle.sources.some(s=>s.id===sourceId))||q.status!=='retrieved'&&sourceIds.length)return invalid();
+    return {query:text(q.query,GROUNDING_LIMITS.query),topic:text(q.topic,80),status:q.status as ScenarioResearch['queries'][number]['status'],credits:q.credits as number|null,sourceIds};
+  });
+  unique(queries.map(q=>q.query));
+  const dispatched=queries.filter(q=>q.status!=='not-configured');
+  if(data.reservedCredits!==dispatched.length||bundle.usage.searches!==dispatched.length)return invalid();
+  const credits=dispatched.some(q=>q.credits===null)?null:dispatched.reduce((sum,q)=>sum+q.credits!,0);
+  if(bundle.usage.credits!==(dispatched.length?credits:null))return invalid();
+  if(data.stopReason==='not-configured'&&(bundle.status!=='not-configured'||queries.length!==0)||data.stopReason==='budget'&&data.reservedCredits!==30||data.stopReason==='coverage'&&!bundle.sources.length)return invalid();
+  if(bundle.sources.some(s=>!queries.some(q=>q.sourceIds.includes(s.id))))return invalid();
+  return {version:1,budgetCredits:30,reservedCredits:data.reservedCredits as number,stopReason:data.stopReason as ScenarioResearch['stopReason'],queries};
 }
 
 /** Exact quotation checks provenance only; it does not establish truth or semantic entailment. */

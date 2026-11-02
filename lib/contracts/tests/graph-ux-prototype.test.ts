@@ -85,7 +85,9 @@ test('aggregate summaries preserve synthetic commute scope, unknowns, zero and n
   assert.match(summary,/3,000/);assert.doesNotMatch(summary,/50 real|all citizens save/i);
   const unknown=module.nodeSummary({...commute,properties:{recordType:'citizen-commute-aggregate',meanMinutesSaved:null}});
   assert.match(unknown,/unknown/i);assert.doesNotMatch(unknown,/0 minutes/);
-  const background=module.nodeSummary(node({recordType:'fictional-agent-aggregate',members:34,countScope:'Revealed candidates overlap this aggregate; do not add them to totals.'}));
-  assert.match(background,/34/);assert.match(background,/do not represent assigned scenario roles/i);assert.match(background,/overlap/);
+  const background=module.nodeSummary(node({recordType:'fictional-agent-aggregate',members:34,recordedEvents:27,countScope:'Revealed candidates overlap this aggregate; do not add them to totals.'}),{question:'Should Singapore add another MRT station?'});
+  assert.match(background,/34/);assert.match(background,/Should Singapore add another MRT station/);
+  assert.match(background,/public discussion|public statements/i);assert.match(background,/cannot|not enough|does not establish/i);
+  assert.doesNotMatch(background,/overlap|recorded fictional events|27|countScope|do not add/);
   assert.deepEqual(commute,before);
 });

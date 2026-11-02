@@ -1,4 +1,5 @@
 import {parseHybridExploreOptions,parseHybridReview,parseHybridPublicGrounding,type HybridExploreOptions,type HybridReview} from '../interventions/explore-contract.ts';
+import {parseResearchBriefing} from '../grounding/briefing.ts';
 import {StakeholderRequestGate} from '../stakeholder-simulation/client.ts';
 import {parseDynamicRequest,type DynamicRequest} from '../dynamic-scenarios/plan.ts';
 import {validateDynamicResponse,type DynamicFailure} from '../dynamic-scenarios/response.ts';
@@ -37,7 +38,8 @@ function parseClock(value:unknown,profile:Readonly<ExecutionProfile>,tick:number
 }
 
 export function parsePublicExplore(value:unknown):PublicExplore{
- const fields=['version','kind','attemptId','requestIdentity','runId','planId','question','status','request','graph','inspections','roles','initialActions','assumptions','limitations','sources','accounting','demographics','session','society'];const v=object(value,[...fields,'job','grounding','storage','locationContext'],fields);
+ const fields=['version','kind','attemptId','requestIdentity','runId','planId','question','status','request','graph','inspections','roles','initialActions','assumptions','limitations','sources','accounting','demographics','session','society'];const v=object(value,[...fields,'job','grounding','storage','locationContext','research'],fields);
+ if(v.research!==undefined)parseResearchBriefing(v.research);
  if(v.storage!==undefined){const storage=object(v.storage,['version','policy','disposition']);ensure(storage.version===1&&storage.policy==='storage-admission-v1'&&['active','historical-read-only'].includes(storage.disposition as string));}
  ensure(v.version===3&&v.kind==='summary-execution');ensure(typeof v.runId==='string'&&v.runId.length<=160&&typeof v.question==='string'&&v.question.length<=2000);parseKnowledgeGraph(v.graph);
  ensure(Array.isArray(v.initialActions)&&v.initialActions.length<=8);for(const a of v.initialActions)object(a,['id','roleId','type','round','position','previousEventIds']);

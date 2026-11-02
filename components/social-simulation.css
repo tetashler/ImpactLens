@@ -5,5 +5,8 @@
 @media(max-width:700px){.society-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.society-platform-metrics,.society-trajectories,.society-breakdowns{grid-template-columns:1fr}.society-report h1{font-size:25px}.society-report table{font-size:11px}.society-report th,.society-report td{padding:7px}}
 
 .social-model-tag{display:inline-block;padding:3px 7px;border:1px solid #496c73;border-radius:5px;font-size:11px;color:#b4ded7}.social-post details{font-size:12px;color:#a6c3cb}.social-post details p{overflow-wrap:anywhere}
+.report-view .question-surface>p[role="status"]{max-width:1100px;margin:0 auto 12px;padding:0 24px;box-sizing:border-box}
+.society-report>h1+p{margin:8px 0 24px}
+@media(max-width:700px){.report-view .question-surface>p[role="status"]{padding-inline:16px}}
 
 @media(max-width:700px){.social-comment .social-comment .social-comment .social-comment{margin-left:0;padding-left:5px;border-left-width:1px}}

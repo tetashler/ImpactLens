@@ -14,7 +14,7 @@ export function projectDetailedReportEvidence(run:PublicExplore){
   sources:run.sources.slice(0,16).flatMap(source=>{const url=publicUrl(source.url);return url?[{title:clip(source.title,400),url,publisher:clip(source.publisher,240),publishedAt:source.publishedAt===null?null:clip(source.publishedAt,80),retrievedAt:clip(source.retrievedAt,80)}]:[];}),
   reportScope:'Public fictional stakeholder statements and stated calculation assumptions only. Source metadata establishes provenance, not independent verification. A source title alone cannot support a substantive factual claim. Participant suggestions and analyst follow-up questions must be distinguished.',
  };
- if(new TextEncoder().encode(JSON.stringify(evidence)).length>90000)throw Error('DETAILED_REPORT_INPUT_SIZE');
+ if(new TextEncoder().encode(JSON.stringify(evidence)).length>(run.research?210000:90000))throw Error('DETAILED_REPORT_INPUT_SIZE');
  return evidence;
 }
 export type DetailedReportEvidence=ReturnType<typeof projectDetailedReportEvidence>;

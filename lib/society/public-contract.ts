@@ -1,4 +1,5 @@
 import type {DiscussionSummary,ConversationMetrics} from './discussion-contract.ts';
+export interface PublicExplore {research?:import('../grounding/briefing.ts').ResearchBriefing}
 import type {KnowledgeGraph} from '../knowledge-graph/contract.ts';
 import type {WorldInspectionV1} from '../world-graph/projection.ts';
 import type {societyMapSnapshot} from './geography.ts';

@@ -6,6 +6,8 @@ import { canonicalGroundingUrl, createGroundingBundle, groundingContentId, GROUN
 export interface TavilyGroundingDependencies { key?: string; fetcher?: typeof fetch; now?: () => Date; timeoutMs?: number; passagePolicy?:'locality-window-v1';locality?:string|null }
 const ENDPOINT = 'https://api.tavily.com/search';
 const MAX_BYTES = 128 * 1024;
+// The single-search contract remains five results even when a research bundle retains more.
+const MAX_SEARCH_SOURCES = 5;
 const LIMITATION = 'Retrieved candidates are unverified source excerpts. Retrieval and exact quotation do not establish truth, applicability, or semantic entailment.';
 const RANKING_LIMITATION = 'Public institutional domain suffixes are shown first as a presentation heuristic, not verification of authority, reliability, relevance, or source claims. Other publishers remain eligible; provider order is retained within each group.';
 const institutionalDomainHint = (hostname: string): boolean => /(?:^|\.)(?:gov|edu)(?:\.[a-z]{2})?$|(?:^|\.)ac\.[a-z]{2}$|(?:^|\.)int$/i.test(hostname);
@@ -20,7 +22,7 @@ function sourcesFrom(value: unknown, retrievedAt: string,locality?:string|null,e
   if (!object(value) || !Array.isArray(value.results)) throw new Error('Invalid retrieval response.');
   const sources: GroundingSource[] = []; const seen = new Set<string>();
   for (const result of value.results) {
-    if (sources.length >= GROUNDING_LIMITS.sources) break;
+    if (sources.length >= MAX_SEARCH_SOURCES) break;
     if (!object(result)) continue;
     let url: string;
     try { url = canonicalGroundingUrl(result.url); } catch { continue; }
@@ -82,7 +84,7 @@ export async function retrieveTavilyGrounding(question: string, signal?: AbortSi
     });
     const request = (async () => {
       controller.signal.throwIfAborted();
-      const response = await (dependencies.fetcher ?? fetch)(ENDPOINT, { method: 'POST', redirect: 'error', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, signal: controller.signal, body: JSON.stringify({ query, search_depth: 'basic', chunks_per_source: 1, max_results: GROUNDING_LIMITS.sources, topic: 'general', include_answer: false, include_raw_content: false, include_images: false, include_image_descriptions: false, include_favicon: false, auto_parameters: false, include_published_date: true, include_usage: true }) });
+      const response = await (dependencies.fetcher ?? fetch)(ENDPOINT, { method: 'POST', redirect: 'error', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, signal: controller.signal, body: JSON.stringify({ query, search_depth: 'basic', chunks_per_source: 1, max_results: MAX_SEARCH_SOURCES, topic: 'general', include_answer: false, include_raw_content: false, include_images: false, include_image_descriptions: false, include_favicon: false, auto_parameters: false, include_published_date: true, include_usage: true }) });
       controller.signal.throwIfAborted();
       if (!response.ok || response.redirected || response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json') { void response.body?.cancel().catch(() => {}); throw new Error('Retrieval unavailable.'); }
       const data = await boundedJson(response, controller.signal);

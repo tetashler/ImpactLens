@@ -1,4 +1,5 @@
 import {stakeholderChoices,stakeholderMenuSchema,decodeStakeholderChoice} from './stakeholder-menu.ts';
+import {createResearchBriefing,researchForActor} from '../../grounding/briefing.ts';
 import {createHash} from 'node:crypto';
 import {canonical} from '../../experiments/validation.ts';
 import {inferenceAdmissionFor,isInferenceNoDispatchV1,type InferenceAdmissionV1,type InferenceAdmissionReceiptV1} from './admission.ts';
@@ -29,7 +30,10 @@ const SYSTEM='Generate only one fictional participant turn as structured JSON. T
 export function encodeTurnContext(context:TurnContext):string {
  const plan=context.input.version===2?context.input.scenarioPlan:null;
  const affiliation=plan?.draft.jurisdictions.find(j=>j.id===plan.draft.agents.find(a=>a.id===context.role.id)?.jurisdictionId)?.label??null;
+ const research=plan?.grounding?createResearchBriefing(plan.grounding):undefined;
+ const role=plan?.draft.agents.find(a=>a.id===context.role.id);
  return encodeInput({...context,...(plan?.demographics?{demographicContext:contextForAgent(plan.demographics,affiliation)}:{}),
+  ...(research?{researchContext:researchForActor(research,role?[role.label,role.context,...role.goals,...role.concerns].join(' '):context.role.title)}:{}),
   interactionRequirements:{mustReferenceOtherParticipant:context.round>1,availableOtherEventIds:context.previousEvents.filter(e=>e.roleId!==context.role.id).map(e=>e.id),ownPriorEventIds:context.previousEvents.filter(e=>e.roleId===context.role.id).map(e=>e.id),previousPosition:context.memory.position},
   ...(context.input.version===2?{actionChoices:stakeholderChoices(context),actionPolicy:'turn-menu-v1'}:{}),input:{...context.input,...(context.input.version===2?{scenarioPlan:{planId:context.input.scenarioPlan.planId,description:context.input.scenarioPlan.draft.description,trigger:context.input.scenarioPlan.draft.trigger,jurisdictions:context.input.scenarioPlan.draft.jurisdictions,entities:context.input.scenarioPlan.draft.entities,relationships:context.input.scenarioPlan.draft.relationships}}:{}),stakeholderRoles:context.input.stakeholderRoles.map(({id,title,classification})=>({id,title,classification}))},
   previousEvents:context.previousEvents.map(({id,roleId,type,round,statement,position,evidenceFindingIds,assumptionIds,uncertainties})=>({id,roleId,type,round,statement,position,evidenceFindingIds,assumptionIds,uncertainties})),

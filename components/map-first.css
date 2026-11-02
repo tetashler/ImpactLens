@@ -7,6 +7,7 @@
 .workspace-shell.scenario-experience.general-experience.map-first .map-frame { min-height:0; flex:1; }
 .workspace-shell.scenario-experience.general-experience.map-first .map-scenario-sidebar { grid-column:2; grid-row:1; height:100%; min-width:0; overflow:auto; border-left:1px solid #29404b; background:#10212b; scrollbar-width:thin; scrollbar-color:#46616a transparent; }
 .map-scenario-panel { padding:28px 24px 16px; color:#e4efef; }
+.workspace-shell.scenario-experience.general-experience.map-first .map-scenario-sidebar > .society-map-controls { padding-inline:24px; padding-bottom:16px; }
 .map-scenario-panel h1 { font-size:28px; font-weight:550; letter-spacing:-.7px; margin:0 0 24px; }
 .map-scenario-panel label { display:block; font-size:12px; color:#b7cbd1; margin-bottom:9px; }
 .map-scenario-panel textarea { display:block; width:100%; min-height:128px; resize:vertical; padding:14px; border:1px solid #49616d; border-radius:8px; background:#0c1a23; color:#e8f3f3; font:inherit; line-height:1.6; }

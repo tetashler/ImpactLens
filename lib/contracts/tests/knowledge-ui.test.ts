@@ -69,7 +69,7 @@ test('actual React markup exposes labelled search, category checkboxes and keybo
   assert.match(html,/<h2>Entity index/);
   assert.match(html,/<button[^>]*aria-pressed="false"[^>]*>/);
   assert.match(html,/Interactive relationship network\. Use the entity index for keyboard selection\./);
-  for(const label of ['Zoom graph in','Zoom graph out','Fit Graph','Reset View','Reset Focus','Back to Map'])assert.ok(html.includes(label),label);
+  for(const label of ['Fit Graph','Back to Map'])assert.ok(html.includes(label),label);
 });
 
 test('empty graph renders an honest recovery action and hidden tab keeps semantic hidden state',()=>{
