@@ -61,6 +61,7 @@ import type {KnowledgeGraph} from '../lib/knowledge-graph/contract';
 import './scenario-experience.css';
 import './general-workspace.css';
 import './map-first.css';
+import './workspace-polish.css';
 const NO_AAC_ORIGINS:OriginReference[]=[];
 // Empty map inputs only while the real catalogue loads; never an executable baseline.
 const LOADING_NETWORK:NetworkCatalog={serviceDate:'',stations:[],lines:[],connections:[],quarantinedTrips:0};
@@ -350,7 +351,7 @@ export default function Workspace() {
   const mapResult=mapResultFor(flow.state,{question:planner.question,geometry:plot.geometry,geometryRevision:plot.revision});
   const min = (value: number | null | undefined) => value == null ? '—' : value.toFixed(2);
 
-  return <main className={`workspace-shell scenario-experience general-experience map-first stage-${stage} ${plotToolsOpen?'plot-tools-open':''} ${!exploring&&tab==='general'&&experienceView!=='map'?'report-view':''} ${labOpen&&!exploring&&stage==='general'?'experiment-open':''} ${tab==='knowledge'?'knowledge-active':''} ${guided?'guided-experience':''} ${advanced?'advanced-open':''} ${interventionMode==='aac'?'inspecting-aac':inspector==='citizens'?'inspecting-citizens':inspector==='impact'?'inspecting-impact':''} ${interventionMode==='mrt'&&impactWide?'dashboard-wide':''}`}>
+  return <main className={`workspace-shell scenario-experience general-experience map-first impactlens-polish stage-${stage} ${plotToolsOpen?'plot-tools-open':''} ${!exploring&&tab==='general'&&experienceView!=='map'?'report-view':''} ${labOpen&&!exploring&&stage==='general'?'experiment-open':''} ${tab==='knowledge'?'knowledge-active':''} ${guided?'guided-experience':''} ${advanced?'advanced-open':''} ${interventionMode==='aac'?'inspecting-aac':inspector==='citizens'?'inspecting-citizens':inspector==='impact'?'inspecting-impact':''} ${interventionMode==='mrt'&&impactWide?'dashboard-wide':''}`}>
     <header className="app-header"><button type="button" onClick={openMapView} className="brand" aria-label="ImpactLens SG map"><span className="brand-symbol"><Icon name="layers" size={24} /></span><strong>ImpactLens<span>SG</span></strong></button>
       <WorkspaceViews current={tab==='knowledge'?'knowledge':experienceView} onMap={openMapView} onGraph={()=>void openQuestionGraph()} onReport={()=>{setTab('general');setExperienceView('report');}}/>
     </header>

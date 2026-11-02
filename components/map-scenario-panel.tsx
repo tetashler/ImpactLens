@@ -11,7 +11,7 @@ export default function MapScenarioPanel({question,state,toolsOpen,result,onQues
  const error=current&&!review?(state.run?.error?questionRunErrorMessage(state.run):state.error):null;
  const mrtReview=review?.analysisMode==='clarification'&&(review.interventionType==='new_mrt_line'||/\b(?:mrt|rail(?:way)?|metro|train)\b/i.test(question));
  return <section className="map-scenario-panel" aria-label="Scenario exploration">
-  <h1>What if…?</h1>
+  <h1>Explore a scenario</h1>
   <form onSubmit={e=>{e.preventDefault();onExplore();}}>
    <label htmlFor="map-question">Your scenario question</label>
    <textarea id="map-question" value={question} maxLength={2000} rows={4} onChange={e=>onQuestion(e.target.value)} placeholder="What would you like to explore?"/>

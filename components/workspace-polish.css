@@ -1,0 +1,253 @@
+/* Desktop redline pass. Direction: calm, precise, readable.
+ * Based on unslop by Damir Sokolovsky (@heydamir), CC BY 4.0.
+ * https://heydamir.design/unslop
+ * Scoped and removable: the existing mobile styles and application behaviour stay intact.
+ */
+@media (min-width: 701px) {
+  .workspace-shell.scenario-experience.general-experience.map-first.impactlens-polish {
+    --polish-bg: #0d191f;
+    --polish-surface: #122128;
+    --polish-raised: #1b2b33;
+    --polish-canvas: #101c26;
+    --polish-line: #2b3c45;
+    --polish-text: #e7eff1;
+    --polish-secondary: #b3c3ca;
+    --polish-muted: #94aab4;
+    --polish-accent: #8ed9cd;
+    --polish-selected: #1c3536;
+    --polish-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    background: var(--polish-bg);
+    color: var(--polish-text);
+    font-size: 14px;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+
+    /* 1. Spacing: shared rhythm before surface and type refinements. */
+    & .app-header {
+      height: 64px;
+      min-height: 64px;
+      padding: 12px 24px;
+      gap: 24px;
+    }
+    & .workspace-grid { height: calc(100dvh - 64px); }
+    &.knowledge-active .workspace-grid,
+    &.report-view .workspace-grid { top: 64px; }
+    & .map-scenario-panel { padding: 32px 24px 24px; }
+    & .map-scenario-panel h1 { margin: 0 0 24px; }
+    & .map-scenario-panel label { margin: 0 0 8px; }
+    & .map-scenario-panel textarea { padding: 16px; }
+    & .map-question-actions { gap: 12px; margin-top: 16px; }
+    & .map-scenario-panel details { margin-top: 24px; padding-top: 16px; }
+    & .map-result-links { gap: 8px; padding-top: 24px; }
+    & .map-scenario-sidebar > .society-map-controls { padding: 16px 24px 24px; }
+    & .general-plot-scroll { padding: 8px 24px 24px; }
+    & .native-model-tools { margin: 0 24px 24px; padding-top: 16px; }
+    & .map-toolbar { top: 16px; left: 16px; max-width: calc(100% - 32px); }
+    & .map-layers { left: 16px; }
+    & #map-plot-controls { left: 16px; right: 16px; }
+    & .kg-workspace { margin: 0 24px; }
+    & .kg-header { padding: 20px 0 24px; gap: 24px; }
+    & .kg-explorer { padding: 24px 16px; gap: 16px; }
+    & .kg-canvas-heading { top: 24px; left: 24px; gap: 0; }
+    & .kg-map-controls { left: 16px; right: 16px; bottom: 80px; gap: 8px; }
+    & .kg-status { min-height: 64px; padding: 12px 16px; gap: 4px; }
+    & .kg-boundary { margin: 8px 0 12px; }
+    & .kg-inspector { padding: 20px; }
+    & .kg-inspector header,
+    & .kg-full-dialog header { gap: 16px; margin-bottom: 16px; }
+    & .kg-inspector section,
+    & .kg-full-dialog section { margin-top: 24px; }
+    & .kg-inspector footer,
+    & .kg-full-dialog footer { gap: 8px; margin-top: 24px; padding-top: 16px; }
+
+    /* 2. Colour: content carries colour, chrome stays in the ink ramp. */
+    & .app-header,
+    & .map-scenario-sidebar { background: var(--polish-surface); border-color: var(--polish-line); }
+    & .general-tabs button { background: transparent; color: var(--polish-secondary); }
+    & .general-tabs button:hover { background: var(--polish-raised); color: var(--polish-text); }
+    & .map-scenario-panel textarea,
+    & .map-scenario-panel select,
+    & .kg-search input { background: var(--polish-bg); border-color: var(--polish-line); color: var(--polish-text); }
+    & .map-scenario-panel textarea::placeholder,
+    & .kg-search input::placeholder { color: var(--polish-muted); opacity: 1; }
+    & .map-scenario-panel label,
+    & .map-scenario-panel details p,
+    & .map-scenario-panel summary { color: var(--polish-secondary); }
+    & .map-scenario-panel details,
+    & .native-model-tools { border-color: var(--polish-line); }
+    & .map-toolbar,
+    & .map-layers,
+    & .plot-tools-wrap { background: var(--polish-surface); border-color: var(--polish-line); box-shadow: none; backdrop-filter: none; }
+    & .map-toolbar button,
+    & .plot-toolbar button,
+    & .map-layers summary { color: var(--polish-secondary); }
+    & .map-toolbar button { min-height: 44px; padding: 8px 12px; border-color: transparent; border-radius: 0; background: transparent; font-size: 12px; line-height: 20px; }
+    & .map-toolbar button[aria-pressed='true'] { background: var(--polish-raised); color: var(--polish-text); }
+    & .plot-toolbar button { font-size: 13px; line-height: 20px; }
+    & .render-distance-control { border-color: var(--polish-line); color: var(--polish-secondary); }
+    & .render-distance-value { color: var(--polish-secondary); }
+    & .render-distance-track { color: var(--polish-muted); }
+    & .building-credit-strip { background: var(--polish-surface); border-color: var(--polish-line); color: var(--polish-secondary); }
+    & .building-credit-links a { color: var(--polish-secondary); }
+    & .world-context-note { background: var(--polish-surface); border-color: var(--polish-line); color: var(--polish-secondary); }
+    & .kg-stage,
+    & .kg-canvas-wrap { background: var(--polish-canvas); border-color: var(--polish-line); }
+    & .kg-explorer,
+    & .kg-filters summary { background: var(--polish-surface); border-color: var(--polish-line); }
+    & .kg-inspector,
+    & .kg-full-dialog { background: var(--polish-surface); border-color: var(--polish-line); color: var(--polish-text); box-shadow: none; backdrop-filter: none; }
+    & .kg-discovery-note { background: transparent; border: 0; color: var(--polish-secondary); }
+    & .kg-header p,
+    & .kg-hint,
+    & .kg-index-note,
+    & .kg-boundary { color: var(--polish-muted); }
+    & .kg-status { background: var(--polish-bg); border-color: var(--polish-line); color: var(--polish-secondary); }
+    & .kg-status span { color: var(--polish-muted); }
+    & .kg-presentation-key { background: var(--polish-surface); border-color: var(--polish-line); }
+    & .kg-source-details,
+    & .kg-interaction-details,
+    & .kg-assumptions,
+    & .kg-provenance-details,
+    & .kg-inspector footer { border-color: var(--polish-line); }
+
+    /* 3–5. Icons and copy stay purposeful; type has three readable roles. */
+    & .general-tabs { gap: 8px; }
+    & .general-tabs button { min-height: 36px; padding: 8px 12px; font-size: 14px; font-weight: 400; letter-spacing: 0; }
+    & .map-scenario-panel h1 { font-size: 28px; line-height: 1.2; font-weight: 500; letter-spacing: -0.4px; }
+    & .map-scenario-panel label { font-size: 13px; line-height: 20px; }
+    & .map-scenario-panel textarea { min-height: 144px; font-size: 14px; line-height: 24px; }
+    & .map-scenario-panel :is(button,select) { font-size: 14px; }
+    & .map-scenario-panel summary,
+    & .map-scenario-panel details p,
+    & .map-exploration-error,
+    & .native-model-tools,
+    & .society-map-controls { font-size: 13px; line-height: 20px; }
+    & .map-exploration-status > span:not(.spinner) { font-size: 12px; line-height: 20px; color: var(--polish-secondary); }
+    & .render-distance-heading,
+    & .render-distance-value,
+    & .render-distance-track { font-size: 12px; line-height: 16px; }
+    & .render-distance-control { padding: 8px 12px; gap: 4px; }
+    & .building-credit-strip { padding: 8px 12px; font-size: 12px; line-height: 20px; }
+    & .building-credit-links { gap: 4px 12px; }
+    & .building-credit-links button { font-size: 12px; min-height: 32px; padding: 4px 8px; }
+    & .world-context-note { padding: 12px 24px; font-size: 12px; line-height: 20px; }
+    & .kg-header h1 { font-size: 28px; line-height: 32px; font-weight: 500; letter-spacing: -0.4px; margin: 0 0 8px; }
+    & .kg-header h1 span { font-size: 13px; line-height: 20px; letter-spacing: 0; }
+    & .kg-header p { font-size: 14px; line-height: 20px; }
+    & .kg-search label,
+    & .kg-explorer h2,
+    & .kg-filters summary { font-size: 13px; line-height: 20px; font-weight: 500; letter-spacing: 0; }
+    & .kg-search input { font-size: 14px; min-height: 44px; padding: 12px; }
+    & .kg-filters label,
+    & .kg-search-results button,
+    & .kg-entity-index button { font-size: 13px; line-height: 20px; letter-spacing: 0; }
+    & .kg-filters label { min-height: 32px; gap: 8px; padding: 4px 0; }
+    & .kg-search-results button,
+    & .kg-entity-index button { min-height: 44px; padding: 8px 12px; }
+    & .kg-discovery-note,
+    & .kg-index-note,
+    & .kg-hint,
+    & .kg-status,
+    & .kg-status span,
+    & .kg-boundary,
+    & .kg-presentation-key > span,
+    & .kg-canvas-heading small,
+    & .kg-search-results small,
+    & .kg-search-results .kg-result-context { font-size: 12px; line-height: 20px; letter-spacing: 0; }
+    & .kg-discovery-note { padding: 0; }
+    & .kg-canvas-heading strong { font-size: 14px; font-weight: 500; }
+    & .kg-inspector h2,
+    & .kg-full-dialog h2 { font-size: 22px; line-height: 28px; font-weight: 500; letter-spacing: -0.2px; }
+    & .kg-inspector h3,
+    & .kg-full-dialog h3 { font-size: 14px; line-height: 20px; font-weight: 500; margin: 0 0 8px; }
+    & .kg-node-summary { color: var(--polish-text); font-size: 14px; line-height: 24px; }
+    & .kg-inspector p,
+    & .kg-full-dialog p { font-size: 14px; line-height: 24px; }
+    & .kg-inspector :is(summary,small),
+    & .kg-full-dialog :is(summary,small),
+    & .kg-inspector header span,
+    & .kg-full-dialog header span,
+    & .kg-source-url { font-size: 12px; line-height: 20px; letter-spacing: 0; }
+
+    /* 6. Keep app proportions and the full-height graph; give reports a reading measure. */
+    & .kg-stage { grid-template-columns: 264px minmax(0,1fr); }
+    & .kg-explorer > .kg-filters { max-height: 128px; }
+    & .kg-entity-index { min-height: 160px; }
+    & .kg-inspector { top: 72px; right: 16px; bottom: 80px; width: min(360px,calc(100% - 32px)); max-height: none; }
+    & .kg-expanded { top: 16px; width: min(400px,calc(100% - 32px)); }
+    & .kg-full-dialog { padding: 24px; }
+    &.report-view .question-surface { min-height: calc(100dvh - 64px); padding: 24px; background: var(--polish-bg); }
+    &.report-view .question-surface > p[role='status'] { max-width: 1100px; margin: 0 auto 16px; padding: 0 24px; color: var(--polish-secondary); font-size: 13px; line-height: 20px; }
+    & .society-report { max-width: 1100px; padding: 16px 24px 48px; border-top: 0; color: var(--polish-text); }
+    & .society-report > h1 { font-size: 32px; line-height: 40px; font-weight: 500; letter-spacing: -0.4px; }
+    & .society-report > h1 + p { margin: 8px 0 32px; max-width: 76ch; font-size: 16px; line-height: 24px; color: var(--polish-secondary); }
+    & .report-ai-summary,
+    & .report-detailed { padding: 24px; margin: 0 0 24px; background: var(--polish-surface); color: var(--polish-text); border: 1px solid var(--polish-line); border-radius: 12px; }
+    & .report-ai-summary > h2,
+    & .report-detailed h2 { margin: 0; font-size: 22px; line-height: 28px; font-weight: 500; letter-spacing: -0.2px; }
+    & .report-ai-summary-note,
+    & .report-detailed-note { margin: 8px 0 24px; max-width: 76ch; font-size: 14px; line-height: 24px; color: var(--polish-secondary); opacity: 1; }
+    & .report-ai-summary > small,
+    & .report-detailed-metadata { display: block; margin: 0 0 24px; font-size: 12px; line-height: 20px; color: var(--polish-muted); opacity: 1; }
+    & .report-ai-summary > section { padding: 24px 0 0; margin-top: 24px; border-top: 1px solid var(--polish-line); }
+    & .report-ai-summary h3,
+    & .report-detailed-chapter h3 { margin: 0 0 8px; font-size: 17px; line-height: 24px; font-weight: 500; letter-spacing: 0; }
+    & .report-ai-summary-text,
+    & .report-detailed-chapter p { max-width: 76ch; font-size: 15px; line-height: 26px; color: var(--polish-text); }
+    & .report-detailed-content { max-width: none; }
+    & .report-detailed-question { margin: 24px 0 8px; font-size: 16px; line-height: 24px; max-width: 76ch; }
+    & .report-detailed-chapter { margin-top: 32px; }
+    & .report-detailed-heading { align-items: center; gap: 16px; }
+    & .report-detailed-actions { gap: 8px; }
+    & .society-report > .report-technical-details { margin: 16px 0 0; padding: 16px 0; border-color: var(--polish-line); }
+    & .report-technical-details > summary { min-height: 40px; line-height: 24px; color: var(--polish-secondary); font-size: 14px; }
+
+    /* 7. Quiet controls, one primary action and the teal active-view rule. */
+    & :is(button,input,textarea,select) { border-radius: 8px; }
+    & .general-tabs button { border: 1px solid transparent; border-bottom-width: 2px; }
+    & .general-tabs button[aria-current] { background: var(--polish-raised); color: var(--polish-text); border-color: transparent; border-bottom-color: var(--polish-accent); }
+    & .map-scenario-panel button,
+    & .native-model-tools button,
+    & .kg-workspace button,
+    & .kg-edge-labels,
+    & .report-ai-summary button,
+    & .report-detailed button { min-height: 40px; padding: 8px 12px; background: var(--polish-raised); border: 1px solid var(--polish-line); color: var(--polish-text); font-size: 13px; font-weight: 400; line-height: 20px; }
+    & .map-question-actions button { min-height: 44px; font-size: 14px; }
+    & .map-question-actions > button:first-child { background: transparent; color: var(--polish-secondary); }
+    & .map-scenario-panel .map-explore-button { background: var(--polish-accent); border-color: var(--polish-accent); color: #102629; font-weight: 600; }
+    & .map-scenario-panel .map-explore-button:hover:not(:disabled) { background: #a4e4d8; border-color: #a4e4d8; }
+    & .map-question-actions button[aria-expanded='true'],
+    & .plot-toolbar button[aria-pressed='true'] { background: var(--polish-selected); border-color: #527b76; color: var(--polish-text); }
+    & .kg-workspace button:hover,
+    & .report-detailed button:hover,
+    & .report-ai-summary button:hover { background: #243840; border-color: #465d67; }
+    & .kg-map-controls button,
+    & .kg-edge-labels { min-height: 40px; padding: 8px 12px; font-size: 13px; }
+    & .kg-presentation-key,
+    & .kg-stage,
+    & .kg-inspector,
+    & .kg-full-dialog { border-radius: 12px; }
+    & .kg-presentation-key { gap: 12px; padding: 8px 12px; }
+    & .kg-inspector header > button,
+    & .kg-full-dialog header > button { min-width: 40px; min-height: 40px; padding: 8px; }
+    & :is(button,a,input,textarea,select,summary):focus-visible { outline: 2px solid var(--polish-accent); outline-offset: 3px; }
+    & .kg-empty { color: var(--polish-secondary); padding: 24px; }
+    & .kg-empty h2 { font-size: 24px; line-height: 32px; font-weight: 500; color: var(--polish-text); }
+    & .kg-empty p { font-size: 14px; line-height: 24px; max-width: 48ch; }
+
+    /* 8–9. The existing geographic and relationship visuals remain the moments. */
+    & :is(button,a,input,textarea,select,summary) { transition: color 160ms var(--polish-ease), background-color 160ms var(--polish-ease), border-color 160ms var(--polish-ease); }
+  }
+}
+
+@media (min-width: 701px) and (max-width: 1100px) {
+  .workspace-shell.scenario-experience.general-experience.map-first.impactlens-polish {
+    & .kg-stage { grid-template-columns: 240px minmax(0,1fr); }
+    & .kg-header h1 span { display: block; margin: 4px 0 0; }
+    & .kg-presentation-key { top: 72px; }
+  }
+}
+
+@media (min-width: 701px) and (prefers-reduced-motion: reduce) {
+  .workspace-shell.impactlens-polish :is(button,a,input,textarea,select,summary) { transition: none; }
+}
