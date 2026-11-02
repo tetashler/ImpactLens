@@ -1,7 +1,7 @@
 import cytoscape from 'cytoscape';
 import type {Core,ElementDefinition,StylesheetJson,EdgeSingular} from 'cytoscape';
 import {parseKnowledgeGraph,type KnowledgeGraph} from './contract.ts';
-import {knowledgeEntityType,knowledgeRelationshipLabel,entityTypeColour} from './display.ts';
+import {knowledgeEntityType,knowledgeNodeLabel,knowledgeRelationshipLabel,entityTypeColour} from './display.ts';
 import {WorldPhysics,relationshipPairs,type PhysicsSnapshot} from './physics.ts';
 export {CATEGORY_COLOURS} from './palette.ts';
 export type GraphSelection={kind:'node'|'edge';id:string}|null;
@@ -17,11 +17,6 @@ export function graphPixelRatio(devicePixelRatio:unknown):number {
     ?Math.min(2,Math.max(1,devicePixelRatio)):1;
 }
 
-function displayLabel(label:string,limit=28):string {
-  const characters=Array.from(label);
-  return characters.length<=limit?label:`${characters.slice(0,limit-1).join('').trimEnd()}…`;
-}
-
 /** Display coordinates only: these are deterministic seeds, never geographic points. */
 export function graphElements(graph:KnowledgeGraph):ElementDefinition[]{
   const degree=new Map<string,number>();
@@ -35,7 +30,7 @@ export function graphElements(graph:KnowledgeGraph):ElementDefinition[]{
       const presentation=n.properties.presentationCategory;
       const hierarchy=presentation==='entity'||presentation==='role'||presentation==='person'||presentation==='aggregate'?presentation:'legacy';
       const size=hierarchy==='entity'?28+Math.min(8,connections):hierarchy==='role'?23:hierarchy==='aggregate'?31:hierarchy==='person'?12:n.category==='scenario'?14:12;
-      return {data:{id:n.id,label:n.label,displayLabel:displayLabel(n.label,hierarchy==='entity'||hierarchy==='role'||hierarchy==='aggregate'?72:28),category:n.category,entityType:knowledgeEntityType(n),colour:entityTypeColour(knowledgeEntityType(n)),size,degree:connections},
+      return {data:{id:n.id,label:n.label,displayLabel:knowledgeNodeLabel(n),category:n.category,entityType:knowledgeEntityType(n),colour:entityTypeColour(knowledgeEntityType(n)),size,degree:connections},
         position:{x:Math.cos(angle)*radius,y:Math.sin(angle)*radius},classes:`${n.category==='scenario'?'hub ':''}presentation-${hierarchy}`};
     }),
     ...graph.edges.map(e=>({data:{id:e.id,source:e.source,target:e.target,label:knowledgeRelationshipLabel(e),directed:e.directed},classes:edgeClasses.get(e.id)})),
@@ -60,6 +55,7 @@ const stylesheet:StylesheetJson=[
   {selector:'edge[?directed]',style:{'target-arrow-shape':'triangle','target-arrow-color':'#58738d'}},
   {selector:'.dimmed',style:{opacity:.12}},
   {selector:'node.neighbour',style:{opacity:1,'border-width':2,'border-color':'#b6d8df'}},
+  {selector:'node.search-match',style:{label:'data(displayLabel)',opacity:1,'min-zoomed-font-size':0,'text-background-color':'#102231','text-background-opacity':.95,'text-background-padding':'4px','text-background-shape':'roundrectangle'}},
   {selector:'node.focused',style:{label:'data(displayLabel)',opacity:1,'border-width':2,'border-color':'#f4fbff','font-size':13,'font-weight':500,'min-zoomed-font-size':0,'text-background-color':'#102231','text-background-opacity':.95,'text-background-padding':'4px','text-background-shape':'roundrectangle'}},
   {selector:'edge.focused',style:{opacity:.95,width:2,'line-color':'#96e6d8','target-arrow-color':'#96e6d8'}},
   {selector:'node.hovered',style:{label:'data(displayLabel)','min-zoomed-font-size':0,'font-size':13,'font-weight':500,'border-width':2,'border-color':'#e7f4ff'}},
@@ -162,6 +158,7 @@ export class GraphRenderer {
         item.neighborhood().removeClass('dimmed');item.neighborhood('node').addClass('neighbour');item.connectedEdges().addClass('focused');
       }else{(item as unknown as EdgeSingular).connectedNodes().removeClass('dimmed').addClass('neighbour');}
     });
+    this.updateLabelDensity();
   }
   focus(id:string):void {
     if(this.disposed)return;const item=this.core.getElementById(id);if(item.empty()||item.hasClass('kg-hidden'))return;
@@ -211,15 +208,34 @@ export class GraphRenderer {
     const visible=this.core.elements().not('.kg-hidden');if(visible.length)this.core.center(visible);else this.core.pan({x:0,y:0});
   }
   setEdgeLabels(enabled:boolean):void {if(this.disposed)return;this.labels=enabled;this.core.edges().toggleClass('edge-label',enabled);this.updateLabelDensity();}
+  /** Presentation priority only; safe search candidates already exist in this core. */
+  setSearchMatches(ids:ReadonlySet<string>):void {
+    if(this.disposed)return;
+    this.core.batch(()=>this.core.nodes().forEach(node=>{node.toggleClass('search-match',ids.has(node.id()));}));
+    this.updateLabelDensity();
+  }
   private updateLabelDensity():void {
     if(this.disposed)return;
     // Dense, zoomed-out graphs keep labels available without painting a wall of text.
     const zoom=Math.max(.08,this.core.zoom()),lowZoom=zoom<.8;
     this.core.batch(()=>{
-      const dense=this.core.nodes().not('.kg-hidden').length>=100&&lowZoom;
+      const visible=this.core.nodes().not('.kg-hidden');
+      // A small, stable budget beats labelling every role in medium-size graphs.
+      // Existing style rules keep selected, searched and hovered captions readable.
+      const hierarchical=visible.not('.presentation-legacy').length>0;
+      const budget=hierarchical?(lowZoom?16:zoom<1.2?32:visible.length):(lowZoom&&visible.length>=100?0:visible.length);
+      const ranked=[...visible].sort((a,b)=>{
+        const tier=(n:typeof a)=>n.hasClass('presentation-entity')?3:n.hasClass('presentation-aggregate')?2:n.hasClass('presentation-role')?1:0;
+        return tier(b)-tier(a)||Number(b.data('degree'))-Number(a.data('degree'))||a.id().localeCompare(b.id());
+      });
+      const priority=visible.filter('.focused, .search-match');
+      const labelled=new Set(priority.map(n=>n.id()));
+      // During focus/search, leave fewer overview labels competing with results.
+      const remaining=Math.max(0,(hierarchical&&priority.length?Math.min(budget,8):budget)-labelled.size);
+      for(const node of ranked.filter(n=>!labelled.has(n.id())).slice(0,remaining))labelled.add(node.id());
       this.core.nodes().forEach(node=>{
         const entity=node.hasClass('presentation-entity'),role=node.hasClass('presentation-role'),aggregate=node.hasClass('presentation-aggregate');
-        node.toggleClass('labels-hidden',dense&&!entity&&!role&&!aggregate);
+        node.toggleClass('labels-hidden',!labelled.has(node.id()));
         // Only label styling changes with the camera. Existing force positions,
         // drag reheating and the relative sizes of the node tiers stay intact.
         if(entity||role||aggregate)node.style({'font-size':Math.max(entity?13:12,(role?9.5:11)/zoom),'text-max-width':Math.max(160,180/zoom),'text-margin-y':Math.max(9,6/zoom),'text-background-padding':2/zoom});

@@ -1,0 +1,50 @@
+{
+  "runId": "run-7b3e34817016e221c00ee6fd-attempt-37-8fc8d77f-99fc-42be-a6c8-4a035e3cf2e0",
+  "scope": "Genuine initialization plus failed tick-1 prefix; zero social provider responses. Not a completed society.",
+  "viewports": [
+    1440,
+    1920
+  ],
+  "screenshots": [
+    {
+      "file": "docs/evidence/admission-timeout-smoke-20261102/populated-knowledge-graph-1440.png",
+      "bytes": 381467,
+      "sha256": "3b7e05f8e2303201b2b2b7f727ffa54ab75c7b382b5369bd53b4d8f2eaa5e02c"
+    },
+    {
+      "file": "docs/evidence/admission-timeout-smoke-20261102/live-graph-1440.png",
+      "bytes": 369950,
+      "sha256": "272c616361352e9654ca5948c1880387e20d9af03eded8215fb3fd8d7be94fd0"
+    },
+    {
+      "file": "docs/evidence/admission-timeout-smoke-20261102/live-report-1440.png",
+      "bytes": 463931,
+      "sha256": "901f83c9573d8c3e121f5d94f36cf854993a76a7a206d94a63d55edfa3aa8764"
+    },
+    {
+      "file": "docs/evidence/admission-timeout-smoke-20261102/live-report-commute-1440.png",
+      "bytes": 464495,
+      "sha256": "86df69d967aeab056dfdea8f6ba41086c3c6a5801f1a24d8f8776ee3137811b0"
+    },
+    {
+      "file": "docs/evidence/admission-timeout-smoke-20261102/populated-knowledge-graph-1920.png",
+      "bytes": 556499,
+      "sha256": "0e14bd57531267af1fc69e8b48dbdc70406a878b28785bcff9c29304f3f0359c"
+    },
+    {
+      "file": "docs/evidence/admission-timeout-smoke-20261102/live-graph-1920.png",
+      "bytes": 518315,
+      "sha256": "9e3e5335ff16c0d1f04c92f342d092858c0936be4b00b09d6e90073ce6dd3b85"
+    },
+    {
+      "file": "docs/evidence/admission-timeout-smoke-20261102/live-report-1920.png",
+      "bytes": 477612,
+      "sha256": "a4308f7f9196c3a8518812ae6b0a9a8bcac25ae110c982707d461bd91384ebec"
+    },
+    {
+      "file": "docs/evidence/admission-timeout-smoke-20261102/live-report-commute-1920.png",
+      "bytes": 478696,
+      "sha256": "10af340dc58614242fee3c0c4b8908c0a34d9b14e9002293bb6070c87c132e15"
+    }
+  ]
+}

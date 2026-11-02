@@ -148,6 +148,10 @@ export async function readSocialSession(sessionId:string,d:SocialDependencies={}
  if(d.storageAdmission)try{inspectStorageAdmission(d.storageAdmission.base);}catch{return project(await load(sessionId,root,true),d);}
  return withSocialOwner(root,sessionId,async()=>project(await load(sessionId,root),d));
 }
+/** Strict passive read: no directories, locks, recovery, checkpoints, cache changes or journal writes. */
+export async function readSocialSessionReadonly(sessionId:string,d:SocialDependencies={}):Promise<SocialState>{
+ validateIdentity(sessionId);return project(await load(sessionId,directory(d),true),d);
+}
 export async function checkpointSocialSession(sessionId:string,d:SocialDependencies={}){
  validateIdentity(sessionId);ensure(!historicalDirectory(d),'SOCIAL_ARCHIVED_READ_ONLY');const root=directory(d);
  if(d.storageAdmission)inspectStorageAdmission(d.storageAdmission.base);

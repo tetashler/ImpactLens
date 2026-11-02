@@ -23,6 +23,25 @@ test('map composer places collapsed Plot Tools immediately before Explore, witho
 test('pending map execution keeps the form with cancellation and no premature result links',()=>{
  const html=render('default',{question:context.question,state:{...initial(),phase:'preparing'},toolsOpen:false,result:null});assert.match(html,/>Cancel<\/button>/);assert.match(html,/role="status"/);assert.match(html,/disabled=""[^>]*type="submit"|type="submit"[^>]*disabled=""/);assert.doesNotMatch(html,/View Knowledge Graph|View Report/);
 });
+
+for(const analysisMode of ['location-context','clarification'] as const)test(`map ${analysisMode} review explains the stop without reporting execution failure`,()=>{
+ const question='What if a polyclinic was built at this location?';
+ const message='The plotted sites provide location context. This intervention has no supported quantitative model.';
+ const state={...initial(),question,phase:'needs-map-review',error:message,hybridReview:{version:1,kind:'hybrid-map-review',bindingKey:'a'.repeat(64),question,geometryRevision:1,interventionType:'new_polyclinic',analysisMode,message,limitations:[]}};
+ const html=render('default',{question,state,toolsOpen:false,result:null});
+ assert.match(html,analysisMode==='location-context'?/Location context available/:/Map review needed/);
+ assert.match(html,/No agent simulation has started\./);
+ assert.match(html,analysisMode==='location-context'?/This plotted scenario cannot start an agent simulation in the current flow\./:/Review the drawing and confirm the requested details before exploring again\./);
+ assert.match(html,/The plotted sites provide location context/);
+ assert.doesNotMatch(html,/Exploration could not complete|role="alert"|View Knowledge Graph|View Report/);
+ const stale=render('default',{question:'Another scenario',state,toolsOpen:false,result:null});
+ assert.doesNotMatch(stale,/Location context available|Map review needed|The plotted sites provide/);
+});
+
+test('actual map execution failures retain an error alert',()=>{
+ const html=render('default',{question:context.question,state:{...initial(),phase:'error',error:'Provider unavailable'},toolsOpen:false,result:null});
+ assert.match(html,/Exploration could not complete/);assert.match(html,/role="alert"/);assert.match(html,/Provider unavailable/);
+});
 test('result links require the exact current question and geographic revision, and use actual completed runs',async()=>{
  const m=mockDynamicProvider(fixture),c=createQuestionSimulation({execution:'dynamic',fetcher:async(u,i)=>handleDynamicRequest(new Request('http://localhost'+u,i),{enabled:true,groundingKey:'',key:'mock',fetcher:m.fetcher})});c.invalidate(context);await c.start();const state=c.getSnapshot();assert.equal(mapResultFor(state,context),'completed');
  const html=render('default',{question:context.question,state,toolsOpen:false,result:'completed'});assert.match(html,/>View Knowledge Graph<\/button>/);assert.match(html,/>View Report<\/button>/);

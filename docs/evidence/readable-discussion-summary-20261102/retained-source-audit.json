@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "source": "retained user polyclinic run",
+  "initialStatements": 8,
+  "publicFollowupStatements": 0,
+  "selectedStatements": 8,
+  "nodeContexts": 13,
+  "sourceBytesUnchanged": true,
+  "paidCalls": 0,
+  "rawStatementsExposed": false
+}

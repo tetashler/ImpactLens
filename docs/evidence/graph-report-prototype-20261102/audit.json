@@ -1,0 +1,20 @@
+{
+  "status": "PASS_WITH_DISCLOSED_INTERRUPTED_ATTEMPT",
+  "agents": 50,
+  "socialCalls": 30,
+  "acceptedSocialDecisions": 30,
+  "rejectedSocialDecisions": 0,
+  "successfulReportCalls": 1,
+  "interruptedReportAttempts": 1,
+  "reportedUsd": 0.010910753,
+  "outstandingUncertainUsd": 0.02,
+  "tavilyCalls": 0,
+  "automaticRetries": 0,
+  "ledgerChains": "PASS",
+  "browser": "PASS",
+  "savedSummaryReused": true,
+  "pageErrors": 0,
+  "offlineInitialization": true,
+  "v7CitizenAcceptance": "NOT_ESTABLISHED",
+  "buildId": "3MIJ-rWnVeXaL-38Cc8CT"
+}

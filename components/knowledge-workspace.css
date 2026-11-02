@@ -6,6 +6,12 @@
 @media(prefers-reduced-motion:reduce){.kg-workspace *{scroll-behavior:auto!important;transition:none!important}}
 
 .kg-popup{max-height:calc(100% - 90px);overflow:auto}
+.kg-node-summary{margin:0 0 12px;color:#e1eef9;line-height:1.65;max-width:80ch}
+.kg-summary-heading{margin:0 0 8px;font-size:12px;font-weight:600;color:#c1d8e5}
+.kg-activity-details{margin:16px 0;border-top:1px solid #2c3e53;padding-top:12px}
+.kg-activity-details>summary{padding:4px 0;line-height:1.5}
+.kg-activity-details[open]>summary{margin-bottom:12px}
+.kg-original-description{margin:12px 0;color:#afbed1}
 
 /* Keep dynamic type lists and physics controls usable as the graph grows. */
 .kg-explorer{overflow:auto}

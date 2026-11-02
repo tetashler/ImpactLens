@@ -37,11 +37,18 @@ function parseClock(value:unknown,profile:Readonly<ExecutionProfile>,tick:number
 }
 
 export function parsePublicExplore(value:unknown):PublicExplore{
- const fields=['version','kind','attemptId','requestIdentity','runId','planId','question','status','request','graph','inspections','roles','initialActions','assumptions','limitations','sources','accounting','demographics','session','society'];const v=object(value,[...fields,'job','grounding','storage'],fields);
+ const fields=['version','kind','attemptId','requestIdentity','runId','planId','question','status','request','graph','inspections','roles','initialActions','assumptions','limitations','sources','accounting','demographics','session','society'];const v=object(value,[...fields,'job','grounding','storage','locationContext'],fields);
  if(v.storage!==undefined){const storage=object(v.storage,['version','policy','disposition']);ensure(storage.version===1&&storage.policy==='storage-admission-v1'&&['active','historical-read-only'].includes(storage.disposition as string));}
  ensure(v.version===3&&v.kind==='summary-execution');ensure(typeof v.runId==='string'&&v.runId.length<=160&&typeof v.question==='string'&&v.question.length<=2000);parseKnowledgeGraph(v.graph);
  ensure(Array.isArray(v.initialActions)&&v.initialActions.length<=8);for(const a of v.initialActions)object(a,['id','roleId','type','round','position','previousEventIds']);
  if(v.job!==undefined)parseSocietyJob(v.job);if(v.grounding!==undefined){parseHybridPublicGrounding(v.grounding);ensure((v.grounding as {geometryRevision:number}).geometryRevision===(v.request as {geometryRevision:number}|null)?.geometryRevision);}
+ if(v.locationContext!==undefined){
+  const context=parseHybridReview(v.locationContext),request=parseDynamicRequest({version:1,...object(v.request,['question','geometryRevision','geometry'])});
+  ensure(v.grounding===undefined&&context.analysisMode==='location-context'&&context.interventionType==='new_polyclinic','LOCATION_DISCUSSION_SCOPE');
+  ensure(context.question===v.question&&context.question===request.question&&context.geometryRevision===request.geometryRevision,'LOCATION_DISCUSSION_IDENTITY');
+  const locations=context.locations??[],ids=new Set<string>();ensure(locations.length>0,'LOCATION_DISCUSSION_SITES');
+  for(const location of locations){const point=request.geometry.features.find(f=>f.id===location.pointId);ensure(point?.kind==='point'&&!ids.has(location.pointId)&&point.coordinate.lat===location.coordinate.lat&&point.coordinate.lon===location.coordinate.lon,'LOCATION_DISCUSSION_POINT');ids.add(location.pointId);}
+ }
  if(v.society){
   const required=['version','runId','worldId','phase','tick','totalSteps','minutes','counts','platforms','groups','agents','links','map','usage','limitations'];const s=object(v.society,[...required,'conversation','swarm','clock','issueDeclarations'],required);
   ensure(s.version===2&&s.runId===v.runId&&Array.isArray(s.agents)&&s.agents.length<=100&&Array.isArray(s.groups)&&s.groups.length<=8&&Array.isArray(s.platforms)&&s.platforms.length<=4);

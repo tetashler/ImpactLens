@@ -17,6 +17,7 @@ import {mockDynamicProvider} from './helpers/dynamic-provider.ts';
 import {replayHybrid,replayHybridFrom} from '../../society/hybrid.ts';
 import {writeMaterialCheckpoint,readMaterialCheckpoint} from '../../server/society/checkpoint.ts';
 import {readSwarmJournal} from '../../server/society/swarm-journal.ts';
+import {findStorageBinding,storageBundle} from '../../server/society/storage-admission.ts';
 
 const question='What if a new MRT line connects these plotted stops in Bukit Batok? How might nearby residents, workers and service providers discuss access, coordinate schedules and revisit practical concerns over the following days?';
 const sourceText='OFFLINE FIXTURE: Land Transport Authority is mentioned in Singapore rail planning guidance. This excerpt does not verify this proposed line or any social outcome.';
@@ -38,12 +39,15 @@ function sharedActualImpact(input:CitizenImpactRequest){
  const identity=canonical(input);if(actualImpactRequest!==undefined)assert.equal(identity,actualImpactRequest);
  actualImpactRequest=identity;return actualImpact??=calculateCitizenImpact(input);
 }
-function setup(options:{legacy?:boolean;malformedPersonality?:boolean;handoff?:boolean;currentMenu?:boolean}={}){
- const f=plannerFixture();f.request={...f.request,question,geometry:geometry(),geometryRevision:7};
+function setup(options:{legacy?:boolean;malformedPersonality?:boolean;handoff?:boolean;currentMenu?:boolean;polyclinic?:boolean}={}){
+ const scenarioQuestion=options.polyclinic?'What if a polyclinic was built at this location?':question;
+ const f=plannerFixture();f.request={...f.request,question:scenarioQuestion,geometry:options.polyclinic?{version:1,scenarioId:'plotted-polyclinic',features:[point('site')]}:geometry(),geometryRevision:7};
  f.draft.description='A hypothetical plotted local MRT line';f.draft.trigger='A hypothetical rail connection is considered';f.draft.domains=['Local rail access'];
  f.draft.agents.forEach((a,i)=>{a.label=['Residents','Workers','Transit staff','Community representatives'][i];a.category=a.label;a.context='A broad fictional stakeholder role.';a.goals=['Clarify practical access and schedules'];a.incentives=['Maintain accessible transport'];a.concerns=['Unresolved schedules and access'];a.knowledgeLimits=['No observed effects of this hypothetical line'];});
  f.draft.ontology.entities[0].name='Land Transport Authority';f.draft.ontology.entities[0].support=null;f.draft.ontology.relationships[0].support=null;
+ if(options.polyclinic){f.draft.description='A hypothetical local polyclinic';f.draft.trigger='A plotted polyclinic proposal is considered';f.draft.domains=['Community healthcare discussion'];f.draft.spatialRequirement='no-supported-quantitative-model';f.draft.agents.forEach((a,i)=>{a.label=['Residents','Healthcare staff','Local businesses','Community representatives'][i];a.category=a.label;a.context='A broad fictional role discussing a proposed polyclinic.';a.goals=['Discuss access and practical concerns'];a.incentives=['Understand the proposal'];a.concerns=['Unknown staffing and service arrangements'];a.knowledgeLimits=['No healthcare outcomes or service capacity are calculated'];});f.draft.ontology.entities[0].name='Proposed polyclinic';}
  const wire={version:options.legacy?1:2,attemptId:'hybrid-public-'+crypto.randomUUID(),request:f.request,...(!options.legacy?{hybrid:{...hybrid(),...(options.handoff?{interpretationPolicy:'hybrid-map-v2' as const}:{})}}:{})};
+ if(options.polyclinic){(wire.hybrid as any).anchors={};delete (wire.hybrid as any).selection;}
  const stages:string[]=[],contexts:any[]=[],directory=mkdtempSync(join(tmpdir(),'hybrid-public-explore-'));let searches=0,socialCalls=0,impactCalls=0;
  const dynamic=mockDynamicProvider(f,(body,reply)=>{
   const name=body.response_format.json_schema.name,c=JSON.parse(body.messages[1].content);stages.push(name);contexts.push(c);
@@ -65,7 +69,7 @@ function setup(options:{legacy?:boolean;malformedPersonality?:boolean;handoff?:b
   if(options.malformedPersonality)profiles.pop();
   return Response.json({id:'gen-hybrid-personality-fixture',model:body.model,provider:'DigitalOcean',choices:[{finish_reason:'stop',message:{role:'assistant',content:JSON.stringify({profiles})}}],usage:{prompt_tokens:1800,completion_tokens:2200,total_tokens:4000,cost:0.003,completion_tokens_details:{reasoning_tokens:0}}});
  };
- const dynamicDependencies={enabled:true,key:'offline-fixture',fetcher,groundingKey:'offline-fixture',groundingFetcher:async(_url:unknown,init?:RequestInit)=>{searches++;const body=JSON.parse(String(init?.body));assert.ok(body.query.includes(question));assert.equal(body.max_results,5);return Response.json({results:[{title:'OFFLINE rail planning guidance',url:'https://www.lta.gov.sg/',content:sourceText,published_date:'2025-01-01'}],usage:{credits:1}});}};
+ const dynamicDependencies={enabled:true,key:'offline-fixture',fetcher,groundingKey:'offline-fixture',groundingFetcher:async(_url:unknown,init?:RequestInit)=>{searches++;const body=JSON.parse(String(init?.body));assert.ok(body.query.includes(scenarioQuestion));assert.equal(body.max_results,5);return Response.json({results:[{title:'OFFLINE rail planning guidance',url:'https://www.lta.gov.sg/',content:sourceText,published_date:'2025-01-01'}],usage:{credits:1}});}};
  const socialDependencies={...(!options.currentMenu?{citizenMenuPolicy:'conversation-menu-v4' as const}:{}),enabled:true,key:'offline-fixture',fetcher,directory:join(directory,'sessions'),storeDirectory:join(directory,'accepted'),admission:{maxCalls:0},hybrid:{key:'offline-fixture',catalog:()=>catalog,impact:async(input:CitizenImpactRequest)=>{impactCalls++;return sharedActualImpact(input);}}};
  const accepted=()=>{const files=readdirSync(socialDependencies.storeDirectory).filter(f=>f.endsWith('.json'));assert.equal(files.length,1);return JSON.parse(readFileSync(join(socialDependencies.storeDirectory,files[0]),'utf8'));};
  return {wire,dynamicDependencies,socialDependencies,stages,contexts,accepted,counts:()=>({searches,socialCalls,impactCalls})};
@@ -133,6 +137,48 @@ test('unconfirmed, incomplete or differently ordered MRT selection cannot begin 
 for(const [question,type]of [['Add a community centre here','new_community_centre'],['Add an MRT station here','new_mrt_station']])test(type+' produces a bounded review without quantitative or paid execution',async()=>{
  const f=setup();f.wire.request.question=question;f.wire.request.geometry={version:1,scenarioId:'independent-site',features:[point('site')]};(f.wire as any).hybrid.anchors={};delete (f.wire as any).hybrid.selection;
  const response=await handlePublicExplore(request(f.wire),f.dynamicDependencies,f.socialDependencies),body=await response.json();assert.equal(response.status,200);assert.equal(body.kind,'hybrid-map-review');assert.equal(body.interventionType,type);assert.equal(body.question,question);assert.deepEqual(f.stages,[]);assert.deepEqual(f.counts(),{searches:0,socialCalls:0,impactCalls:0});assert.ok(!body.society&&!body.grounding);privateFieldsAbsent(body);
+});
+
+test('plotted polyclinic continues into fictional stakeholder discussion without citizen or healthcare calculations',async()=>{
+ const f=setup({polyclinic:true,handoff:true,currentMenu:true}),original=structuredClone(f.wire.request);
+ try{
+  const response=await handlePublicExplore(request(f.wire),f.dynamicDependencies,f.socialDependencies),body=await response.json();
+  assert.equal(response.status,200);assert.equal(body.kind,'summary-execution');assert.equal(body.status,'completed');assert.equal(body.initialActions.length,8);assert.ok(body.session);assert.ok(body.society);
+  assert.deepEqual(f.stages,['dynamic_entities_v3','dynamic_relationships_v2',...Array(8).fill('stakeholder_turn_v1')]);assert.deepEqual(f.counts(),{searches:1,socialCalls:0,impactCalls:0});
+  assert.equal(body.attemptId,f.wire.attemptId);assert.equal(body.question,original.question);assert.deepEqual(body.request,{question:original.question,geometry:original.geometry,geometryRevision:original.geometryRevision});
+  assert.equal(body.locationContext.analysisMode,'location-context');assert.equal(body.locationContext.interventionType,'new_polyclinic');assert.equal(body.locationContext.question,original.question);assert.equal(body.locationContext.geometryRevision,7);assert.deepEqual(body.locationContext.locations.map((l:any)=>l.pointId),['site']);
+  assert.match(body.limitations[0],/fictional.*discussion/i);assert.match(body.limitations[0],/location context/i);assert.match(body.limitations[0],/healthcare|wait times|capacity/i);assert.match(body.limitations[0],/not citizen-grounded/i);
+  assert.ok(!Object.hasOwn(body,'grounding'));assert.ok(!body.graph.nodes.some((n:any)=>n.properties.recordType==='citizen-commute-aggregate'));assert.equal(body.society.swarm.activeAgents,50);assert.equal(body.job.admittedCalls,0);
+  const stored=f.accepted();assert.deepEqual(stored.execution.plan.request,original);assert.deepEqual(stored.execution.plan.draft.userConditions,[original.question]);assert.deepEqual(stored.publicRun.locationContext,body.locationContext);assert.deepEqual(stored.publicRun.limitations,body.limitations);
+  const world=(await readSocialSession(body.session.id,f.socialDependencies)).world;assert.ok(!world.genesis.input.citizenGrounding);assert.ok(!world.genesis.input.citizenSelection);assert.equal(world.genesis.input.question,original.question);privateFieldsAbsent(body);
+  const before=[...f.stages],passive=await handlePublicSocial(new Request(`http://localhost/api/social-simulate?runId=${body.runId}&token=${body.session.token}`),f.socialDependencies),retained=await passive.json();assert.equal(passive.status,200);assert.deepEqual(retained.locationContext,body.locationContext);assert.deepEqual(retained.limitations,body.limitations);privateFieldsAbsent(retained);assert.deepEqual(f.stages,before);
+  const duplicate=await handlePublicExplore(request(f.wire),f.dynamicDependencies,f.socialDependencies);assert.equal(duplicate.status,409);assert.equal((await duplicate.json()).code,'DUPLICATE_ATTEMPT');assert.deepEqual(f.stages,before);assert.deepEqual(f.counts(),{searches:1,socialCalls:0,impactCalls:0});
+ }finally{await stopCoordinators(join(f.socialDependencies.storeDirectory,'jobs'));}
+});
+
+test('plotted polyclinic preserves the configured fifty-agent cohort and thirty-call admission',async()=>{
+ const f=setup({polyclinic:true,handoff:true}),social={...f.socialDependencies,admission:{maxCalls:30,deadlineMs:1}};
+ try{
+  const response=await handlePublicExplore(request(f.wire),f.dynamicDependencies,social),body=await response.json();assert.equal(response.status,200);assert.equal(body.kind,'summary-execution');assert.equal(body.society.swarm.activeAgents,50);assert.equal(body.job.admittedCalls,30);
+  const state=await readSocialSession(body.session.id,social);assert.equal(state.admission.maxCalls,30);assert.equal(state.admission.calls,0);assert.deepEqual(f.counts(),{searches:1,socialCalls:0,impactCalls:0});
+ }finally{await stopCoordinators(join(f.socialDependencies.storeDirectory,'jobs'));}
+});
+
+test('polyclinic without a plotted point remains a terminal map review',async()=>{
+ const f=setup({polyclinic:true,handoff:true});f.wire.request.geometry.features=[];
+ const response=await handlePublicExplore(request(f.wire),f.dynamicDependencies,f.socialDependencies),body=await response.json();assert.equal(response.status,200);assert.equal(body.kind,'hybrid-map-review');assert.deepEqual(f.stages,[]);assert.deepEqual(f.counts(),{searches:0,socialCalls:0,impactCalls:0});
+});
+
+test('bounded storage admission retains plotted polyclinic discussion context',async()=>{
+ const f=setup({polyclinic:true,handoff:true,currentMenu:true}),base=mkdtempSync(join(tmpdir(),'polyclinic-storage-base-')),bundle=storageBundle(base);
+ const {directory:_sessions,storeDirectory:_archives,...dependencies}=f.socialDependencies,social={...dependencies,storageBase:base,admission:{maxCalls:30,deadlineMs:1}};
+ try{
+  const response=await handlePublicExplore(request(f.wire),f.dynamicDependencies,social),body=await response.json();assert.equal(response.status,200);const accepted=parsePublicExplore(body);assert.equal(accepted.kind,'summary-execution');assert.equal(accepted.storage?.disposition,'active');assert.equal(accepted.locationContext?.interventionType,'new_polyclinic');assert.equal(accepted.society?.swarm?.activeAgents,50);assert.equal(accepted.job?.admittedCalls,30);
+  const binding=findStorageBinding(accepted.runId,base);assert.equal(binding?.binding?.sessionId,accepted.session?.id);assert.equal(binding?.claim.sessionId,accepted.session?.id);
+  const archives=readdirSync(bundle.archives).filter(name=>name.endsWith('.json'));assert.equal(archives.length,1);const stored=JSON.parse(readFileSync(join(bundle.archives,archives[0]),'utf8'));assert.deepEqual(stored.execution.plan.request,f.wire.request);assert.deepEqual(stored.publicRun.locationContext,accepted.locationContext);
+  const state=await readSocialSession(accepted.session!.id,{...social,directory:bundle.sessions});assert.equal(state.admission.maxCalls,30);assert.equal(state.admission.calls,0);assert.ok(!state.world.genesis.input.citizenGrounding);assert.ok(!state.world.genesis.input.citizenSelection);assert.ok(!accepted.grounding);assert.ok(!accepted.graph.nodes.some(node=>node.properties.recordType==='citizen-commute-aggregate'));privateFieldsAbsent(accepted);
+  const before=[...f.stages],passive=await handlePublicSocial(new Request(`http://localhost/api/social-simulate?runId=${accepted.runId}&token=${accepted.session!.token}`),social);assert.equal(passive.status,200);const retained=parsePublicExplore(await passive.json());assert.deepEqual(retained.locationContext,accepted.locationContext);assert.deepEqual(retained.limitations,accepted.limitations);assert.equal(retained.society?.swarm?.activeAgents,50);assert.equal(retained.job?.admittedCalls,30);privateFieldsAbsent(retained);assert.deepEqual(f.stages,before);assert.deepEqual(f.counts(),{searches:1,socialCalls:0,impactCalls:0});assert.ok(!f.stages.includes('citizen_personalities_v1'));
+ }finally{await stopCoordinators(bundle.jobs);}
 });
 
 test('malformed personality output preserves all eight accepted initial records without a society or retry',async()=>{

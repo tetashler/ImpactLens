@@ -1,0 +1,8 @@
+.report-ai-summary { margin-bottom: 2rem; padding: 1.25rem; border: 1px solid #355463; border-radius: 12px; background: #132b35; color: #d4e8eb; }
+.report-ai-summary h2 { margin-top: 0; }
+.report-ai-summary h3 { margin: 1.1rem 0 .35rem; }
+.report-ai-summary .report-ai-summary-note, .report-ai-summary small { color: inherit; opacity: .8; }
+.report-ai-summary-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.65; }
+.report-ai-summary button { margin: .5rem 0; padding: .6rem 1rem; border: 1px solid currentColor; border-radius: 6px; cursor: pointer; }
+.report-ai-summary button:disabled { opacity: .6; cursor: wait; }
+.report-ai-summary button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }

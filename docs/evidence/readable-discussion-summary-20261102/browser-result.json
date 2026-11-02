@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "writer": "MOCKED_UI_ONLY",
+  "paidCalls": 0,
+  "mockWriterPosts": 1,
+  "savedReads": 3,
+  "blockedOtherPosts": 0,
+  "fiveReportSections": true,
+  "technicalDetailsCollapsed": true,
+  "savedNodeNarrative": true,
+  "keyboardExpansion": true,
+  "savedSummaryReused": true,
+  "pageErrors": []
+}

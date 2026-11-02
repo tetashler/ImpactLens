@@ -2,7 +2,7 @@ import type {DiscussionSummary,ConversationMetrics} from './discussion-contract.
 import type {KnowledgeGraph} from '../knowledge-graph/contract.ts';
 import type {WorldInspectionV1} from '../world-graph/projection.ts';
 import type {societyMapSnapshot} from './geography.ts';
-import type {HybridPublicGrounding} from '../interventions/explore-contract.ts';
+import type {HybridPublicGrounding,HybridReview} from '../interventions/explore-contract.ts';
 export interface ActivityCounts {posts:number;messages:number;replies:number;reads:number;reactions:number;shares:number;stateChanges:number}
 export interface ChannelSummary {discussion?:DiscussionSummary;id:string;entityId:string|null;name:string;entityType:string;style:string;adapter:string;participants:number;counts:ActivityCounts;startMinute:number|null;endMinute:number|null;themes:string[];viewpoints:{concerned:number;conditional:number;supportive:number};summary:string;arguments:string;limitations:string[]}
 export interface GroupSummary {discussion?:DiscussionSummary;id:string;name:string;entityType:string;platformId:string;purpose:string;creatorId:string;createdMinute:number;membershipPolicy:string;historyPolicy:string;sharingPolicy:string;members:number;counts:ActivityCounts;viewpoints:ChannelSummary['viewpoints'];summary:string;themes:string[];arguments:string}
@@ -14,5 +14,7 @@ export interface PublicExplore {grounding?:HybridPublicGrounding;job?:SocietyJob
 
 /** Public disposition only. Filesystem paths, slot identities and claims remain private. */
 export interface PublicExplore {storage?:{version:1;policy:'storage-admission-v1';disposition:'active'|'historical-read-only'}}
+/** Reviewed plotted location for fictional discussion; carries no quantitative citizen/health model. */
+export interface PublicExplore {locationContext?:HybridReview}
 export type SocietyCapacityReason='EVENT_CAPACITY'|'ITEM_CAPACITY'|'STORAGE_CAPACITY'|'JOURNAL_CAPACITY';
 export interface SocietyJobSummary {profileId?:string;version:1;id:string;status:'running'|'paused'|'cancelled'|'completed'|'budget-limited'|'capacity-limited'|'failed';tick:number;totalSteps:number;acceptedDecisions:number;participatingAgents:number;capacity:number;admittedCalls:number;remainingCalls:number;reason:null|'APPLICATION_RESTART'|'DEADLINE'|'PROVIDER_BUDGET'|'PROVIDER_IDENTITY'|'STORAGE'|'ACCESS'|'OPERATION'|SocietyCapacityReason;revision:number}

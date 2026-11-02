@@ -2,7 +2,9 @@ import {replacePrivateCheckpoint,privateStoreDirectory,verifyPrivateStore} from 
 import {storageBase,storageBundle,reserveStorageAdmission,bindStorageAdmission,findStorageBinding,assertStorageAdmission,inspectStorageAdmission,STORAGE_ADMISSION_POLICY} from './storage-admission.ts';
 import {mkdirSync,existsSync,readFileSync,writeFileSync,readdirSync,statSync} from 'node:fs';import {join} from 'node:path';import {randomBytes,createHash,timingSafeEqual} from 'node:crypto';
 import {handleDynamicRequest,type DynamicDependencies} from '../inference/dynamic-service.ts';
-import {socialOperation,readSocialSession,checkpointSocialSession,type SocialDependencies,type SocialState} from './service.ts';
+import {socialOperation,readSocialSession,readSocialSessionReadonly,checkpointSocialSession,type SocialDependencies,type SocialState} from './service.ts';
+import {extractPublicDiscussionEvidence,emptyPublicDiscussionEvidence} from '../report-discussion-evidence.ts';
+import type {PublicDiscussionEvidence} from '../../report-summary/discussion-contract.ts';
 import {startCoordinator,coordinatorStatus,controlCoordinator,type CoordinatorDriver,type CoordinatorProgress} from './coordinator.ts';
 import {publicSociety,summaryGraph} from './summary.ts';
 import {projectPrimaryWorldGraph} from '../../world-graph/projection.ts';
@@ -12,10 +14,11 @@ import {ensure,object,canonical} from '../../experiments/validation.ts';
 import {parseDynamicWire} from '../../dynamic-scenarios/response.ts';
 import type {PublicExplore,SocietySummary} from '../../society/public-contract.ts';
 import type {DynamicResponse} from '../../dynamic-scenarios/response.ts';
-import {parseHybridExploreWire,type HybridPublicGrounding} from '../../interventions/explore-contract.ts';
-import {prepareHybridExplore,type HybridExploreDependencies} from '../interventions/explore.ts';
+import {parseHybridExploreWire,parseHybridReview,type HybridPublicGrounding,type HybridReview} from '../../interventions/explore-contract.ts';
+import {prepareHybridExplore,type HybridExploreDependencies,type PreparedHybridExplore} from '../interventions/explore.ts';
 import {appendCitizenCommuteGraph} from '../../citizen-grounding/graph.ts';
-export interface PublicDependencies extends SocialDependencies {storeDirectory?:string;hybrid?:HybridExploreDependencies;hybridSummary?:()=>HybridPublicGrounding;skipSocialInitialization?:boolean;storageHistorical?:boolean}
+import {INFERENCE_ADMISSION_V1,inferenceAdmissionFor} from '../inference/admission.ts';
+export interface PublicDependencies extends SocialDependencies {storeDirectory?:string;hybrid?:HybridExploreDependencies;hybridSummary?:()=>HybridPublicGrounding;/** Trusted server interpretation only; never accepted from browser JSON. */locationContext?:HybridReview;skipSocialInitialization?:boolean;storageHistorical?:boolean}
 interface Stored {baseGraph:import('../../knowledge-graph/contract.ts').KnowledgeGraph;version:1;token:string;execution:DynamicResponse;publicRun:PublicExplore;sessionId:string|null;revision:number}
 const policyStorage=(d:PublicDependencies)=>d.storageBase!==undefined||!d.storeDirectory&&!d.directory;
 const root=(d:PublicDependencies)=>d.storeDirectory??(policyStorage(d)?storageBundle(storageBase(d.storageBase)).archives:privateStoreDirectory('accepted-private'));
@@ -31,7 +34,18 @@ function resolveStorage(id:string,d:PublicDependencies):PublicDependencies {
 }
 function verifyStored(s:Stored,d:PublicDependencies){if(d.storageAdmission){const binding=assertStorageAdmission(d.storageAdmission,s.publicRun.runId);ensure((s.sessionId===null||s.sessionId===binding.sessionId)&&s.execution.run.runId===binding.runId&&createHash('sha256').update(s.execution.attemptId).digest('hex')===d.storageAdmission.claim.attemptHash,'STORAGE_ADMISSION_BINDING');}}
 function historicalProjection(s:Stored):PublicExplore {return {...s.publicRun,storage:{version:1,policy:STORAGE_ADMISSION_POLICY,disposition:'historical-read-only'},...(s.publicRun.job?{job:{...s.publicRun.job,...(s.publicRun.job.status==='running'?{status:'paused' as const,reason:null}:{})}}:{}),...(s.publicRun.society?{society:{...s.publicRun.society,...(s.publicRun.society.phase==='simulating'?{phase:'partial' as const}:{})}}:{})};}
-function storageFetcher(base:string,fetcher:typeof fetch=fetch):typeof fetch {return (input,init)=>{inspectStorageAdmission(base);return fetcher(input,init);};}
+function storageFetcher(base:string,fetcher?:typeof fetch):typeof fetch {
+ const underlying=fetcher??fetch;
+ const wrapped:typeof fetch=(input,init)=>{inspectStorageAdmission(base);return underlying(input,init);};
+ // This trusted storage wrapper preserves the underlying capability. Unrelated
+ // explicit adapters must never acquire the process-default admission authority.
+ const admission=inferenceAdmissionFor(underlying,'social_decision_v1',fetcher===undefined);
+ if(admission)Object.defineProperty(wrapped,INFERENCE_ADMISSION_V1,{value:{...admission,prepare:(info:Parameters<typeof admission.prepare>[0],signal:AbortSignal)=>{
+  signal.throwIfAborted();inspectStorageAdmission(base);signal.throwIfAborted();
+  return admission.prepare(info,signal);
+ }}});
+ return wrapped;
+}
 interface Capability {stamp:string;token:string;runId:string}
 const capabilities=(globalThis as typeof globalThis&{__impactlensPublicCapabilities?:Map<string,Capability>}).__impactlensPublicCapabilities??=new Map<string,Capability>();
 const fileStamp=(path:string)=>{const info=statSync(path,{bigint:true});ensure(info.size<=3n*1024n*1024n,'PUBLIC_STORAGE');return [info.dev,info.ino,info.size,info.mtimeNs,info.ctimeNs].join(':');};
@@ -54,6 +68,22 @@ async function inspectProjection(s:Stored,d:PublicDependencies){
  if(!s.sessionId&&d.storageAdmission&&existsSync(join(d.directory!,d.storageAdmission.claim.sessionId+'.jsonl'))){const recovered=await socialOperation({operation:'start',run:s.execution.run},options(s,d));await refresh(s,recovered,d);}if(s.sessionId&&coordinatorStatus(s.publicRun.runId,jobDirectory(d))){const state=await readSocialSession(s.sessionId,options(s,d));if(state.revision!==s.revision)await refresh(s,state,d);}return jobProjection(s,d);
 }
 function withGraph(s:Stored,summary:SocietySummary){return {...s.publicRun,society:summary,session:s.sessionId?{id:s.sessionId,token:s.token,revision:s.revision}:null};}
+/** Passive report input: authenticate a retained public snapshot without recovery or simulation work. */
+export async function readPublicReportSnapshot(runId:string,token:string,d:PublicDependencies={}):Promise<PublicExplore>{
+ const resolved=resolveStorage(runId,d),stored=read(runId,token,resolved);
+ return structuredClone(resolved.storageHistorical?historicalProjection(stored):jobProjection(stored,resolved));
+}
+/** Authenticated internal report input only. Never recovers, simulates, publishes or writes a retained run. */
+export async function readPublicReportDiscussion(runId:string,token:string,expectedRevision:number,expectedTick:number,d:PublicDependencies={}):Promise<PublicDiscussionEvidence>{
+ const resolved=resolveStorage(runId,d),stored=read(runId,token,resolved),run=stored.publicRun;
+ ensure(Number.isSafeInteger(expectedRevision)&&expectedRevision>=0&&Number.isSafeInteger(expectedTick)&&expectedTick>=0&&stored.revision===expectedRevision&&(run.session?.revision??stored.revision)===expectedRevision&&(run.society?.tick??0)===expectedTick,'REPORT_DISCUSSION_STALE');
+ if(!stored.sessionId||!run.session||!run.society)return emptyPublicDiscussionEvidence(run);
+ ensure(stored.sessionId===run.session.id&&run.society.runId===runId,'REPORT_DISCUSSION_IDENTITY');
+ const state=await readSocialSessionReadonly(stored.sessionId,resolved);
+ ensure(state.sessionId===stored.sessionId&&state.world.genesis.input.runId===runId&&state.world.genesis.id===run.society.worldId,'REPORT_DISCUSSION_IDENTITY');
+ ensure(state.revision===expectedRevision&&state.world.tick===expectedTick,'REPORT_DISCUSSION_STALE');
+ return extractPublicDiscussionEvidence(run,state.world);
+}
 /** Called only after server-side authoritative inference/validation; not an HTTP operation. */
 export async function registerAcceptedExecution(value:DynamicResponse,d:PublicDependencies={}):Promise<PublicExplore>{
  if(policyStorage(d)){if(d.storageAdmission){bindStorageAdmission(d.storageAdmission.claim,{runId:value.run.runId,attemptId:value.attemptId},d.storageAdmission.base);const bundle=storageBundle(d.storageAdmission.base);ensure(root(d)===bundle.archives&&d.directory===bundle.sessions,'STORAGE_ADMISSION_BINDING');}else d=resolveStorage(value.run.runId,d);}
@@ -64,6 +94,7 @@ export async function registerAcceptedExecution(value:DynamicResponse,d:PublicDe
  primary.graph.edges=primary.graph.edges.map(e=>primary.inspections[e.id]?.kind==='recorded-interaction'?{...e,description:'Recorded fictional stakeholder interaction. Accepted chronology is retained internally; no conversation text is disclosed.'}:e);
  for(const [id,i]of Object.entries(primary.inspections))primary.inspections[id]={version:1,kind:i.kind,affiliation:i.affiliation,sources:i.sources,interactions:[],assumptions:i.assumptions,...(i.sourceAttribution?{sourceAttribution:i.sourceAttribution}:{}),...(i.demographicContext?{demographicContext:i.demographicContext}:{})};
  const publicRun:PublicExplore={version:3,kind:'summary-execution',attemptId:value.attemptId,requestIdentity:value.requestIdentity,runId:run.runId,planId:plan.planId,question:plan.request.question,status:run.status,request:{question:plan.request.question,geometryRevision:plan.request.geometryRevision,geometry:plan.request.geometry},graph:primary.graph,inspections:primary.inspections,roles:plan.draft.agents.map(a=>({id:a.id,label:a.label,goals:a.goals})),initialActions:run.events.map(e=>({id:e.id,roleId:e.roleId,type:e.type,round:e.round,position:e.position,previousEventIds:e.previousEventIds})),assumptions:run.inputSnapshot.assumptions.map(a=>a.value),limitations:run.limitations,sources:(plan.grounding?.sources??[]).map(s=>({id:s.id,title:s.title,url:s.url,publisher:s.publisher,publishedAt:s.publishedAt,retrievedAt:s.retrievedAt})),accounting:{planningCalls:value.accounting.planningCalls,actionCalls:value.accounting.actionCalls,inputTokens:value.accounting.inputTokens,outputTokens:value.accounting.outputTokens,costUsd:value.accounting.costUsd},demographics:plan.demographics??null,session:null,society:null};
+ if(d.locationContext){const context=parseHybridReview(d.locationContext);ensure(context.question===plan.request.question&&context.geometryRevision===plan.request.geometryRevision&&context.analysisMode==='location-context'&&context.interventionType==='new_polyclinic'&&!!context.locations?.length,'LOCATION_CONTEXT_BINDING');publicRun.locationContext=context;publicRun.limitations=['Fictional stakeholder discussion only. Plotted sites provide location context; healthcare outcomes, wait times and service capacity are not quantified. This discussion is not citizen-grounded.',...publicRun.limitations];}
  if(d.storageAdmission)publicRun.storage={version:1,policy:STORAGE_ADMISSION_POLICY,disposition:'active'};
  const s:Stored={baseGraph:primary.graph,version:1,token:randomBytes(32).toString('hex'),execution:value,publicRun,sessionId:null,revision:0};await write(s,d);
  if(!d.skipSocialInitialization)try{const state=await socialOperation({operation:'start',run},options(s,d));await refresh(s,state,d);if(state.world.genesis.input.swarm?.deep?.policy==='deep-swarm-v1'){await startCoordinator({runId:run.runId,directory:jobDirectory(d),driver:driverFor(s,d),deadlineMs:state.admission.deadlineMs===null?undefined:Math.max(0,state.admission.deadlineMs-Date.now())});jobProjection(s,d);}}catch{if(s.publicRun.society)s.publicRun.society.phase='partial';s.publicRun.limitations=[...s.publicRun.limitations,'Background communication could not initialise. Accepted stakeholder records remain preserved.'];await write(s,d);}
@@ -82,7 +113,7 @@ export async function handlePublicExplore(request:Request,deps:DynamicDependenci
  if(boundedStorage){try{const base=storageBase(social.storageBase),claim=reserveStorageAdmission(wire.attemptId,createHash('sha256').update(canonical(wire)).digest('hex'),base);social={...social,storageAdmission:{base,claim}};}catch(error){const message=error instanceof Error?error.message:'';return response({error:message==='STORAGE_ADMISSION_CAPACITY'?'PRIVATE_STORAGE_CAPACITY':message==='STORAGE_ADMISSION_DUPLICATE'?'PRIVATE_STORAGE_DUPLICATE':'PRIVATE_STORAGE_UNAVAILABLE',message:'The bounded local storage admission could not proceed. Existing records are preserved; no provider request was started.'},message==='STORAGE_ADMISSION_DUPLICATE'?409:503);}}
  else if(readdirSync(root(social)).filter(f=>f.endsWith('.json')).length>=64||readdirSync(privateStoreDirectory('social-sessions',social.directory)).filter(f=>f.endsWith('.index')).length>=64)return response({error:'PRIVATE_STORAGE_CAPACITY',message:'The local accepted-history capacity is full. Existing records are preserved; no provider request was started.'},503);
  if(social.storageAdmission)deps={...deps,fetcher:storageFetcher(social.storageAdmission.base,deps.fetcher),groundingFetcher:storageFetcher(social.storageAdmission.base,deps.groundingFetcher)};
- let dynamicRequest=request,initialization:Awaited<ReturnType<typeof prepareHybridExplore>>|null=null;
+ let dynamicRequest=request,initialization:PreparedHybridExplore|null=null,locationContext:HybridReview|undefined;
  try{
   if(wire.version===2){
    const guard=(globalThis as typeof globalThis&{__citizenHybridLiveGuard?:{bindExploreInput:(v:unknown)=>void}}).__citizenHybridLiveGuard;
@@ -90,12 +121,15 @@ export async function handlePublicExplore(request:Request,deps:DynamicDependenci
    if(!boundedStorage){const directory=join(root(social),'hybrid-attempts');await verifyPrivateStore(directory);
    const claim=join(directory,createHash('sha256').update(wire.attemptId).digest('hex')+'.json');
    const fd=(await import('node:fs')).openSync(claim,'wx',0o600);try{(await import('node:fs')).writeFileSync(fd,JSON.stringify({version:1,policy:'hybrid-citizen-explore-v1',attemptId:wire.attemptId,status:'claimed',questionHash:createHash('sha256').update(wire.request.question).digest('hex')}));(await import('node:fs')).fsyncSync(fd);}finally{(await import('node:fs')).closeSync(fd);}}
-   initialization=await prepareHybridExplore(wire,{...social.hybrid,key:deps.key??process.env.OPENROUTER_API_KEY??'',fetcher:deps.fetcher,enabled:deps.enabled??process.env.STAKEHOLDER_LIVE_ENABLED==='true'},request.signal);
-   if(initialization.kind!=='ready')return response(initialization);
+   const prepared=await prepareHybridExplore(wire,{...social.hybrid,key:deps.key??process.env.OPENROUTER_API_KEY??'',fetcher:deps.fetcher,enabled:deps.enabled??process.env.STAKEHOLDER_LIVE_ENABLED==='true'},request.signal);
+   if(prepared.kind==='ready')initialization=prepared;
+   else if(prepared.kind==='hybrid-map-review'&&prepared.analysisMode==='location-context'&&prepared.interventionType==='new_polyclinic'&&prepared.locations?.length)locationContext=prepared;
+   else return response(prepared);
    const headers=new Headers(request.headers);headers.delete('content-length');dynamicRequest=new Request(request.url,{method:'POST',headers,signal:request.signal,body:JSON.stringify({version:1,attemptId:wire.attemptId,request:wire.request})});
   }
  }catch(error){const code=(error as {code?:string}).code;return response({error:'HYBRID_EXPLORE_STOPPED',message:'Map interpretation or citizen initialization could not proceed safely. Review the drawing and provider configuration. No automatic retry was made.',code:code==='EEXIST'?'DUPLICATE_ATTEMPT':typeof code==='string'&&/^AI_[A-Z_]+$/.test(code)?code:'INVALID_INTERVENTION'},409);}
  const r=await handleDynamicRequest(dynamicRequest,deps),v=await r.json();if(v.kind!=='dynamic-execution')return response(v,r.status);
+ if(locationContext)social={...social,locationContext,citizenSelection:undefined,citizenGrounding:undefined,hybridSummary:undefined};
  const acceptedInitialization=initialization?.kind==='ready'&&v.run.status==='completed'&&v.run.events.length===8&&v.inference.records.length===8&&v.inference.records.every((r:{status:string})=>r.status==='accepted')?initialization:null;
  if(initialization&&!acceptedInitialization)return response(await registerAcceptedExecution(v,{...social,skipSocialInitialization:true,citizenGrounding:undefined}));
  try{return response(await registerAcceptedExecution(v,acceptedInitialization?{...social,citizenMenuPolicy:social.citizenMenuPolicy??'conversation-menu-v7',citizenSelection:acceptedInitialization.citizenSelection,citizenGrounding:acceptedInitialization.citizenGrounding,hybridSummary:acceptedInitialization.publicGrounding}:social));}catch(error){const e=error as Error&{code?:string};const reason=/read only|read-only|not extensible|frozen/i.test(e.message??'')?'IMMUTABLE_MUTATION':/JSON-serialisable/i.test(e.message??'')?'SERIALISATION':['EPERM','EACCES','ENOENT','ENOSPC','EBUSY'].includes(e.code??'')?e.code:'VALIDATION';console.warn('PUBLIC_PROJECTION_SAFE',JSON.stringify({reason,kind:['Error','TypeError','RangeError'].includes(e.name)?e.name:'Error',locations:e.stack?.split('\n').slice(1,4).map(line=>line.replace(/.*?(\.next|lib)[\\/]/,'$1/').slice(0,220))}));return response({error:'Accepted execution could not be projected safely; no conversation records were returned.',code:'PUBLIC_PROJECTION'},500);}}

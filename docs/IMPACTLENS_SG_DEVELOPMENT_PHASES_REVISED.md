@@ -987,3 +987,42 @@ Fresh PASS: 27 focused regressions; 2,030 network-blocked tests; both TypeScript
 Zero paid calls, no new paid authority, and the older US$0.02 uncertainty remains reserved. Original storage remains unchanged at 3/16 current claims. Task servers/pages are stopped; changes remain unstaged and uncommitted.
 
 **Current next action: GO for integrated testing of geographic/impact-aware selection with the unchanged V7 interface.** This follows the latest task scope: the prior real 70% V7 screen remains a known limitation; its optional factual-prose repair is DEFERRED and is not a prerequisite imposed on integrated testing. Any paid integrated evaluation requires separate explicit authorisation. Better cohort relevance is established offline; improved real-agent behaviour or real-world prediction accuracy is not demonstrated. See [selection implementation and acceptance](GEOGRAPHIC_IMPACT_AWARE_CITIZEN_SELECTION.md).
+
+
+## Geographic selection + V7 integrated live acceptance ? 2 November 2026
+
+**Integrated result: NO-GO for behavioural acceptance; selection and initialization PASS.** See [the acceptance report](GEOGRAPHIC_SELECTION_V7_REAL_PROVIDER_INTEGRATED_ACCEPTANCE.md).
+
+- Offline admission passed 2,049 network-blocked tests, 23 focused tests, both TypeScript checks, build/25 traces, a fresh complete selected 350-decision replay, and all 20 qualifying historical replays. The prior 14 benchmarks and 100/70 capacity evidence were source-verified and reused, not rerun. A faulty task-helper assertion was preserved and corrected through fresh re-execution.
+- Exactly one actual UI MRT Explore used citizen-selection-v2 and unchanged V7 policies. Actual roster: 4 impact-priority, 12 proximity-priority, 34 comparison citizens; all four calculated beneficiaries were LLM-capable. Whole-population records, weights and calculated outcomes were unchanged.
+- Real entity/relationship planning, eight initial stakeholder actions and one complete 35-personality DeepSeek/DigitalOcean batch succeeded. A launcher-only correction required explicit user approval after sealing; the original authority, files and 12:30:24 SGT deadline were preserved, with no rearming.
+- The first social opportunity timed out: tick 1/320, zero returned social responses, zero accepted social decisions. V7 compliance and substantive grounding were not assessed. A delayed-admission/transport-timeout race was reproduced offline; its live causality and upstream dispatch remain unproven.
+- Authority closed failed. Eleven returned OpenRouter completions cost US$0.005512556; the interrupted social reservation retains US$0.02 independently of the older protected US$0.02. One Tavily search/credit. No paid retry or replacement Explore.
+- Exact retained-prefix replay, frozen facts/personalities, Graph/Report and GET-only restoration passed. No materialized checkpoint exists at this early boundary; checkpoint-tail recovery is not claimed. All 11,505 protected files remained unchanged. New namespace: 4/16 claims, 12 unused; legacy history unchanged.
+- Populated Graph and full Report screenshots, with commute detail views, are saved at both desktop sizes under `docs/evidence/geographic-selection-v7-20261102/`. They show the failed tick-1 prefix, not completed social activity.
+
+**Next action:** fix the local admission/inference-timeout boundary offline, separating bounded roster verification from the model-response timer and checking cancellation before reservation/dispatch. Another live attempt requires separate authorization. Read-only Graph/Report UX work can proceed using appropriately labelled evidence. The optional V7 factual-prose repair remains deferred; it was not implemented or verified by this run.
+
+
+### 2 November 2026 ? Admission/timeout repair and one real smoke test
+
+Offline gates PASS: 2,091 network-blocked tests, 70 repair/23 selection tests, both TypeScript checks, build/25 traces, fresh selected 350-decision replay and 20 qualifying historical worlds. All 11,683 protected files remained unchanged; existing 14 benchmarks and 100-agent evidence were explicitly reused under unchanged execution algorithms.
+
+One authorised real smoke test FAILed before social dispatch: genuine planning, eight stakeholder actions and all 35 DeepSeek personalities succeeded, but the storage-aware fetch wrapper omitted the new phased admission capability. The first beneficiary opportunity failed locally at tick 1; no social reservation/return, accepted decision or peer reply occurred. No retry/replacement. Eleven settled completions cost US$0.0051927792; task financial outstanding zero, Tavily 1 credit; older two US$0.02 uncertainties unchanged. The application retains its separate NULL-usage/US$0.02 placeholder; the original strict post-world audit FAIL is preserved, while supplemental prefix replay/roster/population/privacy checks pass. Checkpoint tail is N/A.
+
+Capacity is 5/16 claims, 11 available. Eight Graph/Report screenshots at both desktop sizes were saved. Next: narrow trusted-storage-adapter capability forwarding plus an ordinary public-driver mocked regression, offline; no further paid inference is authorised. V7 prose validation remains deferred. See [acceptance report](ADMISSION_TIMEOUT_REPAIR_AND_REAL_PROVIDER_SMOKE_TEST.md).
+
+
+### 2 November 2026 ? Focused storage-fetch admission handoff repair
+
+Trusted storage fetch now forwards the validated social admission capability while retaining storage checks, cancellation receipts and explicit-adapter isolation. Actual public Explore/storage regressions reproduce the old failure and pass after repair. A managed 50/35 coordinator prepares, dispatches and accepts two mocked responses; 87 distinct targeted tests and both TypeScript checks pass. Fifty-nine retained-prefix/closed-authority preservation checks pass. Zero paid calls, retries, history edits or new ledgers. Full suite, production build and historical/desktop cycle were not rerun in this fast scope; no real-provider success is claimed. V7 prose validation remains deferred. See [focused repair note](STORAGE_FETCH_ADMISSION_HANDOFF_REPAIR.md).
+
+
+### 2 November 2026 ? Quick real-provider check blocked at retrieval
+
+Fresh 91 focused tests, both TypeScript checks, production build and asset tracing PASS under source 6631bba9 / build nfMq6NCDh5mV1OOF5hwz1. Broader unchanged historical evidence was explicitly reused. One newly authorised small ordinary Explore stopped at Tavily after a native dispatch and ~9.9 seconds without HTTP status. Zero OpenRouter calls; no new personalities, social responses or accepted world. Authority closed failed; conservative two-credit retrieval uncertainty retained, zero OpenRouter USD. All 124 bound pins preserved; no retry/replacement or old ledger reopening. The storage-wrapper fix remains offline verified but live social success is NOT OBSERVED. See [quick verification report](STORAGE_HANDOFF_QUICK_REAL_PROVIDER_VERIFICATION.md).
+
+
+### 2 November 2026 ? One-call direct DeepSeek storage-handoff PASS
+
+One genuine DigitalOcean/DeepSeek response passed the repaired public/storage/coordinator handoff and structured validation: one read decision, US$0.000338436, zero outstanding reservation, zero Tavily/retries. Initialization was explicitly synthetic/offline and the response used conversation-menu-v2; this is not V7 or full citizen-grounded MRT acceptance. Ledger chain, prefix reconstruction/round trip and public counts passed. Original histories/ledgers unchanged. GO for Graph UX and evidence-backed Report improvements with those limits disclosed. See [direct smoke report](DIRECT_DEEPSEEK_STORAGE_HANDOFF_SMOKE.md).
