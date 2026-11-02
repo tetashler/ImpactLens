@@ -4,10 +4,11 @@ import type {PublicExplore} from '../lib/society/public-contract.ts';
 import type {KnowledgeGraph} from '../lib/knowledge-graph/contract.ts';
 import {parseReportSummary,type ReportSummary} from '../lib/report-summary/contract.ts';
 import {projectReportEvidence,reportSnapshotPayload} from '../lib/report-summary/evidence.ts';
+import {isReportRunUpdating} from '../lib/report-summary/readiness.ts';
 
 interface GraphReportSnapshot {runId:string;token:string;payload:string;identity:string}
 export function graphReportSnapshot(run?:PublicExplore|null,graph:KnowledgeGraph|null|undefined=run?.graph):GraphReportSnapshot|null {
-  if(!run?.runId||!run.session?.token)return null;
+  if(!run?.runId||!run.session?.token||isReportRunUpdating(run))return null;
   if(!graph||graph.executionIdentity!==run.runId||run.graph.executionIdentity!==run.runId||graph.scenarioIdentity!==run.graph.scenarioIdentity)return null;
   try {
     const payload=reportSnapshotPayload(projectReportEvidence(run));

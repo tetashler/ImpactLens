@@ -214,6 +214,10 @@ export function createPlotStore(options: { scenarioId?: string } = {}) {
       past.length = 0; future.length = 0; pending = null;
       publish(geometry, { mode: 'explore', selection: null, activeLineId: null }, false);
     },
+    /** Apply one validated geometry edit, retaining a single undo/redo history entry. */
+    applyGeometry(value:unknown) {
+      idle();publish(parseScenarioGeometry(value));
+    },
     /** Replace the scenario with a validated detached fixture and reset local history. */
     load(value: unknown) {
       const geometry = parseScenarioGeometry(value);

@@ -4,6 +4,7 @@ import {join, resolve} from 'node:path';
 import type {PublicExplore} from '../society/public-contract.ts';
 import {REPORT_SUMMARY_PROMPT_VERSION, REPORT_SECTION_KEYS, parseReportSections, parseReportSummary, parseReportNarrative, parseReportNodeSummaries, type ReportSections, type ReportSummary, type ReportNarrative} from '../report-summary/contract.ts';
 import type {PublicDiscussionEvidence} from '../report-summary/discussion-contract.ts';
+import {isReportRunUpdating} from '../report-summary/readiness.ts';
 import {privateStoreDirectory, replacePrivateCheckpoint, verifyPrivateStore} from './society/storage.ts';
 import {createStructuredTransport, type DeepseekTransportOptions} from './inference/deepseek.ts';
 import {AiError} from './ai/errors.ts';
@@ -52,6 +53,7 @@ export function createReportSummaryService(deps: ReportSummaryDependencies) {
     async generate(runId: string, token: string, expectedSnapshotKey: string): Promise<ReportSummary> {
       const current = await snapshot(runId, token);
       const stale = () => new AiError('The run changed. Reload the report before generating its summary.', 'REPORT_STALE', 409);
+      if(isReportRunUpdating(current.run))throw new AiError('The simulation is still running. Pause it or wait for it to finish before generating a summary.','REPORT_RUNNING',409);
       if (current.snapshotKey !== expectedSnapshotKey) throw stale();
       const existing = saved(runId, current.snapshotKey);
       if (existing) return existing;

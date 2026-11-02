@@ -1,5 +1,5 @@
 'use client';
-import {confirmedAnchorVertex} from '../lib/plots/anchor';
+import {planConfirmedAnchor} from '../lib/plots/anchor';
 import type {HybridExploreOptions} from '../lib/interventions/explore-contract';
 
 import {useSociety} from './use-society';
@@ -178,7 +178,7 @@ export default function Workspace() {
   const primary=stage!=='configure'&&stage!=='workspace';
   const points=plot.geometry.features.filter((f):f is PlotPoint=>f.kind==='point');
   const validAnchors=useMemo(()=>Object.fromEntries(Object.entries(anchors).filter(([id,stationId])=>{const point=points.find(p=>p.id===id),station=catalog?.stations.find(s=>s.id===stationId);return !!point&&!!station&&point.coordinate.lat===station.lat&&point.coordinate.lon===station.lon;})),[anchors,plot.geometry,catalog]);
-  const hybridOptions=useMemo<HybridExploreOptions>(()=>({version:1,policy:'hybrid-citizen-explore-v1',interpretationPolicy:'hybrid-map-v2',serviceDate:date,anchors:validAnchors,timings:hybridTimings,...(hybridSelection?{selection:hybridSelection}:{})}),[date,validAnchors,hybridTimings,hybridSelection]);
+  const hybridOptions=useMemo<HybridExploreOptions>(()=>({version:1,policy:'hybrid-citizen-explore-v1',interpretationPolicy:'hybrid-map-v2',serviceDate:date,anchors:validAnchors,timings:hybridTimings,...(hybridSelection&&hybridSelection.pointIds.length>=2?{selection:hybridSelection}:{})}),[date,validAnchors,hybridTimings,hybridSelection]);
   useEffect(()=>{flow.controller.invalidate({question:rawPlanner.question,geometry:plot.geometry,geometryRevision:plot.revision,...(plot.geometry.features.length?{hybrid:hybridOptions}:{})});},[flow.controller,rawPlanner.question,plot.geometry,plot.revision,hybridOptions]);
   const aacBound=!!aacBinding&&aacBinding.revision===plot.revision&&aacBinding.planId===planner.response?.plan.planId&&points.some(p=>p.id===aacBinding.pointId&&p.coordinate.lat===aac.draft.position?.lat&&p.coordinate.lon===aac.draft.position?.lon);
   const aacOptions=useMemo<AacMapOptions>(()=>({active:tab==='general'&&!exploring&&interventionMode==='aac',placing:primary||!plotToolsOpen?false:aac.placing,position:primary&&!aacBound?null:aac.draft.position,proposedMarker:!primary,autoFocus:false,radiusMetres:aac.draft.thresholdMetres,facilities:aac.facilities,selectedFacility:aac.selectedFacility,origins:aacOrigins,focusKey:aac.focusKey,onPlace:aac.place,onSelect:aac.setSelectedFacility,onDragStart:aac.invalidate,onCancel:aac.cancelPlacement,onStartPlacement:()=>{setPlotToolsOpen(true);aac.setPlacing(true)},onFocus:aac.focus}),[tab,exploring,interventionMode,primary,plotToolsOpen,aacBound,aac.placing,aac.draft.position,aac.draft.thresholdMetres,aac.facilities,aac.selectedFacility,aacOrigins,aac.focusKey,aac.place,aac.setSelectedFacility,aac.invalidate,aac.cancelPlacement,aac.setPlacing,aac.focus]);
@@ -199,8 +199,23 @@ export default function Workspace() {
   function requestAnchor(stationId:string,pointId?:string){if(!catalog?.stations.some(s=>s.id===stationId))return;setPendingAnchor({stationId,...(pointId?{pointId}:{})});}
   function confirmAnchor(){
     const station=catalog?.stations.find(s=>s.id===pendingAnchor?.stationId);if(!station||!pendingAnchor)return;
-    editPlot(()=>{const id=pendingAnchor.pointId??plot.addPoint({lat:station.lat,lon:station.lon},'station');if(pendingAnchor.pointId){const vertex=confirmedAnchorVertex(plot.getSnapshot().geometry,id);if(vertex)plot.moveVertex(vertex.routeId,vertex.vertex,{lat:station.lat,lon:station.lon});plot.movePoint(id,{lat:station.lat,lon:station.lon});}plot.setPointRole(id,'station');plot.updateLabel(id,`${station.name} (${station.id})`);setAnchors(old=>({...old,[id]:station.id}));plot.select({id});setPendingAnchor(null);plot.setMode('explore');});
+    try {
+      const current=plot.getSnapshot(),geometry=structuredClone(current.geometry),id=pendingAnchor.pointId??crypto.randomUUID();
+      if(!pendingAnchor.pointId)geometry.features.push({kind:'point',id,label:station.name,coordinate:{lat:station.lat,lon:station.lon},role:'station',provenance:'user-drawn'});
+      const routes=geometry.features.filter(f=>f.kind==='line');
+      const routeId=hybridSelection?.routeId??(routes.length===1?routes[0].id:undefined);
+      const proposal=planConfirmedAnchor(geometry,id,{lat:station.lat,lon:station.lon},routeId);
+      const point=proposal.geometry.features.find(f=>f.id===id);if(!point||point.kind!=='point')throw Error('Select a station dot before confirming the connection.');
+      point.role='station';point.label=`${station.name} (${station.id})`;
+      editPlot(()=>{
+        // An already-open tab can retain the older store object after Fast Refresh.
+        // Its validated load fallback preserves the complete drawing during this upgrade.
+        if(typeof plot.applyGeometry==='function')plot.applyGeometry(proposal.geometry);else plot.load(proposal.geometry);
+        setAnchors(old=>({...old,[id]:station.id}));plot.select({id});setPendingAnchor(null);plot.setMode('explore');
+      });
+    }catch(error){setPlotError(error instanceof Error?error.message:'The interchange could not be connected to this route.');}
   }
+
   const plotting=useMemo<PlotMapOptions&{onMapClick:(position:PlotPosition)=>void;onAnchorPick:(id:string)=>void}>(()=>({active:tab==='general'&&!exploring&&primary&&inspector!=='citizens',geometry:plot.geometry,mode:plotToolsOpen?plot.mode:'explore',selection:plot.selection,anchors:validAnchors,onSelect:plot.select,onMovePoint:(id,p)=>editPlot(()=>plot.movePoint(id,p)),onMoveVertex:(id,index,p)=>editPlot(()=>plot.moveVertex(id,index,p)),onDragStart:invalidatePlot,onMapClick:p=>editPlot(()=>plot.mode==='line'?plot.addVertex(p):plot.addPoint(p,plot.mode==='station'?'station':'unassigned')),onAnchorPick:id=>requestAnchor(id,plot.selection&&points.some(p=>p.id===plot.selection!.id)?plot.selection.id:undefined)}),[tab,exploring,primary,inspector,plotToolsOpen,plot.geometry,plot.mode,plot.selection,validAnchors,catalog]);
   const showMap=()=>document.querySelector('.map-panel')?.scrollIntoView({behavior:'instant',block:'start'});
   useEffect(() => {
@@ -303,6 +318,10 @@ export default function Workspace() {
   function runPlottedAac(){try{const current=plot.getSnapshot();if(!aacBound||!aacBinding||current.revision!==aacBinding.revision||current.activeLineId||planner.response?.plan.capabilityId!=='aac-accessibility-v1')throw new Error('Confirm the current point as an AAC location first.');const request=buildPlottedAac(current.geometry,aacBinding.pointId,aac.draft,`plot-aac-${crypto.randomUUID()}`,true);plot.setMode('explore');setInterventionMode('aac');setStage('calculate');pendingGraphAac.current=graphIdentity;void aac.calculate(request);}catch(error){setPlotError((error as Error).message);}}
   const primaryPlanner={...planner,setQuestion:(question:string)=>{invalidatePlot();planner.setQuestion(question);},setCategory:(category:Parameters<typeof planner.setCategory>[0])=>{invalidatePlot();planner.setCategory(category);},setMapPoints:(values:Parameters<typeof planner.setMapPoints>[0])=>{invalidatePlot();planner.setMapPoints(values);},submit:()=>rawPlanner.submit()};
   async function startQuestion(mode:'live'|'scripted'='live'){if(canRun||aacBound){invalidate();aac.invalidate();}else invalidateResults();setLabOpen(false);enterGeneral();setExperienceView('map');setPlotToolsOpen(false);flow.controller.invalidate({question:rawPlanner.question,geometry:plot.geometry,geometryRevision:plot.revision,...(mode==='live'&&plot.geometry.features.length?{hybrid:hybridOptions}:{})});await startQuestionWork(()=>flow.controller.start(mode==='live'?'dynamic':mode,canRun),canRun?simulate:undefined,aacBound?runPlottedAac:undefined);}
+  function reviewPlotSetup(){
+    setLabOpen(false);enterGeneral();setExperienceView('map');setPlotToolsOpen(true);
+    requestAnimationFrame(()=>{const heading=document.getElementById('plot-mrt-heading')??document.getElementById('plot-geometry-heading');heading?.scrollIntoView({block:'nearest'});heading?.focus({preventScroll:true});});
+  }
   function cancelQuestion(){flow.controller.cancel();invalidate();aac.invalidate();}
   const archive=flow.state.history.find(h=>h.id===flow.state.selectedArchiveId);
   const displayedFlow=archive?{...flow.state,...archive}:flow.state;
@@ -390,7 +409,7 @@ export default function Workspace() {
       </aside>
       <AacResults state={aac} hidden={exploring||stage==='general'||interventionMode!=='aac'||(guided&&stage==='configure')}/>
       <aside className="map-scenario-sidebar" aria-label="Scenario panel">
-        <MapScenarioPanel question={planner.question} state={flow.state} toolsOpen={plotToolsOpen} result={mapResult} onQuestion={editQuestion} onExplore={()=>void startQuestion('live')} onCancel={cancelQuestion} onToggleTools={()=>{if(plotToolsOpen)closePlotTools();else{enterGeneral();setPlotToolsOpen(true);}}} onGraph={()=>void openQuestionGraph()} onReport={()=>{setTab('general');setExperienceView('report');}} onArchive={id=>{flow.controller.inspectArchive(id);setTab('general');setExperienceView('report');}}/>
+        <MapScenarioPanel onReviewPlot={reviewPlotSetup} question={planner.question} state={flow.state} toolsOpen={plotToolsOpen} result={mapResult} onQuestion={editQuestion} onExplore={()=>void startQuestion('live')} onCancel={cancelQuestion} onToggleTools={()=>{if(plotToolsOpen)closePlotTools();else{enterGeneral();setPlotToolsOpen(true);}}} onGraph={()=>void openQuestionGraph()} onReport={()=>{setTab('general');setExperienceView('report');}} onArchive={id=>{flow.controller.inspectArchive(id);setTab('general');setExperienceView('report');}}/>
         {displayedFlow.publicRun&&<CommunicationStatus onPause={society.pause} onCancel={society.cancel} onResume={society.resume} result={society.result??displayedFlow.publicRun} error={society.error}/>}
 
       <GeneralPlotPanel hidden={!plotToolsOpen||stage!=='general'||labOpen} planner={primaryPlanner} plot={plot} catalog={catalog} anchors={validAnchors} pendingAnchor={pendingAnchor} onEdit={editPlot} onInvalidate={invalidateResults} onRequestAnchor={requestAnchor} onConfirmAnchor={confirmAnchor} onDisconnect={id=>{invalidateResults();setAnchors(old=>Object.fromEntries(Object.entries(old).filter(([key])=>key!==id)));}} onRunMrt={runPlottedMrt} onHybridTimings={setHybridTimings} onHybridSelection={setHybridSelection} onAdvancedMrt={openAdvancedMrt} aac={aac} aacBound={aacBound} onConfirmAac={confirmPlottedAac} onRunAac={runPlottedAac} onAdvancedAac={()=>{const keep=aacBound;invalidateResults();if(!keep)aac.reset();setStage('configure');setInterventionMode('aac');}} onShowResults={()=>{setStage('results');setInspector('journey');}} hasResults={!!result||!!aac.report} error={plotError} onResetSimulation={invalidateResults} onUsePlan={configureScenario}/>

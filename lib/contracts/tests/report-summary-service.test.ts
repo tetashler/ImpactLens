@@ -69,6 +69,25 @@ test('a stale discussion snapshot returns reload-needed without invoking the wri
  await assert.rejects(()=>service.generate('report-test',token,key),{code:'REPORT_STALE',status:409});assert.equal(d.calls,0);
 });
 
+test('active simulation is rejected before raw discussion reads or paid report generation',async t=>{
+ const d=setup(t);let sourceReads=0;
+ d.current={...d.current,status:'completed',job:{status:'running',tick:100,totalSteps:320,reason:null} as any};
+ const service=createReportSummaryService({storeDirectory:d.directory,readSnapshot:d.readSnapshot,readDiscussion:async()=>{sourceReads++;throw Error('Must not read discussion while running');},generate:d.generate});
+ const key=(await service.read('report-test',token)).snapshotKey;
+ await assert.rejects(()=>service.generate('report-test',token,key),{code:'REPORT_RUNNING',status:409});
+ await assert.rejects(()=>service.generate('report-test',token,'0'.repeat(64)),{code:'REPORT_RUNNING',status:409});
+ assert.equal(sourceReads,0);assert.equal(d.calls,0);
+ const response=await handleReportSummary(new Request('http://localhost/api/reports/summary',{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify({runId:'report-test',snapshotKey:key})}),service);
+ assert.equal(response.status,409);assert.match((await response.json()).message,/pause|running/i);assert.equal(d.calls,0);
+});
+
+test('the retained run can be summarised after it is paused without restarting its simulation',async t=>{
+ const d=setup(t);d.current={...d.current,job:{status:'paused',tick:100,totalSteps:320,reason:null} as any};
+ const key=(await d.service.read('report-test',token)).snapshotKey;
+ assert.equal((await d.service.generate('report-test',token,key)).runId,'report-test');assert.equal(d.calls,1);
+ assert.equal(d.current.job?.status,'paused');
+});
+
 test('an incomplete node narrative is not saved by a custom writer adapter',async t=>{
  const d=setup(t);d.current.graph.nodes=[{id:'reddit'} as any];
  const service=createReportSummaryService({storeDirectory:d.directory,readSnapshot:d.readSnapshot,generate:async()=>({sections:sections(),nodeSummaries:[]})}),key=(await service.read('report-test',token)).snapshotKey;

@@ -1,13 +1,13 @@
 'use client';
 
-import {confirmedAnchorVertex} from '../lib/plots/anchor';
+import {attachRouteStations} from '../lib/plots/route-stations';
 import { useEffect, useState } from 'react';
 import type { ScenarioPlannerState } from './use-scenario-planner';
 import type { useScenarioPlot } from './use-scenario-plot';
 import type { AacScenario } from './use-aac-scenario';
 import type { NetworkCatalog } from '../lib/map-contract';
 import type { ScenarioResponse } from '../lib/scenarios/contract';
-import { PLOT_LIMITS, type PlotFeature, type PlotPoint } from '../lib/plots/geometry';
+import { PLOT_LIMITS, type PlotFeature, type PlotPoint, type PlotLine } from '../lib/plots/geometry';
 import { buildPlottedMrt, suggestedStations, type MrtPlotSettings } from '../lib/plots/adapters';
 import './general-plot-panel.css';
 
@@ -27,6 +27,7 @@ export interface GeneralPlotPanelProps {
   onDisconnect: (pointId: string) => void;
   onRunMrt: (settings: MrtPlotSettings) => void;
   onHybridTimings?: (settings: Pick<MrtPlotSettings,'runSeconds'|'dwellSeconds'|'waitingTimeSeconds'|'transferWalkSeconds'|'geometryConfirmed'|'assumptionsConfirmed'>) => void;
+  /** Draft route choice is retained even before it contains two attached stops. */
   onHybridSelection?: (selection:{routeId:string;pointIds:string[]}|null) => void;
   onAdvancedMrt: () => void;
   aac: AacScenario;
@@ -74,30 +75,34 @@ function FeatureEditor({ feature, plot, onEdit, disabled }: {
 function MrtControls(props: GeneralPlotPanelProps) {
   const { plot, catalog, anchors, pendingAnchor, onEdit, onInvalidate, onRequestAnchor, onConfirmAnchor, onDisconnect, onRunMrt, onAdvancedMrt } = props;
   const points = plot.geometry.features.filter((feature): feature is PlotPoint => feature.kind === 'point');
-  const lines = plot.geometry.features.filter(feature => feature.kind === 'line' && feature.coordinates.length >= 2);
+  const lines = plot.geometry.features.filter((feature):feature is PlotLine => feature.kind === 'line' && feature.coordinates.length >= 2);
   const [routeId, setRouteId] = useState('');
-  const [included, setIncluded] = useState<Record<string, boolean>>({});
   const [search, setSearch] = useState('');
   const [times, setTimes] = useState({ runSeconds: 300, dwellSeconds: 30, waitingTimeSeconds: 150, transferWalkSeconds: 180 });
-  const [confirmation, setConfirmation] = useState({ revision: -1, geometry: false, assumptions: false });
-  const contextMatches = confirmation.revision === plot.revision;
-  const geometryConfirmed = contextMatches && confirmation.geometry;
-  const assumptionsConfirmed = contextMatches && confirmation.assumptions;
+  const [confirmation, setConfirmation] = useState({ key: '', geometry: false, assumptions: false });
   const disabled = plot.activeLineId !== null;
-  const chosen = points.filter(point => included[point.id] ?? point.role === 'station');
   const selected = points.find(point => point.id === plot.selection?.id);
   const selectedRoute = lines.some(line => line.id === routeId) ? routeId : lines[0]?.id ?? '';
+  const route=lines.find(line=>line.id===selectedRoute);
+  const attachment=route?attachRouteStations(route,points):null;
+  const chosen=(attachment?.orderedPointIds??[]).map(id=>points.find(point=>point.id===id)!);
+  const otherRoutePoints=new Set(lines.filter(line=>line.id!==selectedRoute).flatMap(line=>attachRouteStations(line,points).orderedPointIds));
+  const offRouteAnchors=points.filter(point=>Object.hasOwn(anchors,point.id)&&!chosen.includes(point)&&!otherRoutePoints.has(point.id));
   const activeAnchors = Object.fromEntries(chosen.flatMap(point => Object.hasOwn(anchors, point.id) ? [[point.id, anchors[point.id]]] : []));
+  const confirmationKey=JSON.stringify([plot.revision,selectedRoute,chosen.map(point=>point.id),Object.entries(activeAnchors).sort(([a],[b])=>a.localeCompare(b)),catalog?.serviceDate,times]);
+  const contextMatches=confirmation.key===confirmationKey;
+  const geometryConfirmed=contextMatches&&confirmation.geometry;
+  const assumptionsConfirmed=contextMatches&&confirmation.assumptions;
   const settings: MrtPlotSettings = { routeId: selectedRoute, pointIds: chosen.map(point => point.id), anchors: activeAnchors, geometryConfirmed, assumptionsConfirmed, ...times };
   useEffect(()=>{props.onHybridTimings?.({...times,geometryConfirmed,assumptionsConfirmed});},[props.onHybridTimings,times,geometryConfirmed,assumptionsConfirmed]);
   const chosenKey=JSON.stringify(chosen.map(p=>p.id));
-  useEffect(()=>{props.onHybridSelection?.(selectedRoute&&chosen.length>=2?{routeId:selectedRoute,pointIds:JSON.parse(chosenKey)}:null);},[props.onHybridSelection,selectedRoute,chosenKey]);
+  useEffect(()=>{props.onHybridSelection?.(selectedRoute?{routeId:selectedRoute,pointIds:JSON.parse(chosenKey)}:null);},[props.onHybridSelection,selectedRoute,chosenKey]);
   function editSettings(action: () => void) {
-    onInvalidate(); setConfirmation({ revision: plot.revision, geometry: false, assumptions: false }); action();
+    onInvalidate(); setConfirmation({ key: confirmationKey, geometry: false, assumptions: false }); action();
   }
   function confirm(field: 'geometry' | 'assumptions', checked: boolean) {
     onInvalidate();
-    setConfirmation({ revision: plot.revision, geometry: geometryConfirmed, assumptions: assumptionsConfirmed, [field]: checked });
+    setConfirmation({ key: confirmationKey, geometry: geometryConfirmed, assumptions: assumptionsConfirmed, [field]: checked });
   }
   let nearby: ReturnType<typeof suggestedStations> = [];
   if (selected && catalog) { try { nearby = suggestedStations(selected, catalog); } catch { /* The readiness check explains catalogue errors. */ } }
@@ -107,6 +112,9 @@ function MrtControls(props: GeneralPlotPanelProps) {
   if (disabled) readiness = 'Finish or cancel the active line before calculating.';
   else if (!catalog) readiness = 'The MRT station catalogue must load before you can connect a station.';
   else if (!selectedRoute) readiness = 'Draw a route line with at least two vertices.';
+  else if (attachment?.ambiguousPointIds.length) readiness = 'A station dot is attached to more than one part of this route. Move it away from a crossing or overlapping segment.';
+  else if (attachment?.coincidentPointIds.length) readiness = 'Station dots overlap. Move or remove the duplicate dot before confirming the route.';
+  else if (offRouteAnchors.length) readiness = 'A confirmed interchange is away from the drawn route. Reconnect it below so the alignment passes through the station.';
   else if (chosen.length < 2) readiness = 'Choose at least two points as stations in their travel order.';
   else if (!Object.keys(activeAnchors).length) readiness = 'Confirm an interchange with at least one served existing MRT station.';
   else if (!geometryConfirmed) readiness = 'Review and confirm the route and ordered stations below.';
@@ -115,19 +123,18 @@ function MrtControls(props: GeneralPlotPanelProps) {
   const pendingStation = catalog?.stations.find(station => station.id === pendingAnchor?.stationId);
   const pendingPoint = points.find(point => point.id === pendingAnchor?.pointId);
 
-  return <section className="plot-analysis" aria-labelledby="plot-mrt-heading">
-    <div className="plot-section-heading"><span className="plot-step">02</span><div><h2 id="plot-mrt-heading">Review your MRT line</h2><p>Connect your drawing to the existing network.</p></div></div>
+  return <section id="mrt-review-controls" className="plot-analysis" aria-labelledby="plot-mrt-heading">
+    <div className="plot-section-heading"><span className="plot-step">02</span><div><h2 id="plot-mrt-heading" tabIndex={-1}>Review your MRT line</h2><p>Connect your drawing to the existing network.</p></div></div>
     <label>Drawn route<select value={selectedRoute} disabled={disabled || !lines.length} onChange={event => editSettings(() => setRouteId(event.target.value))}><option value="" disabled>Draw a line on the map</option>{lines.map(line => <option key={line.id} value={line.id}>{line.label}</option>)}</select></label>
-    <p className="plot-help">Check the dots that should be stations. Their order below sets the route; bends in the line stay visual.</p>
-    {points.length ? <ol className="plot-stop-list">{points.map((point, index) => {
-      const checked = included[point.id] ?? point.role === 'station';
+    <p className="plot-help">Station stops follow the drawn route from start to end, regardless of when you added the dots. Move a dot or edit the route to change this order; bends are not stations.</p>
+    {chosen.length ? <ol className="plot-stop-list">{chosen.map(point => {
       const stationId = Object.hasOwn(anchors, point.id) ? anchors[point.id] : undefined;
       return <li key={point.id}>
-        <div className="plot-stop-row"><label className="plot-check"><input type="checkbox" checked={checked} disabled={disabled} onChange={event => editSettings(() => setIncluded(current => ({ ...current, [point.id]: event.target.checked })))} /><span>{point.label}{stationId && <small>Interchange: {catalog?.stations.find(station => station.id === stationId)?.name ?? stationId}</small>}</span></label>
-          <div className="plot-order-actions"><button type="button" disabled={disabled || index === 0} aria-label={`Move ${point.label} earlier in station order`} onClick={() => onEdit(() => plot.reorderPoint(point.id, -1))}>↑</button><button type="button" disabled={disabled || index === points.length - 1} aria-label={`Move ${point.label} later in station order`} onClick={() => onEdit(() => plot.reorderPoint(point.id, 1))}>↓</button></div></div>
-        <div className="plot-stop-secondary"><button type="button" aria-pressed={selected?.id === point.id} onClick={() => plot.select({ id: point.id })}>Select on map</button>{stationId && <button type="button" disabled={disabled} onClick={() => onDisconnect(point.id)}>Disconnect</button>}</div>
+        <div className="plot-stop-row"><strong>{point.label}{stationId&&<small>Interchange: {catalog?.stations.find(station=>station.id===stationId)?.name??stationId}</small>}</strong></div>
+        <div className="plot-stop-secondary"><button type="button" aria-pressed={selected?.id===point.id} onClick={()=>plot.select({id:point.id})}>Select on map</button>{stationId&&<button type="button" disabled={disabled} onClick={()=>onDisconnect(point.id)}>Disconnect</button>}</div>
       </li>;
-    })}</ol> : <p className="plot-empty">Add station dots with the map toolbar.</p>}
+    })}</ol>:<p className="plot-empty">Place at least two station dots on the selected route.</p>}
+    {offRouteAnchors.length>0&&<section aria-label="Interchanges outside the route"><p className="plot-error">These confirmed interchanges are not on the drawn alignment. Confirm a reconnection to update the line while keeping the other stations.</p>{offRouteAnchors.map(point=><button key={point.id} type="button" disabled={disabled} onClick={()=>onRequestAnchor(anchors[point.id],point.id)}>Reconnect {point.label} to route</button>)}</section>}
 
     <details className="plot-disclosure" open={Object.keys(activeAnchors).length === 0 || pendingAnchor !== null}>
       <summary>Connect an existing MRT station</summary>
@@ -135,7 +142,7 @@ function MrtControls(props: GeneralPlotPanelProps) {
         <label>Find an existing station<input type="search" value={search} disabled={disabled || !catalog} placeholder="Station name or ID" onChange={event => setSearch(event.target.value)} /></label>
         {query && <div className="plot-search-results" aria-live="polite">{matches.length ? matches.map(station => <button type="button" key={station.id} disabled={disabled} onClick={() => onRequestAnchor(station.id, selected?.id)}><span>{station.name}</span><small>{station.id}</small></button>) : <p className="plot-help">No matching served MRT stations.</p>}</div>}
         {selected && nearby.length > 0 && <div className="plot-nearby"><h3>Nearby suggestions</h3>{nearby.map(({ station, distanceMetres }) => <button type="button" key={station.id} disabled={disabled} onClick={() => onRequestAnchor(station.id, selected.id)}><span>{station.name}</span><small>{Math.round(distanceMetres).toLocaleString()} m</small></button>)}<p className="plot-help">Distance is straight line. Choosing a suggestion still needs confirmation.</p></div>}
-        {pendingAnchor && <div className="plot-confirm-anchor"><strong>{pendingStation?.name ?? pendingAnchor.stationId}</strong><p>{pendingPoint ? `Confirming moves “${pendingPoint.label}”${confirmedAnchorVertex(plot.geometry,pendingPoint.id)?' and its coincident route vertex':''} to this station.` : 'Confirming adds a point at this station.'} This explicitly creates an interchange.</p><button type="button" disabled={disabled || !pendingStation} onClick={onConfirmAnchor}>Confirm interchange</button></div>}
+        {pendingAnchor&&<div className="plot-confirm-anchor"><strong>{pendingStation?.name??pendingAnchor.stationId}</strong><p>Confirming {pendingPoint?`connects ?${pendingPoint.label}?`:'adds an interchange point'} at this existing station{selectedRoute?' and updates the drawn route through it, keeping the other station dots connected':''}. Review the revised alignment and confirm the assumptions again.</p><button type="button" disabled={disabled||!pendingStation} onClick={onConfirmAnchor}>Confirm interchange</button></div>}
       </div>
     </details>
 

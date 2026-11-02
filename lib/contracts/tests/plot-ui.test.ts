@@ -85,6 +85,28 @@ test('MRT inspector preserves explicit confirmation and a station-search fallbac
   assert.doesNotMatch(html, /1\.3123|103\.8123/);
 });
 
+test('MRT stop review follows the route rather than point creation order',()=>{
+ const html=renderPlotUi('general-plot-panel',inspectorSetup+`
+  props.planner.question='What if a new MRT line is built here?';
+  props.plot.geometry={version:1,scenarioId:'ordered',features:[{kind:'line',id:'route',label:'New route',coordinates:[{lat:1.35,lon:103.75},{lat:1.35,lon:103.8}],provenance:'user-drawn'},...['End','Middle','Start'].map((label,i)=>({kind:'point',id:label,label,role:'station',coordinate:{lat:1.35,lon:103.8-i*.025},provenance:'user-drawn'}))]};
+  props.anchors={Start:'ST1'};props.pendingAnchor=null;
+  props.catalog={serviceDate:'2026-10-27',stations:[{id:'ST1',name:'Existing interchange',lat:1.35,lon:103.75,kind:'existing',lines:['NS']}],lines:[{id:'NS',name:'NS',color:'#f00'}],connections:[],quarantinedTrips:0};
+ `);
+ const stops=html.split('<ol class="plot-stop-list">')[1]?.split('</ol>')[0];assert.ok(stops);
+ assert.ok(stops.indexOf('Start')<stops.indexOf('Middle')&&stops.indexOf('Middle')<stops.indexOf('End'));
+ assert.match(html,/follow the drawn route/);assert.doesNotMatch(stops,/Move .* in station order/);
+});
+
+test('an already confirmed station left outside the alignment offers an explicit route repair',()=>{
+ const html=renderPlotUi('general-plot-panel',inspectorSetup+`
+  props.planner.question='What if a new MRT line is built here?';
+  props.plot.geometry={version:1,scenarioId:'repair',features:[{kind:'line',id:'route',label:'New route',coordinates:[{lat:1.35,lon:103.75},{lat:1.35,lon:103.8}],provenance:'user-drawn'},...['Start','End'].map((label,i)=>({kind:'point',id:label,label,role:'station',coordinate:{lat:1.35,lon:103.75+i*.05},provenance:'user-drawn'})),{kind:'point',id:'clinic-interchange',label:'Existing interchange',role:'station',coordinate:{lat:1.351,lon:103.775},provenance:'user-drawn'}]};
+  props.anchors={'clinic-interchange':'ST1'};props.pendingAnchor=null;props.catalog={serviceDate:'2026-10-27',stations:[{id:'ST1',name:'Existing interchange',lat:1.351,lon:103.775,lines:['NS']}],lines:[{id:'NS',name:'NS',color:'#f00'}],connections:[],quarantinedTrips:0};
+ `);
+ assert.match(html,/Interchanges outside the route/);assert.match(html,/>Reconnect Existing interchange to route<\/button>/);
+ assert.match(html,/A confirmed interchange is away from the drawn route/);
+});
+
 test('AAC inspector preserves its location confirmation, evidence acknowledgement and calculation gate', () => {
   const html = renderPlotUi('general-plot-panel', inspectorSetup + `
     props.planner.response={version:1,clientRequestId:'test-ui',method:'deterministic-fallback',providerStatus:'not-configured',plan:await createScenarioPlan({version:1,clientRequestId:'test-ui',question:'Open a new Active Ageing Centre'},{version:1,intent:'aac',capabilityId:'aac-accessibility-v1'})};

@@ -1,17 +1,46 @@
 import '../../../scripts/testing/offline-network.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdirSync,mkdtempSync,writeFileSync} from 'node:fs';
+import {mkdirSync,mkdtempSync,readFileSync,readdirSync,writeFileSync} from 'node:fs';
 import {join,resolve} from 'node:path';
-import {randomUUID} from 'node:crypto';
+import {createHash,randomUUID} from 'node:crypto';
 import {handlePublicExplore,handlePublicSocial} from '../../server/society/public-service.ts';
 import {INFERENCE_ADMISSION_V1,INFERENCE_NO_DISPATCH_V1,type InferenceAdmissionV1} from '../../server/inference/admission.ts';
 import {worldFixtures} from '../../world-graph/fixtures.ts';
 import {mockDynamicProvider} from './helpers/dynamic-provider.ts';
 import {socialProviderFixture} from '../../../scripts/testing/social-decision-fixture.ts';
+import {reserveStorageAdmission,bindStorageAdmission} from '../../server/society/storage-admission.ts';
 
 const output=resolve('tmp/storage-handoff-repair-20261102/fixtures');mkdirSync(output,{recursive:true});
 const post=(url:string,body:unknown)=>new Request('http://localhost/api/'+url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
+
+test('sixteen retained v1 claims allow sixteen more attempts without rewriting previous evidence',()=>{
+ const base=mkdtempSync(join(output,'extended-capacity-')),directory=join(base,'session-store-v2','admission');mkdirSync(directory,{recursive:true});
+ const retained=new Map<string,string>();
+ for(let slot=0;slot<16;slot++){
+  const claim={version:1,policy:'storage-admission-v1',slot,nonce:randomUUID(),attemptHash:hash('retained-'+slot),requestHash:hash('retained-request-'+slot),sessionId:randomUUID()};
+  const path=join(directory,'slot-'+String(slot).padStart(2,'0')+'.claim'),bytes=JSON.stringify(claim);writeFileSync(path,bytes);retained.set(path,bytes);
+  if(slot<7){const bindingPath=path.replace(/\.claim$/,'.binding'),bindingBytes=JSON.stringify({version:1,policy:claim.policy,slot,nonce:claim.nonce,runId:'retained-run-'+slot,sessionId:claim.sessionId});writeFileSync(bindingPath,bindingBytes);retained.set(bindingPath,bindingBytes);}
+ }
+ assert.throws(()=>reserveStorageAdmission('retained-0',hash('different-request'),base),/STORAGE_ADMISSION_DUPLICATE/);
+ for(let offset=0;offset<16;offset++){
+  const attemptId='additional-'+offset,claim=reserveStorageAdmission(attemptId,hash(attemptId),base);assert.equal(claim.slot,16+offset);assert.equal(claim.policy,'storage-admission-v1');
+  if(offset===0){bindStorageAdmission(claim,{runId:'additional-run',attemptId},base);assert.throws(()=>bindStorageAdmission(claim,{runId:'crossed-run',attemptId},base),/STORAGE_ADMISSION_BINDING/);}
+ }
+ assert.throws(()=>reserveStorageAdmission('additional-0',hash('different-request'),base),/STORAGE_ADMISSION_DUPLICATE/);
+ assert.throws(()=>reserveStorageAdmission('overflow',hash('overflow'),base),/STORAGE_ADMISSION_CAPACITY/);
+ assert.equal(readdirSync(directory).filter(name=>name.endsWith('.claim')).length,32);
+ for(const [path,bytes]of retained)assert.equal(readFileSync(path,'utf8'),bytes);
+});
+
+test('thirty-two retained attempts stop Explore before provider dispatch',async()=>{
+ const base=mkdtempSync(join(output,'full-capacity-'));for(let i=0;i<32;i++)reserveStorageAdmission('full-'+i,hash('full-'+i),base);
+ let calls=0;const never:typeof fetch=async()=>{calls++;throw Error('NO_PROVIDER');};
+ const response=await handlePublicExplore(post('scenario-simulate',{version:1,attemptId:'capacity-overflow',request:worldFixtures()[0].request}),{enabled:true,key:'offline-synthetic',fetcher:never,groundingFetcher:never},{storageBase:base,swarm:false,enabled:false});
+ assert.equal(response.status,503);assert.equal((await response.json()).error,'PRIVATE_STORAGE_CAPACITY');assert.equal(calls,0);
+ assert.equal(readdirSync(join(base,'session-store-v2','admission')).filter(name=>name.endsWith('.claim')).length,32);
+});
 
 async function exercise(mode:'explicit-hook'|'default-process-hook'|'unrelated-explicit',invalidate:false|'before'|'after'=false){
  const base=mkdtempSync(join(output,'ordinary-')),fixture=worldFixtures()[0],dynamic=mockDynamicProvider(fixture);

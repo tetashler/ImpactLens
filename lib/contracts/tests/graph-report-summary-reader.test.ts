@@ -30,6 +30,18 @@ test('inactive graphs and graphs without an authenticated report never read save
   await settle();assert.equal(calls,0);
 });
 
+test('a running job never hashes or reads a graph report summary, then a paused job can read',async()=>{
+  const job={version:1 as const,id:'job',status:'running' as const,tick:1,totalSteps:10,acceptedDecisions:1,participatingAgents:1,capacity:10,admittedCalls:1,remainingCalls:9,reason:null,revision:1};
+  const running={...run,job};
+  const snapshot=graphReportSnapshot(running);
+  assert.equal(snapshot,null);
+  let calls=0;
+  const stop=watchSavedGraphReportSummary(snapshot,true,()=>assert.fail('No live summary'),async()=>{calls++;throw Error('Unexpected fetch');});
+  await settle();stop();assert.equal(calls,0);
+  assert.ok(graphReportSnapshot({...running,job:{...job,status:'paused'}}));
+  assert.ok(graphReportSnapshot({...running,job:{...job,status:'completed'}}));
+});
+
 test('a report from another scenario or execution cannot attach a narrative to the displayed graph',()=>{
   assert.equal(graphReportSnapshot(run,{...run.graph,executionIdentity:'another-run'}),null);
   assert.equal(graphReportSnapshot(run,{...run.graph,scenarioIdentity:'another-scenario'}),null);

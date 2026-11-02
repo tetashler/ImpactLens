@@ -14,13 +14,13 @@ const hash=(s:string)=>createHash('sha256').update(s).digest('hex');
 const fixture=()=>mkdtempSync(join(evidence,'fixture-'));
 async function api(){const value=await import('../../server/society/storage-admission.ts').catch(()=>null);assert.ok(value?.reserveStorageAdmission,'durable bounded storage admission is required');return value;}
 
-test('sixteen retained claims saturate admission without reusing an attempt or changing historical files',async()=>{
+test('retained claims saturate admission without reusing an attempt or changing historical files',async()=>{
  const a=await api(),base=fixture(),old=join(base,'accepted-private');mkdirSync(old);const retained=JSON.stringify({execution:{attemptId:'retained-history'}});writeFileSync(join(old,'old.json'),retained);
- const claims=[];for(let i=0;i<16;i++)claims.push(a.reserveStorageAdmission('attempt-'+i,hash('request-'+i),base));
- assert.equal(new Set(claims.map(c=>c.sessionId)).size,16);assert.throws(()=>a.reserveStorageAdmission('overflow',hash('overflow'),base),/STORAGE_ADMISSION_CAPACITY/);
+ const claims=[];for(let i=0;i<a.STORAGE_ADMISSION_SLOTS;i++)claims.push(a.reserveStorageAdmission('attempt-'+i,hash('request-'+i),base));
+ assert.equal(new Set(claims.map(c=>c.sessionId)).size,a.STORAGE_ADMISSION_SLOTS);assert.throws(()=>a.reserveStorageAdmission('overflow',hash('overflow'),base),/STORAGE_ADMISSION_CAPACITY/);
  assert.throws(()=>a.reserveStorageAdmission('attempt-0',hash('request-0'),base),/STORAGE_ADMISSION_DUPLICATE/);
  assert.equal(readFileSync(join(old,'old.json'),'utf8'),retained);assert.equal(readdirSync(old).length,1);
- assert.equal(readdirSync(join(base,'session-store-v2/admission')).filter(s=>s.endsWith('.claim')).length,16);
+ assert.equal(readdirSync(join(base,'session-store-v2/admission')).filter(s=>s.endsWith('.claim')).length,a.STORAGE_ADMISSION_SLOTS);
 });
 
 test('a corrupt claim anywhere fails closed before consuming another slot',async()=>{
@@ -52,8 +52,8 @@ async function workers(base:string,attempts:string[],mode?:string){
  children.forEach(child=>child.send('claim'));return Promise.all(outcomes);
 }
 test('two processes competing for the final slot admit exactly one distinct attempt',async()=>{
- const a=await api(),base=fixture();for(let i=0;i<15;i++)a.reserveStorageAdmission('pre-'+i,hash('pre-'+i),base);
- const out=await workers(base,['race-a','race-b']);assert.equal(out.filter(v=>v.admitted).length,1);assert.equal(readdirSync(join(base,'session-store-v2/admission')).filter(s=>s.endsWith('.claim')).length,16);
+ const a=await api(),base=fixture();for(let i=0;i<a.STORAGE_ADMISSION_SLOTS-1;i++)a.reserveStorageAdmission('pre-'+i,hash('pre-'+i),base);
+ const out=await workers(base,['race-a','race-b']);assert.equal(out.filter(v=>v.admitted).length,1);assert.equal(readdirSync(join(base,'session-store-v2/admission')).filter(s=>s.endsWith('.claim')).length,a.STORAGE_ADMISSION_SLOTS);
 });
 test('two processes with the same attempt never obtain two durable claims',async()=>{
  await api();const base=fixture(),out=await workers(base,['same-attempt','same-attempt']);assert.equal(out.filter(v=>v.admitted).length,1);

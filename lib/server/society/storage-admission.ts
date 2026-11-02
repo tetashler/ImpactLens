@@ -5,7 +5,7 @@ import {createHash,randomUUID} from 'node:crypto';
 import {canonical,ensure,object} from '../../experiments/validation.ts';
 
 export const STORAGE_ADMISSION_POLICY='storage-admission-v1' as const;
-export const STORAGE_ADMISSION_SLOTS=16;
+export const STORAGE_ADMISSION_SLOTS=32;
 export const STORAGE_NAMESPACE_LIMITS=Object.freeze({files:256,bytes:3*1024*1024*1024,directories:8,depth:3});
 export interface StorageClaim {version:1;policy:typeof STORAGE_ADMISSION_POLICY;slot:number;nonce:string;attemptHash:string;requestHash:string;sessionId:string}
 export interface StorageBinding {version:1;policy:typeof STORAGE_ADMISSION_POLICY;slot:number;nonce:string;runId:string;sessionId:string}
@@ -67,7 +67,7 @@ function bindingValue(v:unknown,c:StorageClaim):StorageBinding {
   ensure(b.version===1&&b.policy===c.policy&&b.slot===c.slot&&b.nonce===c.nonce&&b.sessionId===c.sessionId&&typeof b.runId==='string'&&b.runId.length>0&&b.runId.length<=160,'STORAGE_ADMISSION_BINDING');return b as unknown as StorageBinding;
  }catch{throw Error('STORAGE_ADMISSION_BINDING');}
 }
-/** All reads are bounded by sixteen fixed slots; a partial file always blocks dispatch. */
+/** All reads are bounded by thirty-two fixed slots; a partial file always blocks dispatch. */
 function inventory(base:string){
  const result:{claim:StorageClaim;binding:StorageBinding|null}[]=[],attempts=new Set<string>(),sessions=new Set<string>(),nonces=new Set<string>(),runs=new Set<string>();
  for(let slot=0;slot<STORAGE_ADMISSION_SLOTS;slot++){

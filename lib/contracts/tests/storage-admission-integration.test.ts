@@ -4,7 +4,7 @@ import {mkdirSync,mkdtempSync,writeFileSync,readFileSync,readdirSync,unlinkSync,
 import {replacePrivateCheckpoint} from '../../server/society/storage.ts';
 import {handlePublicExplore,handlePublicSocial,registerAcceptedExecution} from '../../server/society/public-service.ts';
 import {socialOperation} from '../../server/society/service.ts';
-import {reserveStorageAdmission,bindStorageAdmission,beginStorageInitialization,storageBundle} from '../../server/society/storage-admission.ts';
+import {reserveStorageAdmission,bindStorageAdmission,beginStorageInitialization,storageBundle,STORAGE_ADMISSION_SLOTS} from '../../server/society/storage-admission.ts';
 import {parsePublicExplore} from '../../question-simulation/public-session.ts';
 import {mockDynamicProvider} from './helpers/dynamic-provider.ts';import {worldFixtures} from '../../world-graph/fixtures.ts';import {phase4eSource,evictFixtureSession} from '../../../scripts/testing/phase4e-fixture.ts';
 
@@ -28,9 +28,9 @@ test('new ordinary Explore uses one reserved identity while a full historical na
 });
 
 test('saturated current admission rejects before any provider adapter and retains all claims',async()=>{
- const base=fixture();for(let i=0;i<16;i++)reserveStorageAdmission('full-'+i,hash('full-'+i),base);let calls=0;const never:typeof fetch=async()=>{calls++;throw Error('NO_PROVIDER');};
+ const base=fixture();for(let i=0;i<STORAGE_ADMISSION_SLOTS;i++)reserveStorageAdmission('full-'+i,hash('full-'+i),base);let calls=0;const never:typeof fetch=async()=>{calls++;throw Error('NO_PROVIDER');};
  const roots=storageBundle(base);const response=await handlePublicExplore(request('one-too-many'),{enabled:true,key:'offline',fetcher:never,groundingFetcher:never},{storageBase:base,storeDirectory:roots.archives,directory:roots.sessions} as any);
- assert.equal(response.status,503);assert.equal((await response.json()).error,'PRIVATE_STORAGE_CAPACITY');assert.equal(calls,0);assert.equal(readdirSync(join(base,'session-store-v2/admission')).filter(f=>f.endsWith('.claim')).length,16);
+ assert.equal(response.status,503);assert.equal((await response.json()).error,'PRIVATE_STORAGE_CAPACITY');assert.equal(calls,0);assert.equal(readdirSync(join(base,'session-store-v2/admission')).filter(f=>f.endsWith('.claim')).length,STORAGE_ADMISSION_SLOTS);
 });
 
 test('historical GET and refused controls never recover a journal or change original bytes',async()=>{
