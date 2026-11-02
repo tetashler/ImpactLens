@@ -56,7 +56,7 @@ export interface QuestionSimulationSnapshot extends QuestionResult {
   selectedArchiveId: string | null;
   inferenceStatus?:InferenceStatusV1|null;
 }
-export interface QuestionSimulationOptions { fetcher?: typeof fetch; timeoutMs?: number; execution?:QuestionExecutionChoice;publicOnly?:boolean }
+export interface QuestionSimulationOptions { fetcher?: typeof fetch; timeoutMs?: number; execution?:QuestionExecutionChoice;publicOnly?:boolean;onPublicRunAccepted?:(value:PublicExplore)=>void }
 interface Attempt { id: string; revision: number; mode:QuestionExecutionChoice; geographicConfirmed:boolean; deadline:number; promise: Promise<void>; resolve: () => void; timer: ReturnType<typeof setTimeout> | null }
 class Superseded extends Error {}
 const SAFE_LIVE_ERRORS=new Set([
@@ -83,6 +83,7 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
   let inputKey = '';
   let revision = 0;
   let active: Attempt | null = null;
+  let locallyAcceptedRunIds:string[]=[];
   const session = new StakeholderRequestSession();
   const liveSession=new LiveInferenceSession();
   const dynamicSession=new DynamicSession(),publicSession=new PublicScenarioSession();
@@ -139,7 +140,13 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
       ...result, id: result.publicRun?.runId??result.run?.runId ?? result.record?.experimentId ?? `review-${attempt.id}`,
       attemptId: attempt.id, revision: attempt.revision, phase, createdAt: new Date().toISOString(),
     };
-    publish({ ...result, phase, error: result.run?questionRunErrorMessage(result.run):null, history: [archive, ...state.history].slice(0, 4), selectedArchiveId: null });
+    let error=result.run?questionRunErrorMessage(result.run):null;
+    // Persist the initial accepted run before consumers begin passive background refresh.
+    if(result.publicRun){
+      locallyAcceptedRunIds=[result.publicRun.runId,...locallyAcceptedRunIds.filter(id=>id!==result.publicRun!.runId)].slice(0,4);
+      try{options.onPublicRunAccepted?.(result.publicRun);}catch{error='Browser summary persistence is unavailable; server records remain retained.';}
+    }
+    publish({ ...result, phase, error, history: [archive, ...state.history.filter(item=>item.id!==archive.id)].slice(0, 4), selectedArchiveId: null });
   }
   async function prepare(attempt: Attempt, context: QuestionSimulationContext) {
     try {
@@ -262,7 +269,18 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
     }
     else publish({ selectedArchiveId: null });
   }
-  return {restorePublicHistory:(values:PublicExplore[])=>{const history=values.slice(0,4).map(value=>{const p=parsePublicExplore(value);return {...emptyResult(p.question),publicRun:p,id:p.runId,attemptId:p.attemptId,revision:0,phase:(p.status==='completed'?'completed':'partial') as 'completed'|'partial',createdAt:new Date().toISOString()};});publish({history});},
+  return {restorePublicHistory:(values:PublicExplore[])=>{
+      const history=new Map(state.history.map(item=>[item.id,item]));
+      for(const value of values.slice(0,4)){
+        const p=parsePublicExplore(value),previous=history.get(p.runId)?.publicRun;
+        if(previous&&Math.max(previous.session?.revision??0,previous.job?.revision??0)>=Math.max(p.session?.revision??0,p.job?.revision??0))continue;
+        const archive:QuestionSimulationArchive={...emptyResult(p.question),publicRun:p,id:p.runId,attemptId:p.attemptId,revision:0,phase:p.status==='completed'?'completed':'partial',createdAt:new Date().toISOString()};
+        history.set(p.runId,archive);
+      }
+      // Keep an active report and inspected archive visible, then honour restored recency.
+      const ids=[...new Set([state.publicRun?.runId,state.selectedArchiveId,...locallyAcceptedRunIds,...values.slice(0,4).map(value=>value.runId),...state.history.map(item=>item.id)])];
+      publish({history:ids.flatMap(id=>id&&history.has(id)?[history.get(id)!]:[]).slice(0,4)});
+    },
     getSnapshot: () => state,
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
     invalidate, start, startReviewed, reviseReview, cancel, inspectArchive,refreshInferenceStatus,

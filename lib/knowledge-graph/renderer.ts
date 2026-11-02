@@ -34,7 +34,7 @@ export function graphElements(graph:KnowledgeGraph,appearance:GraphAppearance='d
       return {data:{id:n.id,label:n.label,displayLabel:knowledgeNodeLabel(n),category:n.category,entityType:knowledgeEntityType(n),colour:typeColours.get(knowledgeEntityType(n)),size,degree:connections},
         position:{x:Math.cos(angle)*radius,y:Math.sin(angle)*radius},classes:`${n.category==='scenario'?'hub ':''}presentation-${hierarchy}`};
     }),
-    ...graph.edges.map(e=>({data:{id:e.id,source:e.source,target:e.target,label:knowledgeRelationshipLabel(e),directed:e.directed},classes:edgeClasses.get(e.id)})),
+    ...graph.edges.map(e=>({data:{id:e.id,source:e.source,target:e.target,label:knowledgeRelationshipLabel(e),directed:e.directed},classes:e.detail?.basis==='assumed'||e.detail?.basis==='proposed'?`${edgeClasses.get(e.id)} basis-assumed`:edgeClasses.get(e.id)})),
   ];
 }
 
@@ -48,6 +48,7 @@ const stylesheet:StylesheetJson=[
   {selector:'node.presentation-entity, node.presentation-role, node.presentation-aggregate',style:{'text-wrap':'wrap','min-zoomed-font-size':0,'text-background-color':'#0c1827','text-background-opacity':.82,'text-background-shape':'roundrectangle',color:'#d7e6f0'}},
   {selector:'node.labels-hidden',style:{label:''}},
   {selector:'edge',style:{width:.8,'line-color':'#58738d',opacity:.42,'curve-style':'bezier','target-arrow-shape':'none','arrow-scale':.55,'overlay-padding':7,'overlay-opacity':0}},
+  {selector:'edge.basis-assumed',style:{'line-style':'dashed','line-dash-pattern':[6,4],opacity:.4}},
   {selector:'edge.single',style:{'curve-style':'straight'}},
   {selector:'edge.parallel',style:{'curve-style':'bezier','control-point-step-size':42}},
   {selector:'edge.loop',style:{'curve-style':'bezier','loop-direction':'-45deg','loop-sweep':'70deg'}},

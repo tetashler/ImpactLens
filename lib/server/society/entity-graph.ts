@@ -1,7 +1,8 @@
 import {createHash} from 'node:crypto';
-import {parseKnowledgeGraph,GRAPH_LIMITS,type KnowledgeGraph,type KnowledgeNode,type KnowledgeEdge,type KnowledgeProvenance} from '../../knowledge-graph/contract.ts';
+import {parseKnowledgeGraph,GRAPH_LIMITS,type KnowledgeGraph,type KnowledgeNode,type KnowledgeEdge,type KnowledgeProvenance,type EdgeDetail} from '../../knowledge-graph/contract.ts';
 import type {SocietySummary,AgentSummary} from '../../society/public-contract.ts';
 import {discussionText,argumentText,timelineText} from './facts.ts';
+import {explainLink,explainKnown} from '../../knowledge-graph/edge-explain.ts';
 
 const PRIMARY_PEOPLE=12;
 const synthetic:KnowledgeProvenance={kind:'synthetic-exploratory',reference:'Recorded fictional simulation; not observed real-world activity'};
@@ -42,10 +43,11 @@ export function entityFirstGraph(base:KnowledgeGraph,s:SocietySummary):Knowledge
   nodes.push({...node,id});nodeIds.add(id);return id;
  }
  const edgeIds=new Set(edges.map(e=>e.id));
- function link(source:string|undefined,target:string|undefined,label:string,description:string,relationship:KnowledgeEdge['relationship']='describes'){
+ function link(source:string|undefined,target:string|undefined,label:string,description:string,relationship:KnowledgeEdge['relationship']='describes',extra?:{detail?:EdgeDetail}){
   if(!source||!target||!nodeIds.has(source)||!nodeIds.has(target))return;
   const id=`societal-edge:${hash(source+'|'+target+'|'+label)}`;if(edgeIds.has(id))return;edgeIds.add(id);
-  edges.push({id,source,target,relationship,relationshipLabel:label,description,provenance:synthetic,directed:true});
+  const nm=(x:string)=>(nodes.find(n=>n.id===x)?.label??'Unknown entity').replace(/\s*\(participant\)\s*$/i,''),detail=extra?.detail??explainKnown(label,{source:nm(source),target:nm(target)},description);
+  edges.push({id,source,target,relationship,relationshipLabel:label,description,provenance:synthetic,directed:true,...(detail?{detail}:{})});
  }
  for(const a of agents as PublicAgent[]){
   const primary=!!a.roleId||primaryPeople.has(a.id),rank=significance.get(a.id)!;
@@ -74,8 +76,10 @@ export function entityFirstGraph(base:KnowledgeGraph,s:SocietySummary):Knowledge
  }
  const endpoint=(id:string)=>agentNodes.get(id)??platformNodes.get(id)??groupNodes.get(id)??(nodeIds.has(id)?id:undefined);
  for(const l of s.links){
-  const description=l.kind==='ASSUMED_SOCIAL_TIE'?`${l.count} explicitly assumed fictional social ties; not observed real relationships.`:l.kind==='RECORDED_INFORMATION_TRANSFER'?`${l.count} recorded cross-environment fictional transfers; conversation content remains server-side.`:`${l.count} recorded public fictional interactions; conversation content remains server-side.`;
-  link(endpoint(l.source),endpoint(l.target),l.kind,description);
+  const from=endpoint(l.source),to=endpoint(l.target);
+  const name=(id:string|undefined)=>(nodes.find(n=>n.id===id)?.label??'Unknown entity').replace(/\s*\(participant\)\s*$/i,'');
+  const explained=explainLink(l,{source:name(from),target:name(to),platformName:id=>s.platforms.find(p=>p.id===id)?.name??id});
+  link(from,to,l.kind,explained.description,'describes',{detail:explained.detail});
  }
  if(omitted.length){
   const sum=(field:'events'|'ruleEvents'|'modelDecisions'|'stateChanges')=>omitted.reduce((n,a)=>n+a[field],0);

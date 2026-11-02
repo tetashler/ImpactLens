@@ -4,11 +4,12 @@ import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {type KnowledgeGraph} from '../../knowledge-graph/contract.ts';
 import {graphElements} from '../../knowledge-graph/renderer.ts';
+import type {PublicExplore} from '../../society/public-contract.ts';
 
 /** Exercise the actual React component with the repository's existing TSX loader.
  * Effects intentionally do not run during SSR; browser tests own the renderer and
  * selection/inspector transitions. No DOM or second test framework is installed. */
-function renderKnowledge(graph:KnowledgeGraph|null,visible=true):string {
+function renderKnowledge(graph:KnowledgeGraph|null,visible=true,reportRun?:PublicExplore|null):string {
   const component=new URL('../../../components/knowledge-workspace.tsx',import.meta.url).href;
   const script=`
     import {registerHooks} from 'node:module';
@@ -26,7 +27,7 @@ function renderKnowledge(graph:KnowledgeGraph|null,visible=true):string {
     const props=JSON.parse(readFileSync(0,'utf8'));
     process.stdout.write(renderToStaticMarkup(createElement(KnowledgeWorkspace,{...props,onReturn(){}})));
   `;
-  const result=spawnSync(process.execPath,['--input-type=module','--eval',script],{input:JSON.stringify({graph,visible}),encoding:'utf8',timeout:15000});
+  const result=spawnSync(process.execPath,['--input-type=module','--eval',script],{input:JSON.stringify({graph,visible,reportRun}),encoding:'utf8',timeout:15000});
   assert.equal(result.status,0,result.stderr||result.error?.message||'React SSR child did not finish successfully');
   return result.stdout;
 }
@@ -37,6 +38,25 @@ const graph:KnowledgeGraph={version:1,scenarioIdentity:'ssr-ui-test',limitations
   provenance:{kind:'user-authored',reference:'SSR hostile-content test fixture'},
   properties:{caption:'<iframe src="javascript:alert(1)">',population:null},limitations:['Test input is not evidence.'],
 }],edges:[]};
+
+test('graph footer uses matching job progress and accepted decisions, with a legacy summary fallback',()=>{
+ const current={...graph,executionIdentity:'run-live'};
+ const run={runId:'run-live',graph:current,question:'A scenario',initialActions:[],session:null,society:{tick:80,totalSteps:320,usage:{calls:99,accepted:7}},job:{tick:120,totalSteps:320,acceptedDecisions:18}} as unknown as PublicExplore;
+ const html=renderKnowledge(current,true,run);
+ assert.match(html,/Step 120 \/ 320/);
+ assert.match(html,/Accepted decisions 18/);
+ assert.doesNotMatch(html,/Accepted decisions 99/,'Provider calls are not accepted decisions');
+ const fallback=renderKnowledge(current,true,{...run,job:undefined});
+ assert.match(fallback,/Step 80 \/ 320/);assert.match(fallback,/Accepted decisions 7/);
+ const zero=renderKnowledge(current,true,{...run,job:{...run.job!,tick:0,acceptedDecisions:0}});
+ assert.match(zero,/Step 0 \/ 320/);assert.match(zero,/Accepted decisions 0/);
+});
+
+test('graph footer never borrows simulation counters from an unrelated or unavailable run',()=>{
+ const current={...graph,executionIdentity:'archived-run'};
+ const other={runId:'different-run',graph:current,session:null,society:{tick:200,totalSteps:320,usage:{calls:99,accepted:30}},initialActions:[]} as unknown as PublicExplore;
+ for(const html of [renderKnowledge(current,true,other),renderKnowledge(current),renderKnowledge(null)])assert.doesNotMatch(html,/kg-simulation-progress|Accepted decisions|Step \d/);
+});
 
 test('knowledge view preserves its renderer across tab changes and offers three inspector sizes',()=>{
   const workspace=readFileSync(new URL('../../../components/workspace.tsx',import.meta.url),'utf8');

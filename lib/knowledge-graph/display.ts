@@ -22,7 +22,7 @@ export function knowledgeNodeLabel(node:KnowledgeNode):string {
   const boundary=clipped.lastIndexOf(' ');
   return (!legacy&&boundary>limit*.6?clipped.slice(0,boundary):clipped).trimEnd()+'…'+suffix;
 }
-export function knowledgeRelationshipLabel(edge:KnowledgeEdge):string{return edge.relationshipLabel??edge.relationship;}
+export function knowledgeRelationshipLabel(edge:KnowledgeEdge):string{return edge.detail?.label??edge.relationshipLabel??edge.relationship;}
 export function entityTypeColour(type:string):string{let hash=2166136261;for(const c of type.toLocaleLowerCase('en-SG'))hash=Math.imul(hash^c.charCodeAt(0),16777619);return colours[(hash>>>0)%colours.length];}
 /** Always use the complete graph, so discovery and type filters retain colours.
  * Dynamic names remain valid. Beyond sixteen types colours repeat deliberately;
