@@ -70,10 +70,10 @@ export async function handleDynamicRequest(request:Request,dependencies:DynamicD
  }catch(caught){
   const error=abort.signal.aborted?new AiError('',deadlineExpired?'AI_TIMEOUT':'AI_CANCELLED',deadlineExpired?504:499):caught;
   if(!wire)return json({error:'Scenario planning could not start.'},400);
-  const original=error instanceof AiError?error.code:'AI_PLAN_INVALID',code=Object.hasOwn(DYNAMIC_ERRORS,original)?original:'AI_PLAN_INVALID';
-  const reason=code==='AI_TIMEOUT'?'deadline':code==='AI_CANCELLED'?'cancelled':code==='AI_UPSTREAM'&&[408,504].includes(upstreamStatus??0)?'upstream-timeout':code==='AI_PLAN_INVALID'?'invalid-output':code==='AI_UPSTREAM'?'upstream-error':'unavailable';
-  const diagnostic={stage,reason,elapsedMs:Math.min(DYNAMIC_LIMITS.timeoutMs,Math.max(0,Date.now()-stageStarted))};
   const validation=error instanceof PlannerValidationError?error.diagnostic:error instanceof AiError?error.plannerValidation:undefined;
+  const original=validation?.rule==='plan.scenario_alignment_failed'?'AI_PLAN_SCENARIO_MISMATCH':error instanceof AiError?error.code:'AI_PLAN_INVALID',code=Object.hasOwn(DYNAMIC_ERRORS,original)?original:'AI_PLAN_INVALID';
+  const reason=code==='AI_TIMEOUT'?'deadline':code==='AI_CANCELLED'?'cancelled':code==='AI_UPSTREAM'&&[408,504].includes(upstreamStatus??0)?'upstream-timeout':(code==='AI_PLAN_INVALID'||code==='AI_PLAN_SCENARIO_MISMATCH')?'invalid-output':code==='AI_UPSTREAM'?'upstream-error':'unavailable';
+  const diagnostic={stage,reason,elapsedMs:Math.min(DYNAMIC_LIMITS.timeoutMs,Math.max(0,Date.now()-stageStarted))};
   return json({version:2,kind:'planning-failed',attemptId:wire.attemptId,requestIdentity,planning:{record:planningRecord,records:planningRecords},error:{code,message:DYNAMIC_ERRORS[code],diagnostic,...(validation?{validation}:{})},...(retrieval?{retrieval}:{}),accounting:dynamicAccounting(planningRecords,[])},error instanceof AiError?error.status:502);
  }finally{clearTimeout(timer);request.signal.removeEventListener('abort',cancel);}
 }

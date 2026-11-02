@@ -83,7 +83,7 @@ test('ordinary version-two Explore preserves the actual plotted MRT binding thro
  try{
   const response=await handlePublicExplore(request(f.wire),f.dynamicDependencies,f.socialDependencies),body=await response.json();
   assert.equal(response.status,200);assert.equal(body.kind,'summary-execution');assert.equal(body.initialActions.length,8);
-  assert.deepEqual(f.stages,['dynamic_entities_v3','dynamic_relationships_v2',...Array(8).fill('stakeholder_turn_v1'),'citizen_personalities_v1']);assert.deepEqual(f.counts(),{searches:f.expectedSearches,socialCalls:0,impactCalls:1});
+  assert.deepEqual(f.stages,['dynamic_entities_v3','dynamic_relationships_v3',...Array(8).fill('stakeholder_turn_v1'),'citizen_personalities_v1']);assert.deepEqual(f.counts(),{searches:f.expectedSearches,socialCalls:0,impactCalls:1});
   assert.equal(body.accounting.planningCalls,2);assert.equal(body.accounting.actionCalls,8);assert.equal(body.society.totalSteps,320);assert.equal(body.society.tick,0);assert.equal(body.society.swarm.activeAgents,50);assert.equal(body.society.swarm.llmCapableAgents,35);assert.equal(body.society.swarm.maxCalls,350);
   assert.equal(body.grounding.personalities.modelGenerated,35);assert.equal(body.grounding.personalities.calls,1);assert.equal(body.grounding.interpretation.calls,0);
   const commuteNodes=body.graph.nodes.filter((n:any)=>n.properties.recordType==='citizen-commute-aggregate');assert.equal(commuteNodes.length,1,'Ordinary Explore must connect its authoritative commute aggregate to the graph');
@@ -115,7 +115,7 @@ test('ordinary v2 handoff Explore freezes validated selection through citizen ge
 test('historical version-one Explore retains its original planning and society path without personalities',async()=>{
  const f=setup({legacy:true});try{
   const response=await handlePublicExplore(request(f.wire),f.dynamicDependencies,f.socialDependencies),body=await response.json();assert.equal(response.status,200);assert.equal(body.initialActions.length,8);
-  assert.deepEqual(f.stages,['dynamic_entities_v3','dynamic_relationships_v2',...Array(8).fill('stakeholder_turn_v1')]);assert.deepEqual(f.counts(),{searches:f.expectedSearches,socialCalls:0,impactCalls:0});assert.ok(!Object.hasOwn(body,'grounding'));
+  assert.deepEqual(f.stages,['dynamic_entities_v3','dynamic_relationships_v3',...Array(8).fill('stakeholder_turn_v1')]);assert.deepEqual(f.counts(),{searches:f.expectedSearches,socialCalls:0,impactCalls:0});assert.ok(!Object.hasOwn(body,'grounding'));
   const state=await readSocialSession(body.session.id,f.socialDependencies);assert.equal(state.world.genesis.version,5);assert.ok(!state.world.genesis.input.citizenGrounding);assert.equal(state.world.genesis.input.intelligence?.context,'conversation-menu-v3');privateFieldsAbsent(body);
  }finally{await stopCoordinators(join(f.socialDependencies.storeDirectory,'jobs'));}
 });
@@ -144,7 +144,7 @@ test('plotted polyclinic continues into fictional stakeholder discussion without
  try{
   const response=await handlePublicExplore(request(f.wire),f.dynamicDependencies,f.socialDependencies),body=await response.json();
   assert.equal(response.status,200);assert.equal(body.kind,'summary-execution');assert.equal(body.status,'completed');assert.equal(body.initialActions.length,8);assert.ok(body.session);assert.ok(body.society);
-  assert.deepEqual(f.stages,['dynamic_entities_v3','dynamic_relationships_v2',...Array(8).fill('stakeholder_turn_v1')]);assert.deepEqual(f.counts(),{searches:f.expectedSearches,socialCalls:0,impactCalls:0});
+  assert.deepEqual(f.stages,['dynamic_entities_v3','dynamic_relationships_v3',...Array(8).fill('stakeholder_turn_v1')]);assert.deepEqual(f.counts(),{searches:f.expectedSearches,socialCalls:0,impactCalls:0});
   assert.equal(body.attemptId,f.wire.attemptId);assert.equal(body.question,original.question);assert.deepEqual(body.request,{question:original.question,geometry:original.geometry,geometryRevision:original.geometryRevision});
   assert.equal(body.locationContext.analysisMode,'location-context');assert.equal(body.locationContext.interventionType,'new_polyclinic');assert.equal(body.locationContext.question,original.question);assert.equal(body.locationContext.geometryRevision,7);assert.deepEqual(body.locationContext.locations.map((l:any)=>l.pointId),['site']);
   assert.match(body.limitations[0],/fictional.*discussion/i);assert.match(body.limitations[0],/location context/i);assert.match(body.limitations[0],/healthcare|wait times|capacity/i);assert.match(body.limitations[0],/not citizen-grounded/i);
@@ -184,7 +184,7 @@ test('bounded storage admission retains plotted polyclinic discussion context',a
 test('malformed personality output preserves all eight accepted initial records without a society or retry',async()=>{
  const f=setup({malformedPersonality:true});try{
   const response=await handlePublicExplore(request(f.wire),f.dynamicDependencies,f.socialDependencies),body=await response.json();assert.equal(response.status,200);assert.equal(body.kind,'summary-execution');assert.equal(body.initialActions.length,8);assert.equal(body.society,null);assert.equal(body.session,null);assert.ok(!body.grounding);
-  assert.deepEqual(f.stages,['dynamic_entities_v3','dynamic_relationships_v2',...Array(8).fill('stakeholder_turn_v1'),'citizen_personalities_v1']);assert.deepEqual(f.counts(),{searches:f.expectedSearches,socialCalls:0,impactCalls:1});
+  assert.deepEqual(f.stages,['dynamic_entities_v3','dynamic_relationships_v3',...Array(8).fill('stakeholder_turn_v1'),'citizen_personalities_v1']);assert.deepEqual(f.counts(),{searches:f.expectedSearches,socialCalls:0,impactCalls:1});
   const stored=f.accepted();assert.equal(stored.execution.run.events.length,8);assert.equal(stored.execution.run.status,'completed');assert.ok(stored.execution.inference.records.every((r:any)=>r.status==='accepted'));assert.equal(readdirSync(f.socialDependencies.directory).filter(n=>n.endsWith('.jsonl')).length,0);privateFieldsAbsent(body);
   const before=[...f.stages],passive=await handlePublicSocial(new Request(`http://localhost/api/social-simulate?runId=${body.runId}&token=${stored.token}`),f.socialDependencies);assert.equal(passive.status,200);assert.deepEqual(f.stages,before);
   const duplicate=await handlePublicExplore(request(f.wire),f.dynamicDependencies,f.socialDependencies);assert.equal(duplicate.status,409);assert.deepEqual(f.stages,before);
