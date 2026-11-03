@@ -1,6 +1,6 @@
 # ImpactLens SG
 
-Pre-hackathon research prototype for a Singapore social-impact sandbox. The current repository contains a local **Next.js + TypeScript + MapLibre** workspace backed by the validated MRT/LRT routing and hypothetical-line engine. Requires **Node.js 24+**.
+Singapore social-impact sandbox. The current repository contains a local **Next.js + TypeScript + MapLibre** workspace backed by the validated MRT/LRT routing and hypothetical-line engine. Requires **Node.js 24+**.
 
 Open miniature Singapore and ask **What if...?** The real planning API explains what is supported and which inputs are missing. MRT and limited Active Ageing Centre plans guide you to configuration, explicit calculation and existing results. Polyclinic/policy questions receive honest research or planned-capability views, not invented predictions. The composer works without an AI key. See [scenario-first UI](docs/PHASE7A_SCENARIO_FIRST_UI_IMPLEMENTATION.md).
 
