@@ -1,4 +1,5 @@
 /** Private initialization contract. No fetch, credentials, provider transport or paid admission lives here. */
+import {verifiedModelIdentity,type InferenceModel,type InferenceServingProvider} from '../inference/model-identity.ts';
 import {assertJsonData,canonical,ensure,freezeSnapshot,identifier,object,text} from '../experiments/validation.ts';
 
 export const PERSONALITY_MODEL='deepseek/deepseek-v4-flash-0731';
@@ -8,7 +9,8 @@ const styles=['direct','reflective','concise','exploratory','supportive'] as con
 export interface PersonalityTraits {communicationStyle:typeof styles[number];caution:number;initiative:number;detail:number;cooperation:number;uncertaintyTolerance:number}
 export interface CitizenPersonality {citizenId:string;policy:'citizen-personality-v1';origin:'offline-mock'|'model-generated'|'deterministic-rule';traits:PersonalityTraits;generationId:string|null}
 export interface PersonalityInitialization {runId:string;capableIds:string[];backgroundIds:string[];seed:string}
-export interface PersonalityGeneration {id:string;mode:'offline-mock'|'real-provider';status:'accepted';requestId:string;inputDigest:string;outputDigest:string;requestedModel:typeof PERSONALITY_MODEL;servingModel:typeof PERSONALITY_MODEL;servingProvider:typeof PERSONALITY_PROVIDER;fallback:false;uncertain:false;inputTokens:number;outputTokens:number;costUsd:number;usageBasis:'offline-byte-upper-bound'|'provider-reported'}
+/** inputDigest binds the frozen v1 logical request; wireRequestDigest binds an adapted Anthropic HTTP body. */
+export interface PersonalityGeneration {id:string;mode:'offline-mock'|'real-provider';status:'accepted';requestId:string;inputDigest:string;outputDigest:string;requestedModel:InferenceModel;servingModel:InferenceModel;servingProvider:InferenceServingProvider;wireRequestDigest?:string;fallback:false;uncertain:false;inputTokens:number;outputTokens:number;costUsd:number|null;usageBasis:'offline-byte-upper-bound'|'provider-reported'|'provider-reported-tokens-cost-unknown'}
 export interface PersonalityRoster {version:1;policy:'personality-initialization-v1';id:string;runId:string;seedDigest:string;capableIds:string[];backgroundIds:string[];profiles:CitizenPersonality[];generation:PersonalityGeneration}
 interface WireProfile {slotId:string;style:PersonalityTraits['communicationStyle'];c:number;i:number;d:number;k:number;u:number}
 export interface PersonalityWireRoster {profiles:WireProfile[]}
@@ -106,13 +108,16 @@ export function parsePersonalityWire(value:unknown,count:number):PersonalityWire
  return parseWire(value,count);
 }
 
-export interface ProviderPersonalityProvenance {id:string;inputTokens:number;outputTokens:number;costUsd:number}
+export interface ProviderPersonalityProvenance {id:string;inputTokens:number;outputTokens:number;costUsd:number|null;requestedModel?:string;servingModel?:string;servingProvider?:string;wireRequestDigest?:string}
 /** Pure assembly only. This function performs no inference and never substitutes mock profiles. */
 export async function acceptProviderPersonalities(request:Readonly<PersonalityRequest>,value:unknown,provenance:ProviderPersonalityProvenance):Promise<PersonalityRoster>{
+ const explicitIdentity=provenance.requestedModel!==undefined||provenance.servingModel!==undefined||provenance.servingProvider!==undefined;
+ const identity=explicitIdentity?verifiedModelIdentity(provenance.requestedModel,provenance.servingModel,provenance.servingProvider):verifiedModelIdentity(PERSONALITY_MODEL,PERSONALITY_MODEL,PERSONALITY_PROVIDER);
+ check(identity!==null,'PERSONALITY_PROVENANCE');
  const wire=parsePersonalityWire(value,request.capableIds.length),bySlot=new Map(wire.profiles.map(p=>[p.slotId,p]));
  const profiles:CitizenPersonality[]=request.capableIds.map((citizenId,i)=>({citizenId,policy:'citizen-personality-v1',origin:'model-generated',traits:wireTraits(bySlot.get('profile-'+(i+1))!),generationId:provenance.id}));
  profiles.push(...backgroundProfiles(request.backgroundIds,request.seedDigest,profiles));
- const generation:PersonalityGeneration={id:provenance.id,mode:'real-provider',status:'accepted',requestId:request.requestId,inputDigest:request.inputDigest,outputDigest:await sha({profiles:request.capableIds.map((_,i)=>encodeTraits('profile-'+(i+1),profiles[i].traits))}),requestedModel:PERSONALITY_MODEL,servingModel:PERSONALITY_MODEL,servingProvider:PERSONALITY_PROVIDER,fallback:false,uncertain:false,inputTokens:provenance.inputTokens,outputTokens:provenance.outputTokens,costUsd:provenance.costUsd,usageBasis:'provider-reported'};
+ const generation:PersonalityGeneration={id:provenance.id,mode:'real-provider',status:'accepted',requestId:request.requestId,inputDigest:request.inputDigest,outputDigest:await sha({profiles:request.capableIds.map((_,i)=>encodeTraits('profile-'+(i+1),profiles[i].traits))}),requestedModel:identity.model,servingModel:identity.model,servingProvider:identity.servingProvider,...(provenance.wireRequestDigest===undefined?{}:{wireRequestDigest:provenance.wireRequestDigest}),fallback:false,uncertain:false,inputTokens:provenance.inputTokens,outputTokens:provenance.outputTokens,costUsd:provenance.costUsd,usageBasis:provenance.costUsd===null?'provider-reported-tokens-cost-unknown':'provider-reported'};
  const body={version:1 as const,policy:'personality-initialization-v1' as const,runId:request.runId,seedDigest:request.seedDigest,capableIds:request.capableIds,backgroundIds:request.backgroundIds,profiles,generation};
  return validatePersonalityRoster({...body,id:'personality-roster-'+await sha(body)},request.capableIds,request.backgroundIds);
 }
@@ -126,11 +131,15 @@ export function parsePersonalityRoster(value:unknown,capableIds:readonly string[
  const expected=initialization({runId:r.runId as string,seed:'not-used-for-shape',capableIds:[...capableIds],backgroundIds:[...backgroundIds]});
  check(canonical(r.capableIds)===canonical(expected.capableIds)&&canonical(r.backgroundIds)===canonical(expected.backgroundIds),'PERSONALITY_ROSTER');
  check(Array.isArray(r.profiles)&&r.profiles.length===expected.capableIds.length+expected.backgroundIds.length,'PERSONALITY_ROSTER');
- const g=safe('PERSONALITY_PROVENANCE',()=>object(r.generation,['id','mode','status','requestId','inputDigest','outputDigest','requestedModel','servingModel','servingProvider','fallback','uncertain','inputTokens','outputTokens','costUsd','usageBasis']));
- safe('PERSONALITY_PROVENANCE',()=>identifier(g.id));check(['offline-mock','real-provider'].includes(g.mode as string)&&g.status==='accepted'&&g.requestedModel===PERSONALITY_MODEL&&g.servingModel===PERSONALITY_MODEL&&g.servingProvider===PERSONALITY_PROVIDER&&g.fallback===false&&g.uncertain===false,'PERSONALITY_PROVENANCE');
+ const generationKeys=['id','mode','status','requestId','inputDigest','outputDigest','requestedModel','servingModel','servingProvider','fallback','uncertain','inputTokens','outputTokens','costUsd','usageBasis'];
+ const g=safe('PERSONALITY_PROVENANCE',()=>object(r.generation,[...generationKeys,'wireRequestDigest'],generationKeys));
+ const identity=verifiedModelIdentity(g.requestedModel,g.servingModel,g.servingProvider);
+ if(g.wireRequestDigest!==undefined)check(identity?.provider==='anthropic'&&g.mode==='real-provider'&&typeof g.wireRequestDigest==='string'&&/^[a-f0-9]{64}$/.test(g.wireRequestDigest),'PERSONALITY_PROVENANCE');
+ safe('PERSONALITY_PROVENANCE',()=>identifier(g.id));check(['offline-mock','real-provider'].includes(g.mode as string)&&g.status==='accepted'&&identity!==null&&(g.mode!=='offline-mock'||identity.model===PERSONALITY_MODEL)&&g.fallback===false&&g.uncertain===false,'PERSONALITY_PROVENANCE');
  for(const k of ['requestId','inputDigest','outputDigest'])check(typeof g[k]==='string'&&/^[a-f0-9]{64}$/.test(g[k] as string),'PERSONALITY_PROVENANCE');
- check(Number.isSafeInteger(g.inputTokens)&&(g.inputTokens as number)>=0&&Number.isSafeInteger(g.outputTokens)&&(g.outputTokens as number)>0&&(g.outputTokens as number)<=PERSONALITY_LIMITS.outputTokens&&typeof g.costUsd==='number'&&Number.isFinite(g.costUsd)&&g.costUsd>=0,'PERSONALITY_PROVENANCE');
- check(g.mode==='offline-mock'?g.costUsd===0&&g.usageBasis==='offline-byte-upper-bound':g.usageBasis==='provider-reported','PERSONALITY_PROVENANCE');
+ check(Number.isSafeInteger(g.inputTokens)&&(g.inputTokens as number)>=0&&Number.isSafeInteger(g.outputTokens)&&(g.outputTokens as number)>0&&(g.outputTokens as number)<=PERSONALITY_LIMITS.outputTokens, 'PERSONALITY_PROVENANCE');
+ check(g.costUsd===null?g.mode==='real-provider'&&identity?.provider==='anthropic'&&g.usageBasis==='provider-reported-tokens-cost-unknown':typeof g.costUsd==='number'&&Number.isFinite(g.costUsd)&&g.costUsd>=0,'PERSONALITY_PROVENANCE');
+ check(g.mode==='offline-mock'?g.costUsd===0&&g.usageBasis==='offline-byte-upper-bound':g.usageBasis===(g.costUsd===null?'provider-reported-tokens-cost-unknown':'provider-reported'),'PERSONALITY_PROVENANCE');
  const order=[...expected.capableIds,...expected.backgroundIds],vectors=new Set<string>();
  for(const [index,value]of r.profiles.entries()){
   const p=safe('PERSONALITY_ROSTER',()=>object(value,['citizenId','policy','origin','traits','generationId']));check(p.citizenId===order[index]&&p.policy==='citizen-personality-v1','PERSONALITY_ROSTER');const t=traits(p.traits);

@@ -7,11 +7,11 @@ import { parseAiResponse,boundChatMessages,type AiResponse,type AiKind,type Dash
 import { evidenceGroupIds,renderExplanation,renderCitizenAnswer } from '../lib/ai/grounding';
 import './ai.css';
 
-export type AiAvailability={available:true;provider:'gemini'|'openrouter';model:string}|{available:false;reason:string};
+export type AiAvailability={available:true;provider:'gemini'|'openrouter'|'anthropic';model:string}|{available:false;reason:string};
 export function useAiAvailability():AiAvailability {
   const [state,setState]=useState<AiAvailability>({available:false,reason:'Checking local AI configuration…'});
   useEffect(()=>{const controller=new AbortController();fetch('/api/ai/status',{signal:controller.signal,cache:'no-store'}).then(r=>r.json()).then(v=>{
-    if(v?.available===true&&(v.provider==='gemini'||v.provider==='openrouter')&&typeof v.model==='string'&&v.model.length<=256)setState(v);
+    if(v?.available===true&&(v.provider==='gemini'||v.provider==='openrouter'||v.provider==='anthropic')&&typeof v.model==='string'&&v.model.length<=256)setState(v);
     else setState({available:false,reason:typeof v?.reason==='string'?v.reason:'AI is unavailable. The calculated dashboard works without it.'});
   }).catch(()=>{if(!controller.signal.aborted)setState({available:false,reason:'AI configuration is unavailable. Core calculations remain usable.'});});return ()=>controller.abort();},[]);
   return state;

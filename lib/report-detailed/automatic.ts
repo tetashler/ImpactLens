@@ -31,6 +31,7 @@ export function automaticReportsIdle(runId = ''): AutomaticReportsState {
 
 const copy = (state: AutomaticReportsState): AutomaticReportsState => ({...state, errors: {...state.errors}});
 const attempted = new Set<string>();
+const deferred = new Set<string>();
 type Observer = {signal?: AbortSignal; onChange?: AutomaticReportsDependencies['onChange']; finish: (state: AutomaticReportsState) => void};
 type Task = {id: string; state: AutomaticReportsState; observers: Set<Observer>; controller: AbortController; posting: boolean};
 const inFlight = new Map<string, Task>();
@@ -87,6 +88,16 @@ async function execute(task: Task, run: PublicExplore, keys: Record<AutomaticRep
   const storage = deps.storage === undefined ? browserStorage() : deps.storage;
   const active = () => task.observers.size > 0 && !task.controller.signal.aborted;
   const headers = {Authorization: `Bearer ${run.session!.token}`};
+  const detailedDeferral = keys.detailed ? `impactlens:auto-report-deferred:v1:detailed:${run.runId}:${keys.detailed}` : null;
+  const failure = (kind: AutomaticReportKind, response: Response, body: Record<string, unknown>, fallback: string) => {
+    if (kind === 'summary' && response.status === 429 && body.error === 'AI_RATE_LIMIT' && detailedDeferral) {
+      // A provider limit applies to the next writer too. Persist the deferral even
+      // if this view detached while the paid summary request was completing.
+      deferred.add(detailedDeferral);
+      try {storage?.setItem(detailedDeferral, 'skipped');} catch { /* Memory fallback. */ }
+    }
+    return Error(typeof body.message === 'string' ? body.message : fallback);
+  };
   try {
     for (const kind of ['summary', 'detailed'] as const) {
       if (!active()) break;
@@ -105,7 +116,7 @@ async function execute(task: Task, run: PublicExplore, keys: Record<AutomaticRep
         const response = await fetcher(`${endpoint}?runId=${encodeURIComponent(run.runId)}`, {headers, cache: 'no-store', signal: task.controller.signal});
         const body = record(await response.json());
         if (!active()) break;
-        if (!response.ok) throw Error(typeof body.message === 'string' ? body.message : 'The saved report could not be loaded.');
+        if (!response.ok) throw failure(kind, response, body, 'The saved report could not be loaded.');
         if (body.snapshotKey !== snapshotKey) throw Error('The run changed. Refresh the report to use its current snapshot.');
         const field = kind === 'summary' ? 'summary' : 'report';
         const parse = kind === 'summary' ? parseReportSummary : parseDetailedReport;
@@ -119,6 +130,19 @@ async function execute(task: Task, run: PublicExplore, keys: Record<AutomaticRep
           task.state[kind] = 'available';
           notify(task, kind);
           continue;
+        }
+
+        // Saved artifacts are always readable. Only an automatic paid dispatch
+        // is deferred; explicit generation remains the user's retry path.
+        if (kind === 'detailed' && detailedDeferral) {
+          let skipped = deferred.has(detailedDeferral);
+          try {skipped ||= storage?.getItem(detailedDeferral) === 'skipped';} catch { /* Memory fallback. */ }
+          if (skipped) {
+            task.state.detailed = 'skipped';
+            task.state.errors.detailed = 'The provider rate limit stopped automatic report preparation. Retry this report explicitly after the provider recovers.';
+            notify(task, kind);
+            continue;
+          }
         }
 
         // Mark before dispatch. A failed or cancelled paid request stays attempted
@@ -143,7 +167,7 @@ async function execute(task: Task, run: PublicExplore, keys: Record<AutomaticRep
           const generated = await fetcher(endpoint, {method: 'POST', headers: {...headers, 'Content-Type': 'application/json'},
             body: JSON.stringify({runId: run.runId, snapshotKey})});
           const generatedBody = record(await generated.json());
-          if (!generated.ok) throw Error(typeof generatedBody.message === 'string' ? generatedBody.message : 'Report generation failed.');
+          if (!generated.ok) throw failure(kind, generated, generatedBody, 'Report generation failed.');
           matching(generatedBody[field]);
           task.state[kind] = 'available';
         } finally {task.posting = false;}

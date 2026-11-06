@@ -4,12 +4,14 @@ export class AiError extends Error {
   readonly code: string;
   readonly status: number;
   readonly plannerValidation?: PlannerDiagnostic;
+  readonly retryAfterSeconds?: number;
 
-  constructor(message: string, code: string, status: number, plannerValidation?: PlannerDiagnostic) {
+  constructor(message: string, code: string, status: number, plannerValidation?: PlannerDiagnostic, retryAfterSeconds?: number) {
     super(message);
     this.name = 'AiError';
     this.code = code;
     this.status = status;
     if(plannerValidation)this.plannerValidation=plannerValidation;
+    if(typeof retryAfterSeconds==='number'&&Number.isSafeInteger(retryAfterSeconds)&&retryAfterSeconds>=1&&retryAfterSeconds<=86400)this.retryAfterSeconds=retryAfterSeconds;
   }
 }

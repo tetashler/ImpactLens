@@ -46,7 +46,8 @@ function memoryStorage() {
   return {data, getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => {data.set(key, value);}};
 }
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), {status, headers: {'Content-Type': 'application/json'}});
-function server(value: PublicExplore, options: {cached?: boolean; failSummary?: boolean; staleSummary?: boolean} = {}) {
+function server(value: PublicExplore, options: {cached?: boolean; cachedDetailed?: boolean; failSummary?: boolean; staleSummary?: boolean;
+  summaryFailure?: {error: string; status: number}} = {}) {
   const calls: {kind: 'summary' | 'detailed'; method: string; init: RequestInit}[] = [];
   const snapshot = keys(value), saved = artifacts(value);
   const fetcher: typeof fetch = async (input, init = {}) => {
@@ -58,10 +59,11 @@ function server(value: PublicExplore, options: {cached?: boolean; failSummary?: 
       assert.equal(init.cache, 'no-store');
       assert.equal(new URL(url, 'http://localhost').searchParams.get('runId'), value.runId);
       return json({snapshotKey: options.staleSummary && kind === 'summary' ? 'a'.repeat(64) : snapshot[kind],
-        [kind === 'summary' ? 'summary' : 'report']: options.cached ? saved[kind] : null});
+        [kind === 'summary' ? 'summary' : 'report']: options.cached || (kind === 'detailed' && options.cachedDetailed) ? saved[kind] : null});
     }
     assert.deepEqual(JSON.parse(String(init.body)), {runId: value.runId, snapshotKey: snapshot[kind]});
     if (options.failSummary && kind === 'summary') return json({message: 'Writer unavailable.'}, 503);
+    if (options.summaryFailure && kind === 'summary') return json({error: options.summaryFailure.error, message: 'Provider request unavailable.'}, options.summaryFailure.status);
     return json({[kind === 'summary' ? 'summary' : 'report']: saved[kind]});
   };
   return {calls, fetcher};
@@ -128,6 +130,43 @@ test('a failed summary still allows detailed generation and is never automatical
   await recreated.prepareAutomaticReports(value, {fetcher: api.fetcher, storage});
   assert.equal(api.calls.filter(call => call.method === 'POST' && call.kind === 'summary').length, 1);
   assert.equal(api.calls.filter(call => call.method === 'POST' && call.kind === 'detailed').length, 1);
+});
+
+test('a provider rate-limited summary defers the detailed POST without recording a paid attempt', async () => {
+  const value = run(), storage = memoryStorage(), api = server(value, {summaryFailure: {error: 'AI_RATE_LIMIT', status: 429}});
+  const result = await prepareAutomaticReports(value, {fetcher: api.fetcher, storage});
+  assert.deepEqual(api.calls.map(call => `${call.method} ${call.kind}`), ['GET summary', 'POST summary', 'GET detailed']);
+  assert.equal(result.summary, 'failed'); assert.equal(result.detailed, 'skipped');
+  assert.match(result.errors.detailed!, /provider.*retry.*recover/i);
+  assert.ok(![...storage.data].some(([marker, state]) => marker.includes(':detailed:') && state === 'attempted'));
+});
+
+test('provider deferral survives remount and session recreation even though detailed was never dispatched', async () => {
+  const value = run(), storage = memoryStorage(), limited = server(value, {summaryFailure: {error: 'AI_RATE_LIMIT', status: 429}});
+  await prepareAutomaticReports(value, {fetcher: limited.fetcher, storage});
+  const recovered = server(value);
+  const remounted = await prepareAutomaticReports(value, {fetcher: recovered.fetcher, storage});
+  const recreated = await import(new URL('../../report-detailed/automatic.ts?provider-deferral-session', import.meta.url).href);
+  const reloaded = await recreated.prepareAutomaticReports(value, {fetcher: recovered.fetcher, storage});
+  assert.equal(remounted.detailed, 'skipped'); assert.equal(reloaded.detailed, 'skipped');
+  assert.deepEqual(recovered.calls.map(call => `${call.method} ${call.kind}`), ['GET summary', 'GET detailed', 'GET summary', 'GET detailed']);
+  assert.ok(!JSON.stringify([...storage.data]).includes(value.session!.token));
+});
+
+test('a deferred detailed report remains available through its authenticated saved read', async () => {
+  const value = run(), storage = memoryStorage(), limited = server(value, {summaryFailure: {error: 'AI_RATE_LIMIT', status: 429}});
+  await prepareAutomaticReports(value, {fetcher: limited.fetcher, storage});
+  const saved = server(value, {cachedDetailed: true});
+  const result = await prepareAutomaticReports(value, {fetcher: saved.fetcher, storage});
+  assert.equal(result.detailed, 'available'); assert.equal(result.errors.detailed, undefined);
+  assert.deepEqual(saved.calls.map(call => `${call.method} ${call.kind}`), ['GET summary', 'GET detailed']);
+});
+
+test('a local report busy response does not defer an independent detailed report', async () => {
+  const value = run(), api = server(value, {summaryFailure: {error: 'REPORT_BUSY', status: 429}});
+  const result = await prepareAutomaticReports(value, {fetcher: api.fetcher, storage: memoryStorage()});
+  assert.equal(result.summary, 'failed'); assert.equal(result.detailed, 'available');
+  assert.deepEqual(api.calls.map(call => `${call.method} ${call.kind}`), ['GET summary', 'POST summary', 'GET detailed', 'POST detailed']);
 });
 
 test('concurrent observers share one generation sequence', async () => {

@@ -87,6 +87,16 @@ async function handoff(input=wire()){
  const base=buildHybridContext(input.request.question,input.request.geometry,input.request.geometryRevision,input.hybrid.anchors,catalog);
  return buildHandoffContext(base,input.hybrid);
 }
+test('v2 interpretation proof accepts exact Anthropic identity and rejects crossed serving attribution',async()=>{
+ const context=await handoff(),original=deterministicHandoff(context)!;
+ const result=acceptHandoff(original.wire,context);
+ const legacy=await createHybridBinding(context.base,result.intent,handoffIntervention(context,result),'b'.repeat(64));
+ const generation={requestedModel:'claude-haiku-5-5',servingModel:'claude-haiku-5-5',servingProvider:'Anthropic',identityVerification:'completion',generationId:'msg-fixture',requestCanonicalHash:'a'.repeat(64),outputCanonicalHash:await digest('',result.wire)} as const;
+ const proof={context:context.snapshot,result:result.wire,source:'model' as const,generation};
+ const binding=await createHandoffBinding(legacy,proof);
+ assert.equal((await validateHybridBinding(binding) as HybridBindingV2).interpretation.generation?.servingProvider,'Anthropic');
+ await assert.rejects(createHandoffBinding(legacy,{...proof,generation:{...generation,servingProvider:'DigitalOcean'}}));
+});
 test('question, geometry revision, stop order, timing and catalogue are immutable v2 context identity',async()=>{
  const first=await handoff();
  for(const mutate of [(v:ReturnType<typeof wire>)=>v.request.geometryRevision++,(v:ReturnType<typeof wire>)=>v.request.question+=' Illustrative only.',(v:ReturnType<typeof wire>)=>v.hybrid.timings.runSeconds++, (v:ReturnType<typeof wire>)=>{(v.request.geometry.features[2] as any).coordinate.lat+=0.00001;}]){

@@ -1,3 +1,4 @@
+import {activeInferenceRoute,configuredInferenceKey} from '../inference/route.ts';
 import type {SafeSocialDiagnosticV2} from '../../society/social-diagnostics-v2.ts';
 import {createResearchBriefing} from '../../grounding/briefing.ts';
 import {configuredProseObserver} from './rejection-observations-v2.ts';
@@ -61,7 +62,7 @@ const historicalDirectory=(d:SocialDependencies)=>resolve(directory(d))===storag
 const response=(v:unknown,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
 const cacheKey=(root:string,id:string)=>root+'/'+id;
 export function socialStatus(d:SocialDependencies={}){
- return {version:1,enabled:enabled(d),configured:!!(d.key??process.env.OPENROUTER_API_KEY)?.trim(),limits:HYBRID_DEFAULTS,model:'deepseek/deepseek-v4-flash-0731',provider:'digitalocean',fallback:false};
+ return {version:1,enabled:enabled(d),configured:!!(d.key??configuredInferenceKey()).trim(),limits:HYBRID_DEFAULTS,model:activeInferenceRoute().model,provider:activeInferenceRoute().provider,fallback:false};
 }
 function initialAdmission(c:ReturnType<typeof swarmHybrid>,baseline:ReturnType<typeof swarmHybrid>,d:SocialDependencies):ProviderAdmission {
  const source=d.admission??{},deadline=source.deadlineMs??(process.env.SOCIAL_PROVIDER_DEADLINE_MS===undefined?undefined:Number(process.env.SOCIAL_PROVIDER_DEADLINE_MS));
@@ -229,7 +230,7 @@ export async function socialOperation(body:unknown,d:SocialDependencies={},signa
      if(s.world.genesis.input.swarm)assertSwarmJournalAdmission(s,root);
      const release=acquireAiSlot('social:'+s.id);
      try{
-      const transport=createSocialTransport({key:d.key??process.env.OPENROUTER_API_KEY??'',fetcher:d.fetcher,...(['conversation-menu-v6','conversation-menu-v7'].includes(world.genesis.input.intelligence?.context??'')?{rejectionObserver:configuredProseObserver(s.id,d.proseRejectionObserver)}:world.genesis.input.intelligence?.context==='conversation-menu-v5'?{rejectionObserver:{version:1 as const,observe:createRejectionObserver(root,s.id)}}:{})});
+      const transport=createSocialTransport({key:d.key??configuredInferenceKey(),fetcher:d.fetcher,...(['conversation-menu-v6','conversation-menu-v7'].includes(world.genesis.input.intelligence?.context??'')?{rejectionObserver:configuredProseObserver(s.id,d.proseRejectionObserver)}:world.genesis.input.intelligence?.context==='conversation-menu-v5'?{rejectionObserver:{version:1 as const,observe:createRejectionObserver(root,s.id)}}:{})});
       s.reservation=world.hybrid.pending;await persist(s,root);
       let decision:unknown|null=null,error:string|null=null;
       try{if(d.storageAdmission)inspectStorageAdmission(d.storageAdmission.base);decision=(await transport.generate(world.hybrid.pending,signal)).value;if(signal.aborted){decision=null;error='AI_CANCELLED';}}

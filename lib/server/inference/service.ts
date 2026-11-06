@@ -1,5 +1,6 @@
 /** Node-only live activation. Version 1 scripted API remains unchanged. */
-import {createDeepseekTransport,encodeTurnContext,MODEL,PROVIDER,type InferenceCallRecord} from './deepseek.ts';
+import {createDeepseekTransport,encodeTurnContext,type InferenceCallRecord} from './deepseek.ts';
+import {activeInferenceRoute,configuredInferenceKey} from './route.ts';
 import {runStakeholderSimulation} from '../../stakeholder-simulation/engine.ts';
 import {parseStakeholderInput} from '../../stakeholder-simulation/contract.ts';
 import {verifyStakeholderRun} from '../../stakeholder-simulation/identities.ts';
@@ -10,13 +11,13 @@ const state=globalThis as typeof globalThis&{__liveInferenceAttemptsV1?:Map<stri
 const attempts=state.__liveInferenceAttemptsV1??=new Map<string,number>();
 type Transport=ReturnType<typeof createDeepseekTransport>;
 export interface LiveDependencies {enabled?:boolean;key?:string;transport?:Transport;reservedTokens?:number;initialCostUsd?:number|null}
-export function inferenceStatus(){return {version:1,model:MODEL,gateway:'OpenRouter',provider:PROVIDER,fallback:false,connection:process.env.OPENROUTER_API_KEY?.trim()?'configured':'not-configured',enabled:process.env.STAKEHOLDER_LIVE_ENABLED==='true',servingIdentityVerified:false,limits:LIVE_LIMITS};}
+export function inferenceStatus(){const route=activeInferenceRoute();return {version:1,model:route.model,gateway:route.gateway,provider:route.provider,fallback:false,connection:configuredInferenceKey().trim()?'configured':'not-configured',enabled:process.env.STAKEHOLDER_LIVE_ENABLED==='true',servingIdentityVerified:false,limits:LIVE_LIMITS};}
 export async function executeLiveRun(value:unknown,attemptId:string,overrides:LiveDependencies={},signal?:AbortSignal){
  const input=parseStakeholderInput(value);
  if(input.simulationOptions.mode!=='llm-assisted'||input.stakeholderRoles.length>4||input.simulationOptions.rounds>2)throw new AiError('Live runs require LLM mode, at most four agents and two rounds.','AI_INVALID_REQUEST',400);
  if(!(overrides.enabled??process.env.STAKEHOLDER_LIVE_ENABLED==='true'))throw new AiError('Live execution must be enabled explicitly on the server.','AI_CONFIG',503);
- const key=overrides.key??process.env.OPENROUTER_API_KEY??'';
- if(!key.trim())throw new AiError('OpenRouter is not configured on the server.','AI_CONFIG',503);
+ const key=overrides.key??configuredInferenceKey(),route=activeInferenceRoute();
+ if(!key.trim())throw new AiError('The inference provider is not configured on the server.','AI_CONFIG',503);
  for(const [key,time] of attempts)if(Date.now()-time>86400000)attempts.delete(key);
  if(attempts.has(attemptId))throw new AiError('Use a new attempt identity for each live execution.','AI_DUPLICATE',409);
  if(attempts.size>=2048)throw new AiError('Live attempt retention is full. Wait before another run.','AI_BUSY',429);
@@ -27,7 +28,7 @@ export async function executeLiveRun(value:unknown,attemptId:string,overrides:Li
  const timer=setTimeout(cancel,LIVE_LIMITS.runTimeoutMs);
  try{
  const transport=overrides.transport??createDeepseekTransport({key,maxOutputTokens:LIVE_LIMITS.outputTokens,onRecord:record=>records.push(record)});
- const run=await runStakeholderSimulation(input,{attemptId,signal:controller.signal,provider:'openrouter',model:MODEL,generateTurn:async(context,s)=>{
+ const run=await runStakeholderSimulation(input,{attemptId,signal:controller.signal,provider:route.executionProvider,model:route.model,generateTurn:async(context,s)=>{
    const reserve=new TextEncoder().encode(encodeTurnContext(context)).byteLength+LIVE_LIMITS.outputTokens+2000;
    if(calls>=8||reservedTokens+reserve>(overrides.reservedTokens??LIVE_LIMITS.reservedTokens)||(overrides.initialCostUsd??0)+records.reduce((n,r)=>n+(r.costUsd??0),0)>=LIVE_LIMITS.costUsd)throw new AiError('Live run budget exhausted.','STAKEHOLDER_CALL_BUDGET',429);
    reservedTokens+=reserve;calls++;
@@ -35,7 +36,7 @@ export async function executeLiveRun(value:unknown,attemptId:string,overrides:Li
  }});
  await verifyStakeholderRun(run);
  const sum=(field:'inputTokens'|'outputTokens'|'totalTokens'|'costUsd')=>records.length&&records.every(r=>r[field]!==null)?records.reduce((n,r)=>n+(r[field]??0),0):null;
- return {run,inference:{version:1 as const,requestedModel:MODEL,requestedProvider:PROVIDER,allowFallbacks:false as const,successfulCalls:records.filter(r=>r.status==='accepted').length,failedCalls:records.filter(r=>r.status==='failed').length,retries:0,inputTokens:sum('inputTokens'),outputTokens:sum('outputTokens'),totalTokens:sum('totalTokens'),costUsd:sum('costUsd'),reservedTokens,reservationBasis:'Conservative UTF-8 bytes plus bounded output; not billed usage.',durationMs:Date.now()-started,roundsCompleted:Math.floor(run.events.length/input.stakeholderRoles.length),activeAgents:input.stakeholderRoles.length,records,limits:LIVE_LIMITS} as const};
+ return {run,inference:{version:1 as const,requestedModel:route.model,requestedProvider:route.provider,allowFallbacks:false as const,successfulCalls:records.filter(r=>r.status==='accepted').length,failedCalls:records.filter(r=>r.status==='failed').length,retries:0,inputTokens:sum('inputTokens'),outputTokens:sum('outputTokens'),totalTokens:sum('totalTokens'),costUsd:sum('costUsd'),reservedTokens,reservationBasis:'Conservative UTF-8 bytes plus bounded output; not billed usage.',durationMs:Date.now()-started,roundsCompleted:Math.floor(run.events.length/input.stakeholderRoles.length),activeAgents:input.stakeholderRoles.length,records,limits:LIVE_LIMITS} as const};
  }finally{clearTimeout(timer);signal?.removeEventListener('abort',cancel);release();}
 }
 export async function handleLiveBody(value:unknown,signal?:AbortSignal,overrides:LiveDependencies={}):Promise<Response>{

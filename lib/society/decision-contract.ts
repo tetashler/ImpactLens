@@ -1,5 +1,5 @@
 import type {IssueUpdate,SocialIssue} from './episodic.ts';
-import type {InferenceCallRecord} from '../server/inference/deepseek.ts';
+import type {InferenceCallRecord} from '../inference/call-record.ts';
 import type {Platform,SocialKind} from './contract.ts';
 import type {SocietyBriefing} from './contract.ts';
 export interface DecisionContext {researchContext?:import('../grounding/briefing.ts').ActorResearchContext}

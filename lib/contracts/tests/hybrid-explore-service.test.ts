@@ -123,3 +123,38 @@ test('failed inference diagnostics retain safe metadata once and exclude arbitra
   const semantic=dependencies(async()=>response({version:'hybrid-map-v1',bindingKey:'0'.repeat(64),type:'new_mrt_line',routeId:'route',stationPointIds:['start','middle','end'],sitePointIds:[],clarification:null}));await assert.rejects(prepareHybridExplore(wire('How might this proposed connection work?'),semantic));assert.equal(logs[2][0],'HYBRID_INTERPRETATION_SAFE');assert.equal(JSON.parse(String(logs[2][1])).records.length,1);
  }finally{console.warn=original;}
 });
+
+test('Claude hybrid failure diagnostics preserve registered identity and redact unknown providers',async()=>{
+ const original=console.warn,logs:unknown[][]=[];console.warn=(...values:unknown[])=>logs.push(values);
+ try{
+  const deps=dependencies();deps.personality=async(_input,options)=>{
+   options.onRecord?.({requestedModel:'claude-haiku-5-5',requestedProvider:'anthropic',servingModel:'claude-haiku-5-5',servingProvider:'Anthropic',status:'failed',errorCode:'AI_ACTION_SCHEMA',inputTokens:12,outputTokens:3,costUsd:null} as any);
+   options.onRecord?.({requestedModel:'PRIVATE_MODEL',requestedProvider:'PRIVATE_PROVIDER',servingModel:'PRIVATE_MODEL',servingProvider:'PRIVATE_PROVIDER',status:'failed'} as any);
+   throw Error('PRIVATE_PROVIDER_TEXT');
+  };
+  const prepared=await prepareHybridExplore(wire(),deps);if(prepared.kind!=='ready')throw Error('Expected MRT preparer');await assert.rejects(prepared.citizenGrounding(preview()));
+  const entry=JSON.parse(String(logs[0][1]));assert.equal(entry.records[0].requestedModel,'claude-haiku-5-5');assert.equal(entry.records[0].requestedProvider,'anthropic');assert.equal(entry.records[0].servingModel,'claude-haiku-5-5');assert.equal(entry.records[0].servingProvider,'Anthropic');assert.doesNotMatch(JSON.stringify(logs),/PRIVATE_/);
+ }finally{console.warn=original;}
+});
+
+test('Claude hybrid interpretation and personality initialization preserve real transport provenance',async t=>{
+ const previous=process.env.AI_PROVIDER;process.env.AI_PROVIDER='anthropic';t.after(()=>{if(previous===undefined)delete process.env.AI_PROVIDER;else process.env.AI_PROVIDER=previous;});
+ const input=wire('How might this plotted proposal work?');input.hybrid.interpretationPolicy='hybrid-map-v2';let semanticCalls=0,personalityCalls=0;
+ const fetcher:typeof fetch=async(url,init)=>{
+  assert.equal(String(url),'https://api.anthropic.com/v1/messages');assert.equal(new Headers(init?.headers).get('x-api-key'),'offline-test-only');
+  const body=JSON.parse(String(init?.body));assert.equal(body.model,'claude-haiku-5-5');assert.equal(body.messages.length,1);assert.equal(body.messages[0].role,'user');assert.equal(typeof body.system,'string');assert.equal(body.provider,undefined);
+  const context=JSON.parse(body.messages[0].content);let value:unknown;
+  if(context.slots){personalityCalls++;assert.equal(body.max_tokens,6000);assert.equal(context.slots.length,35);value={profiles:context.slots.map((slot:any,i:number)=>({...slot,style:'direct',c:i%5,i:Math.floor(i/5)%5,d:Math.floor(i/25)%5,k:0,u:0}))};}
+  else{semanticCalls++;assert.equal(body.max_tokens,1500);assert.equal(context.confirmedSelection.serverValidated,true);value={version:context.version,bindingKey:context.bindingKey,type:'new_mrt_line',routeId:'route',stationPointIds:['start','middle','end'],sitePointIds:[],clarification:null};}
+  return Response.json({id:`msg-claude-hybrid-${semanticCalls}-${personalityCalls}`,type:'message',role:'assistant',model:'claude-haiku-5-5',content:[{type:'text',text:JSON.stringify(value)}],stop_reason:'end_turn',stop_sequence:null,usage:{input_tokens:100,output_tokens:100}});
+ };
+ const prepared=await prepareHybridExplore(input,dependencies(fetcher));assert.equal(prepared.kind,'ready');if(prepared.kind!=='ready')throw Error('Expected MRT preparer');
+ const world=createSociety({...preview().genesis.input,question:input.request.question}),grounded=await prepared.citizenGrounding(world);assert.equal(semanticCalls,1);assert.equal(personalityCalls,1);assert.equal(grounded.version,2);if(grounded.version!==2)throw Error('Expected hybrid grounding');
+ assert.equal(grounded.hybridBinding.version,2);if(grounded.hybridBinding.version!==2)throw Error('Expected handoff provenance');
+ assert.equal(grounded.hybridBinding.interpretation.generation?.requestedModel,'claude-haiku-5-5');assert.equal(grounded.hybridBinding.interpretation.generation?.servingProvider,'Anthropic');
+ assert.equal(grounded.personalities.generation.requestedModel,'claude-haiku-5-5');assert.equal(grounded.personalities.generation.servingModel,'claude-haiku-5-5');assert.equal(grounded.personalities.generation.servingProvider,'Anthropic');assert.equal(grounded.personalities.generation.costUsd,null);
+ assert.equal(grounded.personalities.generation.usageBasis,'provider-reported-tokens-cost-unknown');assert.match(grounded.personalities.generation.wireRequestDigest??'',/^[a-f0-9]{64}$/);
+ const {validateHybridBinding}=await import('../../interventions/binding.ts');assert.deepEqual(await validateHybridBinding(structuredClone(grounded.hybridBinding)),grounded.hybridBinding);
+ const {validateCitizenGroundingAsync}=await import('../../citizen-grounding/social.ts');await validateCitizenGroundingAsync(structuredClone(grounded),world.genesis.input.population,world.agents.map(a=>a.id),controlledIds(world));
+ assert.deepEqual(prepared.publicGrounding().interpretation,{calls:1,inputTokens:100,outputTokens:100,costUsd:null});assert.equal(prepared.publicGrounding().personalities.modelGenerated,35);assert.equal(prepared.publicGrounding().personalities.costUsd,null);
+});

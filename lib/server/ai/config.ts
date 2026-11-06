@@ -20,13 +20,13 @@ function boundedInteger(raw: string | undefined, fallback: number, max: number, 
 /** Server-side environment only. No default provider or model, and no key-based guessing. */
 export function readAiConfig(env: Record<string, string | undefined> = process.env): AiConfig {
   const provider = env.AI_PROVIDER?.trim();
-  if (provider !== 'gemini' && provider !== 'openrouter') {
-    throw new AiError('Set AI_PROVIDER to gemini or openrouter to enable AI.', 'AI_CONFIG', 503);
+  if (provider !== 'gemini' && provider !== 'openrouter' && provider !== 'anthropic') {
+    throw new AiError('Set AI_PROVIDER to gemini, openrouter or anthropic to enable AI.', 'AI_CONFIG', 503);
   }
-  const prefix = provider === 'gemini' ? 'GEMINI' : 'OPENROUTER';
+  const prefix = provider === 'gemini' ? 'GEMINI' : provider === 'anthropic' ? 'ANTHROPIC' : 'OPENROUTER';
   const rawModel = env[`${prefix}_MODEL`]?.trim() ?? '';
   const model = provider === 'gemini' ? rawModel.replace(/^models\//, '') : rawModel;
-  const pattern = provider === 'gemini' ? /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/ : /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._:-]*$/;
+  const pattern = provider === 'gemini' || provider === 'anthropic' ? /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/ : /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._:-]*$/;
   if (!pattern.test(model) || model.length > 256 || model.includes('..')) {
     throw new AiError(`Set ${prefix}_MODEL to an explicit valid model ID from the provider catalogue.`, 'AI_CONFIG', 503);
   }

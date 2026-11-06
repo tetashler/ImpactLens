@@ -1,3 +1,5 @@
+import {configuredInferenceKey} from './inference/route.ts';
+import {aiRateLimitHeaders} from './ai/rate-limit.ts';
 import {ASSUMPTION_REVIEW_INSTRUCTION} from '../assumption-review/contract.ts';
 import {createHash} from 'node:crypto';
 import {existsSync, readFileSync, statSync, readdirSync} from 'node:fs';
@@ -101,9 +103,9 @@ const defaultService = createReportSummaryService({
     if(!run.session||!run.society)return {version:1,scope:'No accepted public discussion is available.',initialStatements:0,followupStatements:0,omitted:0,statements:[],nodes:[]};
     return (await import('./society/public-service.ts')).readPublicReportDiscussion(run.runId,token,run.session.revision,run.society.tick);
   },
-  generate: async evidence => createReportSummaryGenerator({key: process.env.OPENROUTER_API_KEY ?? ''})(evidence),
+  generate: async evidence => createReportSummaryGenerator({key: configuredInferenceKey()})(evidence),
 });
-const response = (value: unknown, status = 200) => Response.json(value, {status, headers: {'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', Vary: 'Authorization'}});
+const response = (value: unknown, status = 200, extraHeaders:Record<string,string>={}) => Response.json(value, {status, headers: {'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', Vary: 'Authorization',...extraHeaders}});
 export async function handleReportSummary(request: Request, service = defaultService) {
   try {
     const url = new URL(request.url), origin = request.headers.get('origin');
@@ -131,7 +133,7 @@ export async function handleReportSummary(request: Request, service = defaultSer
     if (typeof runId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(runId)) throw new AiError('Invalid run.', 'REPORT_REQUEST', 400);
     return response(request.method === 'GET' ? await service.read(runId, token) : {summary: await service.generate(runId, token, expected as string)});
   } catch (error) {
-    if (error instanceof AiError) return response({error: error.code, message: error.message}, error.status);
+    if (error instanceof AiError) return response({error: error.code, message: error.message}, error.status, aiRateLimitHeaders(error));
     const code = error instanceof Error ? error.message : '';
     if (['PUBLIC_ACCESS', 'PUBLIC_ID'].includes(code) || (error as NodeJS.ErrnoException)?.code === 'ENOENT') return response({error: 'REPORT_ACCESS', message: 'Report access denied.'}, 403);
     return response({error: 'REPORT_UNAVAILABLE', message: 'The summary is unavailable. The original report remains available.'}, 503);

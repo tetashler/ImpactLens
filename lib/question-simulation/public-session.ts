@@ -72,6 +72,14 @@ export function parsePublicExplore(value:unknown):PublicExplore{
  for(const i of Object.values(v.inspections as Record<string,any>))ensure(Array.isArray(i.interactions)&&i.interactions.length===0);
  return freezeSnapshot(v) as unknown as PublicExplore;
 }
+/** Trusted browser error: server response prose never enters its message. */
+export class ScenarioRateLimitError extends Error {
+ constructor(retryAfterSeconds?:unknown){
+  const seconds=typeof retryAfterSeconds==='number'&&Number.isSafeInteger(retryAfterSeconds)&&retryAfterSeconds>=1&&retryAfterSeconds<=86400?retryAfterSeconds:null;
+  super('The AI provider rate limit was reached. '+(seconds===null?'Try again later.':`Wait at least ${seconds} seconds before trying again; the provider may require longer.`)+' No automatic retry was made.');
+  this.name='ScenarioRateLimitError';
+ }
+}
 export class PublicScenarioSession extends StakeholderRequestGate{
  private review:{draft:AssumptionReviewDraft;key:string;input:DynamicRequest}|null=null;
  private async send(payload:unknown,key:string,fetcher:typeof fetch,timeoutMs:number){
@@ -89,6 +97,7 @@ export class PublicScenarioSession extends StakeholderRequestGate{
   const input=parseDynamicRequest(value);this.discard(fetcher);
   // The transport's preparation attempt is an unguessable identity independent of UI revisions.
   const attemptId='review-'+crypto.randomUUID(),result=await this.send({version:3,operation:'prepare',attemptId,request:input,...(hybrid?{hybrid:parseHybridExploreOptions(hybrid)}:{})},key,fetcher,Math.min(timeoutMs,130000));if(!result)return null;const {response,body}=result;
+  if(response.status===429&&(body?.code==='AI_RATE_LIMIT'||body?.error==='AI_RATE_LIMIT')&&body?.kind!=='planning-failed')throw new ScenarioRateLimitError(body.retryAfterSeconds);
   if(body.kind==='hybrid-map-review'){const r=parseHybridReview(body);ensure(r.question===input.question&&r.geometryRevision===input.geometryRevision);return r;}
   if(body.kind==='planning-failed'){const failed=await validateDynamicResponse(body,{version:1,attemptId,request:input});ensure(failed.kind==='planning-failed');return failed;}
   ensure(response.ok&&body.kind==='assumption-review','The assumptions could not be prepared safely.');const draft=parseAssumptionReviewDraft(body);
