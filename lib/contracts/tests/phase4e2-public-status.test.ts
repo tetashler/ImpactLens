@@ -51,7 +51,7 @@ test('a managed new-policy job stops after an uncertain upstream failure and kee
   const r=await handlePublicExplore(new Request('http://localhost/api/scenario-simulate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:1,attemptId:'multiday-upstream-'+crypto.randomUUID(),request:f.request})}),{enabled:true,key:'offline',groundingKey:'',fetcher},d);
   assert.equal(r.status,200);const initial=await r.json(),query='runId='+encodeURIComponent(initial.runId)+'&token='+initial.session.token;let status:any;
   for(let i=0;i<400;i++){status=await(await handlePublicSocial(new Request('http://localhost/api/social-simulate?operation=status&'+query),d)).json();if(status.job.status!=='running')break;await new Promise(resolve=>setTimeout(resolve,5));}
-  assert.equal(status.job.status,'failed');assert.equal(status.job.reason,'OPERATION');assert.equal(status.job.acceptedDecisions,1);assert.equal(calls,2);
+  assert.equal(status.job.status,'failed');assert.equal(status.job.reason,'PROVIDER_UNAVAILABLE');assert.equal(status.job.acceptedDecisions,1);assert.equal(calls,2);
   const final=parsePublicExplore(await(await handlePublicSocial(new Request('http://localhost/api/social-simulate?'+query),d)).json());assert.equal(final.society?.phase,'partial');assert.equal(final.society?.usage.accepted,1);assert.equal(final.society?.usage.failed,1);assert.equal(final.society?.usage.calls,2);assert.doesNotMatch(JSON.stringify(final),/RAW_UNCERTAIN_PRIVATE/);
   for(let i=0;i<3;i++)await handlePublicSocial(new Request('http://localhost/api/social-simulate?'+query),d);assert.equal(calls,2);
  }finally{await stopCoordinators(join(d.storeDirectory,'jobs'));rmSync(directory,{recursive:true,force:true});}

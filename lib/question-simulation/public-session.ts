@@ -1,3 +1,5 @@
+import {parseSocietyLink} from '../society/link-detail-contract.ts';
+import {PROVIDER_JOB_REASONS} from '../society/job-failure.ts';
 import {parseAssumptionReview,parseAssumptionReviewDraft,parseAssumptionDecisions,assumptionContextKey,type AssumptionReviewDraft,type AssumptionDecision} from '../assumption-review/contract.ts';
 import {parseHybridExploreOptions,parseHybridReview,parseHybridPublicGrounding,type HybridExploreOptions,type HybridReview} from '../interventions/explore-contract.ts';
 import {parseResearchBriefing} from '../grounding/briefing.ts';
@@ -26,7 +28,7 @@ export function parseSocietyJob(value:unknown):import('../society/public-contrac
  for(const key of ['tick','totalSteps','acceptedDecisions','participatingAgents','capacity','admittedCalls','remainingCalls','revision'])natural(j[key],10000);
  ensure((j.tick as number)<=(j.totalSteps as number)&&(profile?j.totalSteps===profile.steps&&j.capacity===profile.decisions&&(j.acceptedDecisions as number)<=profile.decisions&&(j.participatingAgents as number)<=profile.modelAgents:(j.totalSteps as number)<=144&&(j.capacity as number)<=700&&(j.participatingAgents as number)<=70));
  ensure((j.admittedCalls as number)<=(j.capacity as number)&&(j.remainingCalls as number)<=(j.admittedCalls as number));
- ensure(j.reason===null||['APPLICATION_RESTART','DEADLINE','PROVIDER_BUDGET','PROVIDER_IDENTITY','STORAGE','ACCESS','OPERATION','EVENT_CAPACITY','ITEM_CAPACITY','STORAGE_CAPACITY','JOURNAL_CAPACITY'].includes(j.reason as string));
+ ensure(j.reason===null||['APPLICATION_RESTART','DEADLINE','PROVIDER_BUDGET','PROVIDER_IDENTITY',...PROVIDER_JOB_REASONS,'STORAGE','ACCESS','OPERATION','EVENT_CAPACITY','ITEM_CAPACITY','STORAGE_CAPACITY','JOURNAL_CAPACITY'].includes(j.reason as string));
  return freezeSnapshot(j) as unknown as import('../society/public-contract.ts').SocietyJobSummary;
 }
 function parseClock(value:unknown,profile:Readonly<ExecutionProfile>,tick:number){
@@ -55,6 +57,7 @@ export function parsePublicExplore(value:unknown):PublicExplore{
  }
  if(v.society){
   const required=['version','runId','worldId','phase','tick','totalSteps','minutes','counts','platforms','groups','agents','links','map','usage','limitations'];const s=object(v.society,[...required,'conversation','swarm','clock','issueDeclarations'],required);
+  ensure(Array.isArray(s.links)&&s.links.length<=30000);for(const link of s.links)parseSocietyLink(link);
   ensure(s.version===2&&s.runId===v.runId&&Array.isArray(s.agents)&&s.agents.length<=100&&Array.isArray(s.groups)&&s.groups.length<=8&&Array.isArray(s.platforms)&&s.platforms.length<=4);
   const policy=(s.swarm as {executionPolicy?:string}|undefined)?.executionPolicy,profile=policy==='multi-day-swarm-v1'?selectedProfile((s.swarm as {profileId?:unknown}).profileId):null,deep=policy==='deep-swarm-v1'||!!profile;const maxDecisions=profile?.decisions??(deep?700:s.swarm?128:16);if(v.job!==undefined){const j=v.job as Record<string,unknown>;ensure(profile?j.profileId===profile.id&&j.totalSteps===s.totalSteps:j.profileId===undefined);}
   if(profile){natural(s.tick,profile.steps);ensure(s.totalSteps===profile.steps&&s.agents.length===profile.agents);parseClock(s.clock,profile,s.tick as number);}else ensure(s.clock===undefined);if(s.swarm){const fields=['version','activeAgents','llmCapableAgents','ruleDrivenAgents','offeredAgents','acceptedAgents','opportunities','acceptedDecisions','rejectedDecisions','skippedDecisions','modelAuthoredItems','ruleAuthoredItems','reads','reactions','deterministicStateChanges','maxPerAgent','maxCalls','perAgent'];const c=object(s.swarm,[...fields,'executionPolicy','profileId'],fields);if(c.executionPolicy!==undefined)ensure(['deep-swarm-v1','multi-day-swarm-v1'].includes(c.executionPolicy as string));if(profile)ensure(c.profileId===profile.id&&c.maxPerAgent===profile.maxPerAgent&&c.maxCalls===profile.decisions&&c.llmCapableAgents===profile.modelAgents);else ensure(c.profileId===undefined);ensure(c.version===1&&c.activeAgents===s.agents.length&&Array.isArray(c.perAgent)&&c.perAgent.length===c.llmCapableAgents);for(const key of fields.filter(k=>!['version','perAgent'].includes(k)))ensure(Number.isSafeInteger(c[key])&&(c[key] as number)>=0&&(c[key] as number)<=8192);ensure((c.llmCapableAgents as number)+(c.ruleDrivenAgents as number)===c.activeAgents&&(c.llmCapableAgents as number)<=70&&(c.maxCalls as number)<=maxDecisions&&(c.opportunities as number)<=(c.maxCalls as number)&&(c.maxPerAgent as number)<=(deep?16:8));const ids=new Set();for(const row of c.perAgent){const a=object(row,['agentId','offered','accepted']);ensure(typeof a.agentId==='string'&&!ids.has(a.agentId)&&(s.agents as any[]).some(p=>p.id===a.agentId)&&Number.isSafeInteger(a.offered)&&Number.isSafeInteger(a.accepted)&&(a.accepted as number)>=0&&(a.accepted as number)<=(a.offered as number)&&(a.offered as number)<=(c.maxPerAgent as number));ids.add(a.agentId);}}
@@ -68,6 +71,14 @@ export function parsePublicExplore(value:unknown):PublicExplore{
  }
  for(const i of Object.values(v.inspections as Record<string,any>))ensure(Array.isArray(i.interactions)&&i.interactions.length===0);
  return freezeSnapshot(v) as unknown as PublicExplore;
+}
+/** Trusted browser error: server response prose never enters its message. */
+export class ScenarioRateLimitError extends Error {
+ constructor(retryAfterSeconds?:unknown){
+  const seconds=typeof retryAfterSeconds==='number'&&Number.isSafeInteger(retryAfterSeconds)&&retryAfterSeconds>=1&&retryAfterSeconds<=86400?retryAfterSeconds:null;
+  super('The AI provider rate limit was reached. '+(seconds===null?'Try again later.':`Wait at least ${seconds} seconds before trying again; the provider may require longer.`)+' No automatic retry was made.');
+  this.name='ScenarioRateLimitError';
+ }
 }
 export class PublicScenarioSession extends StakeholderRequestGate{
  private review:{draft:AssumptionReviewDraft;key:string;input:DynamicRequest}|null=null;
@@ -86,6 +97,7 @@ export class PublicScenarioSession extends StakeholderRequestGate{
   const input=parseDynamicRequest(value);this.discard(fetcher);
   // The transport's preparation attempt is an unguessable identity independent of UI revisions.
   const attemptId='review-'+crypto.randomUUID(),result=await this.send({version:3,operation:'prepare',attemptId,request:input,...(hybrid?{hybrid:parseHybridExploreOptions(hybrid)}:{})},key,fetcher,Math.min(timeoutMs,130000));if(!result)return null;const {response,body}=result;
+  if(response.status===429&&(body?.code==='AI_RATE_LIMIT'||body?.error==='AI_RATE_LIMIT')&&body?.kind!=='planning-failed')throw new ScenarioRateLimitError(body.retryAfterSeconds);
   if(body.kind==='hybrid-map-review'){const r=parseHybridReview(body);ensure(r.question===input.question&&r.geometryRevision===input.geometryRevision);return r;}
   if(body.kind==='planning-failed'){const failed=await validateDynamicResponse(body,{version:1,attemptId,request:input});ensure(failed.kind==='planning-failed');return failed;}
   ensure(response.ok&&body.kind==='assumption-review','The assumptions could not be prepared safely.');const draft=parseAssumptionReviewDraft(body);

@@ -11,7 +11,10 @@ export interface KnowledgeNode {
 }
 export const RELATIONSHIPS=['declares','contains','connects','ordered-before','uses','produces','describes','supported-by','limited-by','requires','plans','located-at','represents','compares','has-metric'] as const;
 export type KnowledgeRelationship=typeof RELATIONSHIPS[number];
-export interface KnowledgeEdge {id:string;source:string;target:string;relationship:KnowledgeRelationship;relationshipLabel?:string;description:string;provenance:KnowledgeProvenance;directed:boolean}
+/** Reader-facing explanation of a relationship. Aggregate values only. */
+export type EdgeBasis='assumed'|'recorded'|'proposed'|'reported';
+export interface EdgeDetail {label:string;basis:EdgeBasis;headline:string;interaction?:string;where?:string;about?:string;outcome?:string;note?:string}
+export interface KnowledgeEdge {id:string;source:string;target:string;relationship:KnowledgeRelationship;relationshipLabel?:string;description:string;provenance:KnowledgeProvenance;directed:boolean;detail?:EdgeDetail}
 export interface KnowledgeGraph {version:1;scenarioIdentity:string;executionIdentity?:string;nodes:KnowledgeNode[];edges:KnowledgeEdge[];limitations:string[]}
 export const GRAPH_LIMITS={nodes:1500,edges:6000,bytes:3_000_000,label:180,description:2000,details:8000,identity:160_000} as const;
 function ensure(value:unknown,message='Invalid knowledge graph'):asserts value {if(!value)throw new Error(message);}
@@ -41,9 +44,9 @@ export function parseKnowledgeGraph(value:unknown):KnowledgeGraph {
     for(const [key,value]of entries){text(key,100);ensure(!['__proto__','prototype','constructor'].includes(key));if(typeof value==='string')text(value,2000);else ensure(value===null||typeof value==='boolean'||typeof value==='number'&&Number.isFinite(value));}
   }
   for(const v of Array.from(g.edges)){
-    const e=object(v,['id','source','target','relationship','relationshipLabel','description','provenance','directed'],['id','source','target','relationship','description','provenance','directed']);if(e.relationshipLabel!==undefined)displayType(e.relationshipLabel);identifier(e.id);ensure(!edges.has(e.id)&&!nodes.has(e.id),'Duplicate knowledge identity');edges.add(e.id);
+    const e=object(v,['id','source','target','relationship','relationshipLabel','description','provenance','directed','detail'],['id','source','target','relationship','description','provenance','directed']);if(e.relationshipLabel!==undefined)displayType(e.relationshipLabel);identifier(e.id);ensure(!edges.has(e.id)&&!nodes.has(e.id),'Duplicate knowledge identity');edges.add(e.id);
     ensure(typeof e.source==='string'&&typeof e.target==='string'&&nodes.has(e.source)&&nodes.has(e.target),'Unknown knowledge endpoint');ensure(RELATIONSHIPS.includes(e.relationship as KnowledgeRelationship));
-    text(e.description,GRAPH_LIMITS.description);ensure(typeof e.directed==='boolean');provenance(e.provenance);
+    text(e.description,GRAPH_LIMITS.description);ensure(typeof e.directed==='boolean');provenance(e.provenance);if(e.detail!==undefined){const x=object(e.detail,['label','basis','headline','interaction','where','about','outcome','note'],['label','basis','headline']);ensure(['assumed','recorded','proposed','reported'].includes(x.basis as string),'Invalid edge detail');displayType(x.label);for(const k of ['headline','interaction','where','about','outcome','note'])if(x[k]!==undefined){text(x[k],400);ensure(!/[<>]/.test(x[k] as string),'Invalid edge detail');}}
   }
   ensure(new TextEncoder().encode(JSON.stringify(value)).byteLength<=GRAPH_LIMITS.bytes,'Knowledge graph exceeds payload budget');
   return structuredClone(value) as KnowledgeGraph;

@@ -26,7 +26,7 @@ export function boundChatMessages(history:ChatMessage[],question:string):ChatMes
 }
 export interface AiRequest extends AiIdentity {agentId?:string;messages?:ChatMessage[]}
 export type AiKind='dashboard'|'explain'|'citizen-chat';
-export interface AiResponse {version:1;kind:AiKind;identity:AiIdentity;agentId:string|null;provider:'gemini'|'openrouter';model:string;usage:{inputTokens:number|null;outputTokens:number|null;totalTokens:number|null};output:DashboardLayout|ExplanationSelection|ChatSelection}
+export interface AiResponse {version:1;kind:AiKind;identity:AiIdentity;agentId:string|null;provider:'gemini'|'openrouter'|'anthropic';model:string;usage:{inputTokens:number|null;outputTokens:number|null;totalTokens:number|null};output:DashboardLayout|ExplanationSelection|ChatSelection}
 
 export function fallbackLayout():DashboardLayout {return {version:1,title:TITLES[0],kpis:['benefitShare','meanSaved','benefiting','unassigned'],chart:{dimension:'ageGroup',type:'benefit-bars',sort:'name'},notes:['assumed-demand','unknown-outcomes','no-causality']};}
 function fail():never {throw new Error('AI response does not match the approved presentation schema.');}
@@ -65,5 +65,5 @@ export function parseAiResponse(v:unknown,kind:AiKind,expected:AiIdentity,groups
   if(o.kind!==kind||i.runId!==expected.runId||i.requestId!==expected.requestId||o.agentId!==(agentId??null))fail();
   if(typeof o.model!=='string'||o.model.length<1||o.model.length>256)fail();
   const usage=obj(o.usage,['inputTokens','outputTokens','totalTokens']);for(const v of Object.values(usage))if(v!==null&&(!Number.isSafeInteger(v)||(v as number)<0))fail();
-  return {version:1,kind,identity:{runId:expected.runId,requestId:expected.requestId},agentId:agentId??null,provider:one(o.provider,['gemini','openrouter']),model:o.model,usage:usage as AiResponse['usage'],output:kind==='dashboard'?parseDashboardLayout(o.output):kind==='explain'?parseExplanation(o.output,groups):parseChatSelection(o.output)};
+  return {version:1,kind,identity:{runId:expected.runId,requestId:expected.requestId},agentId:agentId??null,provider:one(o.provider,['gemini','openrouter','anthropic']),model:o.model,usage:usage as AiResponse['usage'],output:kind==='dashboard'?parseDashboardLayout(o.output):kind==='explain'?parseExplanation(o.output,groups):parseChatSelection(o.output)};
 }

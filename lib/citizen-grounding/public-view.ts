@@ -1,6 +1,7 @@
 /** Citizen policy only: bounded relationship display, never a replacement for authoritative records. */
-import {ensure,object} from '../experiments/validation.ts';
+import {ensure} from '../experiments/validation.ts';
 import type {SocietySummary} from '../society/public-contract.ts';
+import {parseSocietyLink} from '../society/link-detail-contract.ts';
 const kinds=['RECORDED_INFORMATION_TRANSFER','RECORDED_PUBLIC_INTERACTION','ASSUMED_SOCIAL_TIE'] as const;
 type Link=SocietySummary['links'][number];
 const bytes=(v:unknown)=>new TextEncoder().encode(JSON.stringify(v)).length;
@@ -10,7 +11,7 @@ const compare=(a:Link,b:Link)=>assumed(a)-assumed(b)||b.count-a.count||key(a).lo
 
 export function projectCitizenPublicView(summary:SocietySummary):SocietySummary{
  ensure(summary.agents.length<=100&&summary.links.length<=30000&&!summary.limitations.some(l=>l.startsWith('citizen-public-view-v1:')),'CITIZEN_PUBLIC_PROJECTION_INPUT');
- const seen=new Set<string>();for(const l of summary.links){object(l,['source','target','kind','count']);ensure([l.source,l.target].every(id=>typeof id==='string'&&id.length>0&&id.length<=200)&&kinds.includes(l.kind as typeof kinds[number])&&Number.isSafeInteger(l.count)&&l.count>0&&!seen.has(key(l)),'CITIZEN_PUBLIC_LINK');seen.add(key(l));}
+ const seen=new Set<string>();for(const l of summary.links){parseSocietyLink(l);ensure(!seen.has(key(l)),'CITIZEN_PUBLIC_LINK');seen.add(key(l));}
  const sorted=[...summary.links].sort(compare),sources=new Map<string,Link>();for(const l of sorted)if(!sources.has(l.source))sources.set(l.source,l);ensure(sources.size<=256,'CITIZEN_PUBLIC_SOURCE_BOUND');
  const first=[...sources.values()].sort((a,b)=>assumed(a)-assumed(b)||a.source.localeCompare(b.source,'en')),selectedKeys=new Set(first.map(key));
  let links=[...first,...sorted.filter(l=>!selectedKeys.has(key(l)))].slice(0,256);

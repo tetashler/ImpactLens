@@ -4,19 +4,22 @@ import {createResearchBriefing,researchForActor} from '../../grounding/briefing.
 import {createHash} from 'node:crypto';
 import {canonical} from '../../experiments/validation.ts';
 import {inferenceAdmissionFor,isInferenceNoDispatchV1,type InferenceAdmissionV1,type InferenceAdmissionReceiptV1} from './admission.ts';
-/** Server-only OpenRouter transport. Fixed route, one generated action per request, no retries. */
+/** Server-only transport. Explicit route, one generated action per request, no retries. */
 import {contextForAgent} from '../../demographics/scenario-context.ts';
 import {PlannerValidationError,plannerDiagnostic,type PlannerDiagnostic} from '../../dynamic-scenarios/diagnostics.ts';
 import {AiError} from '../ai/errors.ts';
 import {fetchJson,withDeadline,encodeInput,object,tokenCount,invalidResponse} from '../ai/http.ts';
+import {prepareAnthropicMessages,anthropicHeaders} from '../ai/anthropic-messages.ts';
+import {activeInferenceRoute} from './route.ts';
+import type {InferenceModel,InferenceProvider,InferenceServingProvider} from '../../inference/model-identity.ts';
 import {parseStakeholderTurnOutput,type TurnContext,type StakeholderTurnOutput} from '../../stakeholder-simulation/contract.ts';
 import {INFERENCE_REJECTION_MESSAGES,turnRejectionCode,actionValidationRule,type ActionValidationRule,safeFinishReason,type InferenceTerminationV1,type InferenceRejectionCode} from '../../stakeholder-simulation/inference-errors.ts';
 const rejection=(code:InferenceRejectionCode)=>new AiError(INFERENCE_REJECTION_MESSAGES[code],code,502);
 export const MODEL='deepseek/deepseek-v4-flash-0731';
 export const PROVIDER='digitalocean';
 export interface InferenceCallRecord {
-  requestedModel:typeof MODEL;requestedProvider:typeof PROVIDER;
-  servingModel:typeof MODEL|null;servingProvider:'DigitalOcean'|null;identityVerification:'completion'|'generation-details'|'unverified';
+  requestedModel:InferenceModel;requestedProvider:InferenceProvider;
+  servingModel:InferenceModel|null;servingProvider:InferenceServingProvider|null;identityVerification:'completion'|'generation-details'|'unverified';
   generationId:string|null;inputTokens:number|null;outputTokens:number|null;totalTokens:number|null;costUsd:number|null;
   status:'accepted'|'failed';errorCode:string|null;durationMs:number;
   termination?:InferenceTerminationV1;
@@ -67,12 +70,13 @@ const generationId=(v:unknown):string|null=>typeof v==='string'&&/^[A-Za-z0-9][A
 const digitalOcean=(v:unknown)=>typeof v==='string'&&v.toLowerCase()==='digitalocean';
 export interface StructuredSpec<C,T>{name:string;system:string;systemFor?:(context:C)=>string;schema:(context:C)=>unknown;encode:(context:C)=>string;parse:(value:unknown,context:C)=>T;outputLimit:number;defaultOutput:number;contentBytes:number;timeoutLimit?:number;planner?:boolean;validateRecord?:(record:Readonly<InferenceCallRecord>)=>void;diagnose?:(error:unknown)=>string|{rule:string;path:string}|undefined}
 export function createStructuredTransport<C,T>(options:DeepseekTransportOptions,spec:StructuredSpec<C,T>){
-  if(typeof options.key!=='string'||!options.key.trim()||/[\r\n]/.test(options.key))throw new AiError('OPENROUTER_API_KEY is not configured.','AI_CONFIG',503);
+  const route=activeInferenceRoute(),anthropic=route.provider==='anthropic';
+  if(typeof options.key!=='string'||!options.key.trim()||/[\r\n]/.test(options.key))throw new AiError((anthropic?'ANTHROPIC':'OPENROUTER')+'_API_KEY is not configured.','AI_CONFIG',503);
   const timeoutMs=options.timeoutMs??30000,maxOutputTokens=options.maxOutputTokens??spec.defaultOutput;
   if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>(spec.timeoutLimit??30000)||!Number.isSafeInteger(spec.timeoutLimit??30000)||(spec.timeoutLimit??30000)<1||(spec.timeoutLimit??30000)>45000||!Number.isSafeInteger(maxOutputTokens)||maxOutputTokens<1||maxOutputTokens>spec.outputLimit||spec.outputLimit>6000)throw new AiError('Invalid bounded inference configuration.','AI_CONFIG',503);
   const records:InferenceCallRecord[]=[];const fetcher=options.fetcher??fetch;
   async function generate(context:C,signal?:AbortSignal):Promise<{value:T;record:InferenceCallRecord}>{
-    const start=Date.now();const record:InferenceCallRecord={requestedModel:MODEL,requestedProvider:PROVIDER,servingModel:null,servingProvider:null,identityVerification:'unverified',generationId:null,inputTokens:null,outputTokens:null,totalTokens:null,costUsd:null,status:'failed',errorCode:null,durationMs:0};
+    const start=Date.now();const record:InferenceCallRecord={requestedModel:route.model,requestedProvider:route.provider,servingModel:null,servingProvider:null,identityVerification:'unverified',generationId:null,inputTokens:null,outputTokens:null,totalTokens:null,costUsd:null,status:'failed',errorCode:null,durationMs:0};
     const termination:InferenceTerminationV1={httpStatus:null,finishReason:null,nativeFinishReason:null,reasoningTokens:null,requestedOutputTokens:maxOutputTokens,jsonValid:null,actionValid:null};record.termination=termination;
     let admission:InferenceAdmissionV1|undefined,receipt:InferenceAdmissionReceiptV1|undefined,fetchInvoked=false,provenNoDispatch=false,receiptCleanupFailed=false;
     const active=(boundedSignal:AbortSignal|undefined,deadline=Infinity)=>{
@@ -97,8 +101,9 @@ export function createStructuredTransport<C,T>(options:DeepseekTransportOptions,
       const prepareRequest=async(boundedSignal:AbortSignal,deadline=Infinity)=>{
         active(boundedSignal,deadline);
         const prompt=spec.encode(context);
-        const requestBody={model:MODEL,provider:{only:[PROVIDER],allow_fallbacks:false,require_parameters:true},stream:false,reasoning:{effort:'none',exclude:true},max_tokens:maxOutputTokens,response_format:{type:'json_schema',json_schema:{name:spec.name,strict:true,schema:spec.schema(context)}},messages:[{role:'system',content:spec.systemFor?.(context)??spec.system},{role:'user',content:prompt}]};
-        const url='https://openrouter.ai/api/v1/chat/completions';
+        const preparedAnthropic=anthropic?prepareAnthropicMessages({model:route.model,system:spec.systemFor?.(context)??spec.system,user:prompt,schema:spec.schema(context),maxOutputTokens}):null;
+        const requestBody=preparedAnthropic?.requestBody??{model:MODEL,provider:{only:[PROVIDER],allow_fallbacks:false,require_parameters:true},stream:false,reasoning:{effort:'none',exclude:true},max_tokens:maxOutputTokens,response_format:{type:'json_schema',json_schema:{name:spec.name,strict:true,schema:spec.schema(context)}},messages:[{role:'system',content:spec.systemFor?.(context)??spec.system},{role:'user',content:prompt}]};
+        const url=preparedAnthropic?.url??'https://openrouter.ai/api/v1/chat/completions';
         if(options.beforeDispatch)await options.beforeDispatch({requestBody:structuredClone(requestBody),requestBodySha256:createHash('sha256').update(canonical(requestBody)).digest('hex'),url,method:'POST'});
         active(boundedSignal,deadline);
         const body=JSON.stringify(requestBody);
@@ -107,7 +112,20 @@ export function createStructuredTransport<C,T>(options:DeepseekTransportOptions,
       };
       const runProvider=async(prepared:{url:string;body:string},boundedSignal:AbortSignal)=>{
         active(boundedSignal,admission?.deadlineMs);
-        const raw=object(await checkedJson(prepared.url,{method:'POST',headers:{Authorization:`Bearer ${options.key}`,'Content-Type':'application/json'},signal:boundedSignal,body:prepared.body},false,status=>{termination.httpStatus=status;}));
+        const raw=object(await checkedJson(prepared.url,{method:'POST',headers:anthropic?anthropicHeaders(options.key):{Authorization:`Bearer ${options.key}`,'Content-Type':'application/json'},signal:boundedSignal,body:prepared.body},false,status=>{termination.httpStatus=status;}));
+        let choice:Record<string,unknown>,message:Record<string,unknown>;
+        if(anthropic){
+          const usage=object(raw.usage),input=tokenCount(usage.input_tokens),cacheRead=usage.cache_read_input_tokens===undefined?0:tokenCount(usage.cache_read_input_tokens),cacheWrite=usage.cache_creation_input_tokens===undefined?0:tokenCount(usage.cache_creation_input_tokens);
+          // This route explicitly disables Haiku thinking; no hidden reasoning allocation is requested.
+          termination.reasoningTokens=0;
+          record.inputTokens=input!==null&&cacheRead!==null&&cacheWrite!==null?input+cacheRead+cacheWrite:null;record.outputTokens=tokenCount(usage.output_tokens);record.totalTokens=record.inputTokens!==null&&record.outputTokens!==null?record.inputTokens+record.outputTokens:null;record.generationId=generationId(raw.id);
+          // The direct endpoint establishes the provider; the returned model must still match exactly.
+          if(raw.model!==route.model)throw identityError();
+          record.servingModel=route.model;record.servingProvider='Anthropic';record.identityVerification='completion';
+          if(raw.type!=='message'||raw.role!=='assistant'||!Array.isArray(raw.content)||raw.content.length!==1||object(raw.content[0]).type!=='text')throw rejection('AI_RESPONSE_ENVELOPE');
+          choice={finish_reason:raw.stop_reason==='end_turn'?'stop':raw.stop_reason==='max_tokens'?'length':raw.stop_reason==='refusal'?'content_filter':raw.stop_reason==='tool_use'?'tool_calls':'other',native_finish_reason:raw.stop_reason};
+          message={content:object(raw.content[0]).text};
+        }else{
         const usage=object(raw.usage);termination.reasoningTokens=tokenCount(object(usage.completion_tokens_details).reasoning_tokens);record.inputTokens=tokenCount(usage.prompt_tokens);record.outputTokens=tokenCount(usage.completion_tokens);record.totalTokens=tokenCount(usage.total_tokens);record.costUsd=cost(usage.cost);record.generationId=generationId(raw.id);
         if(raw.model===MODEL)record.servingModel=MODEL;
         if(digitalOcean(raw.provider))record.servingProvider='DigitalOcean';
@@ -123,7 +141,8 @@ export function createStructuredTransport<C,T>(options:DeepseekTransportOptions,
           if(record.totalTokens===null&&record.inputTokens!==null&&record.outputTokens!==null)record.totalTokens=record.inputTokens+record.outputTokens;
         }
         if(!Array.isArray(raw.choices)||raw.choices.length!==1)throw rejection('AI_RESPONSE_ENVELOPE');
-        const choice=object(raw.choices[0]),message=object(choice.message);
+        choice=object(raw.choices[0]);message=object(choice.message);
+        }
         termination.finishReason=safeFinishReason(choice.finish_reason);termination.nativeFinishReason=safeFinishReason(choice.native_finish_reason);
         // Inspect bounded content for safe diagnostics, but never accept non-normal termination.
         let parsed:T|undefined,contentError:InferenceRejectionCode|undefined;

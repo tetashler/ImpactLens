@@ -64,6 +64,16 @@ test('connection details distinguish configuration from serving identity verific
  const question='What if Singapore leaves ASEAN?';const html=render({question,landing:true,state:{...state(question),phase:'idle',error:null,inferenceStatus:{version:1,model:INFERENCE_MODEL,gateway:'OpenRouter',provider:'digitalocean',fallback:false,connection:'configured',enabled:true,servingIdentityVerified:false,limits:INFERENCE_LIMITS}}});
  assert.match(html,/configured/i);assert.match(html,/not verified/i);assert.match(html,/Fallbacks disabled/i);assert.match(html,/OpenRouter/);assert.match(html,/120000/);
 });
+test('connection and accepted accounting display Anthropic for Claude executions',async()=>{
+ const {question,run,inference}=await fixture();
+ Object.assign(run.execution,{provider:'anthropic',model:'claude-haiku-5-5'});
+ Object.assign(inference,{requestedModel:'claude-haiku-5-5',requestedProvider:'anthropic'});
+ for(const record of inference.records)Object.assign(record,{requestedModel:'claude-haiku-5-5',requestedProvider:'anthropic',servingModel:'claude-haiku-5-5',servingProvider:'Anthropic'});
+ const accounting=render({run,inference},'InferenceDiagnostics');
+ assert.match(accounting,/claude-haiku-5-5/);assert.match(accounting,/Anthropic/);assert.doesNotMatch(accounting,/DigitalOcean|OpenRouter|DeepSeek/);
+ const connection=render({question,landing:true,state:{...state(question),phase:'idle',error:null,inferenceStatus:{version:1,model:'claude-haiku-5-5',gateway:'Anthropic',provider:'anthropic',fallback:false,connection:'configured',enabled:true,servingIdentityVerified:false,limits:INFERENCE_LIMITS}}});
+ assert.match(connection,/Claude Haiku 5.5/);assert.match(connection,/Anthropic/);assert.doesNotMatch(connection,/DigitalOcean|OpenRouter|DeepSeek/);
+});
 
 test('accepted native MRT and AAC reports recover local heuristic scope after geometry clears preparation',async()=>{
  const mrt:SimulationResponse={serviceDate:'2026-10-27',model:'static-median-travel-time',comparisons:[]};

@@ -1,4 +1,5 @@
 /** Browser-safe frozen v2 interpretation proofs. No dataset, provider or filesystem access. */
+import {verifiedModelIdentity,type InferenceModel,type InferenceServingProvider} from '../inference/model-identity.ts';
 import {assertJsonData,canonical,digest,ensure,freezeSnapshot,hash,object,text} from '../experiments/validation.ts';
 import type {HybridBindingV1} from './binding.ts';
 import type {HybridIntentWire} from './hybrid.ts';
@@ -12,7 +13,7 @@ export const MRT_CAPABILITIES=freezeSnapshot({version:1,policy:'illustrative-mrt
 export interface ConfirmedMrtSelection {serverValidated:true;routeId:string;orderedStationPointIds:string[];anchors:Record<string,string>;timings:{runSeconds:number;dwellSeconds:number;waitingTimeSeconds:number;transferWalkSeconds:number;geometryConfirmed:true;assumptionsConfirmed:true}}
 export interface HandoffSnapshot {version:typeof HANDOFF_POLICY;bindingKey:string;baseContextBindingKey:string;geometryRevision:number;scenarioId:string;catalogueIdentity:{serviceDate:string;fingerprint:string};capabilities:typeof MRT_CAPABILITIES;confirmedSelection:ConfirmedMrtSelection|null}
 export interface HandoffIntentWire extends Omit<HybridIntentWire,'version'> {version:typeof HANDOFF_POLICY}
-export interface AcceptedHandoff {legacyFingerprint:string;context:HandoffSnapshot;result:HandoffIntentWire;source:'deterministic'|'model';generation:null|{requestedModel:string;servingModel:string;servingProvider:string;identityVerification:'completion'|'generation-details';generationId:string|null;requestCanonicalHash:string;outputCanonicalHash:string}}
+export interface AcceptedHandoff {legacyFingerprint:string;context:HandoffSnapshot;result:HandoffIntentWire;source:'deterministic'|'model';generation:null|{requestedModel:InferenceModel;servingModel:InferenceModel;servingProvider:InferenceServingProvider;identityVerification:'completion'|'generation-details';generationId:string|null;requestCanonicalHash:string;outputCanonicalHash:string}}
 
 export function parseAcceptedHandoff(value:unknown,legacy:HybridBindingV1):AcceptedHandoff {
  assertJsonData(value);ensure(new TextEncoder().encode(canonical(value)).length<=12000,'HYBRID_HANDOFF_PROOF_BOUND');
@@ -32,7 +33,7 @@ export function parseAcceptedHandoff(value:unknown,legacy:HybridBindingV1):Accep
  ensure(w.version===HANDOFF_POLICY&&w.bindingKey===c.bindingKey&&canonical({...w,version:'hybrid-map-v1',bindingKey:legacy.contextBindingKey})===canonical(legacy.intent),'HYBRID_HANDOFF_ORIGINAL_RESULT');
  ensure(['deterministic','model'].includes(r.source as string)&&legacy.provenance.classificationSource===(r.source==='model'?'model-inference':'explicit-question'),'HYBRID_HANDOFF_SOURCE');
  if(r.source==='deterministic')ensure(r.generation===null,'HYBRID_HANDOFF_GENERATION');
- else {const g=object(r.generation,['requestedModel','servingModel','servingProvider','identityVerification','generationId','requestCanonicalHash','outputCanonicalHash']);ensure(g.requestedModel==='deepseek/deepseek-v4-flash-0731'&&g.servingModel===g.requestedModel&&g.servingProvider==='DigitalOcean'&&['completion','generation-details'].includes(g.identityVerification as string),'HYBRID_HANDOFF_PROVIDER');if(g.generationId!==null)text(g.generationId,200);hash(g.requestCanonicalHash,'');hash(g.outputCanonicalHash,'');}
+ else {const g=object(r.generation,['requestedModel','servingModel','servingProvider','identityVerification','generationId','requestCanonicalHash','outputCanonicalHash']);ensure(verifiedModelIdentity(g.requestedModel,g.servingModel,g.servingProvider)!==null&&['completion','generation-details'].includes(g.identityVerification as string),'HYBRID_HANDOFF_PROVIDER');if(g.generationId!==null)text(g.generationId,200);hash(g.requestCanonicalHash,'');hash(g.outputCanonicalHash,'');}
  return freezeSnapshot(value as AcceptedHandoff);
 }
 export async function validateAcceptedHandoff(value:AcceptedHandoff):Promise<void>{

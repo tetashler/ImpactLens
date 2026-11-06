@@ -12,6 +12,19 @@
 .map-scenario-panel label { display:block; font-size:12px; color:#b7cbd1; margin-bottom:9px; }
 .map-scenario-panel textarea { display:block; width:100%; min-height:128px; resize:vertical; padding:14px; border:1px solid #49616d; border-radius:8px; background:#0c1a23; color:#e8f3f3; font:inherit; line-height:1.6; }
 .map-scenario-panel textarea::placeholder { color:#819ba7; }
+.map-question-frame { position:relative; }
+/* Specificity keeps room for the microphone through the desktop theme overrides. */
+.workspace-shell.scenario-experience.general-experience.map-first .map-question-frame #map-question { padding-bottom:58px; }
+.workspace-shell.scenario-experience.general-experience.map-first.impactlens-polish .map-scenario-panel button.map-speech-microphone { position:absolute; bottom:10px; left:10px; display:grid; place-items:center; width:38px; height:38px; min-height:38px; padding:8px; border:1px solid transparent; border-radius:8px; background:transparent; color:var(--polish-secondary,#b3c3ca); box-shadow:none; }
+.workspace-shell.scenario-experience.general-experience.map-first.impactlens-polish .map-scenario-panel button.map-speech-microphone:hover:not(:disabled) { background:var(--polish-raised,#1b333e); color:var(--polish-text,#e8f3f3); }
+.workspace-shell.scenario-experience.general-experience.map-first.impactlens-polish .map-scenario-panel button.map-speech-microphone[aria-pressed='true'] { color:var(--colour-error,#f0b6b0); background:var(--polish-raised,#1b333e); border-color:currentColor; }
+.workspace-shell.scenario-experience.general-experience.map-first.impactlens-polish .map-scenario-panel button.map-speech-microphone:focus-visible { outline:2px solid var(--polish-accent,#83dad0); outline-offset:2px; }
+.map-speech-feedback { display:flex; align-items:flex-start; gap:8px; margin-top:7px; }
+.map-speech-feedback p { flex:1; margin:0; font-size:11px; line-height:1.5; color:var(--polish-muted,#94aab4); }
+.map-speech-feedback p[data-error] { color:var(--colour-error,#f0b6b0); }
+.workspace-shell.scenario-experience.general-experience.map-first.impactlens-polish .map-scenario-panel button.map-speech-cancel { min-height:28px; margin-top:-5px; padding:3px 6px; border:0; background:transparent; color:var(--polish-secondary,#b3c3ca); font-size:11px; box-shadow:none; }
+.map-speech-recovery { margin-top:10px; }
+.map-speech-recovery>div { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
 .map-scenario-panel :is(button,textarea,select,summary):focus-visible { outline:2px solid #83dad0; outline-offset:3px; }
 .map-question-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
 .map-scenario-panel button,.native-model-tools button { min-height:44px; padding:10px 12px; border:1px solid #3c5865; border-radius:6px; background:#1b333e; color:#d7e9eb; font-size:13px; }

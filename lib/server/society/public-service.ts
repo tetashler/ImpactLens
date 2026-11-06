@@ -1,3 +1,4 @@
+import {configuredInferenceKey} from '../inference/route.ts';
 import {replacePrivateCheckpoint,privateStoreDirectory,verifyPrivateStore} from './storage.ts';
 import {createResearchBriefing} from '../../grounding/briefing.ts';
 import {storageBase,storageBundle,reserveStorageAdmission,bindStorageAdmission,findStorageBinding,assertStorageAdmission,inspectStorageAdmission,availableStorageAdmissionSlots,STORAGE_ADMISSION_POLICY} from './storage-admission.ts';
@@ -21,11 +22,13 @@ import {parseHybridExploreWire,parseHybridReview,type HybridPublicGrounding,type
 import {prepareHybridExplore,type HybridExploreDependencies,type PreparedHybridExplore} from '../interventions/explore.ts';
 import {appendCitizenCommuteGraph} from '../../citizen-grounding/graph.ts';
 import {INFERENCE_ADMISSION_V1,inferenceAdmissionFor} from '../inference/admission.ts';
+import {AiError} from '../ai/errors.ts';
+import {aiRateLimitHeaders} from '../ai/rate-limit.ts';
 export interface PublicDependencies extends SocialDependencies {prepareReview?:(prepared:PreparedDynamic,resume:(plan:PreparedDynamic['plan'],signal:AbortSignal)=>Promise<Response>)=>Promise<Response>;storeDirectory?:string;hybrid?:HybridExploreDependencies;hybridSummary?:()=>HybridPublicGrounding;/** Trusted server interpretation only; never accepted from browser JSON. */locationContext?:HybridReview;skipSocialInitialization?:boolean;storageHistorical?:boolean}
 interface Stored {baseGraph:import('../../knowledge-graph/contract.ts').KnowledgeGraph;version:1;token:string;execution:DynamicResponse;publicRun:PublicExplore;sessionId:string|null;revision:number}
 const policyStorage=(d:PublicDependencies)=>d.storageBase!==undefined||!d.storeDirectory&&!d.directory;
 const root=(d:PublicDependencies)=>d.storeDirectory??(policyStorage(d)?storageBundle(storageBase(d.storageBase)).archives:privateStoreDirectory('accepted-private'));
-const response=(v:unknown,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
+const response=(v:unknown,status=200,extraHeaders:Record<string,string>={})=>Response.json(v,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...extraHeaders}});
 const pathFor=(id:string,d:PublicDependencies)=>{ensure(typeof id==='string'&&id.length<=160,'PUBLIC_ID');return join(root(d),createHash('sha256').update(id).digest('hex')+'.json');};
 function activeStorage(d:PublicDependencies):PublicDependencies {const base=storageBase(d.storageBase),bundle=storageBundle(base);return {...d,storageBase:base,storeDirectory:bundle.archives,directory:bundle.sessions,storageHistorical:false};}
 function resolveStorage(id:string,d:PublicDependencies):PublicDependencies {
@@ -60,7 +63,7 @@ async function write(s:Stored,d:PublicDependencies){ensure(!d.storageHistorical,
 function read(id:string,token:string,d:PublicDependencies){const path=pathFor(id,d);ensure(statSync(path).size<=3*1024*1024,'PUBLIC_STORAGE');const s=JSON.parse(readFileSync(path,'utf8')) as Stored;ensure(s.publicRun.runId===id,'PUBLIC_ACCESS');verifyStored(s,d);remember(path,s);checkToken(s.token,token);return s;}
 const jobDirectory=(d:PublicDependencies)=>join(root(d),'jobs');
 async function publicBody(request:Request){const reader=request.body?.getReader();ensure(reader,'PUBLIC_REQUEST');const chunks:Uint8Array[]=[];let size=0;const cancel=()=>void reader.cancel().catch(()=>{});request.signal.addEventListener('abort',cancel,{once:true});try{while(true){request.signal.throwIfAborted();const part=await reader.read();if(part.done)break;size+=part.value.length;if(size>16_100_000){cancel();throw Error('PUBLIC_SIZE');}chunks.push(part.value);}return JSON.parse(Buffer.concat(chunks).toString('utf8'));}finally{reader.releaseLock();request.signal.removeEventListener('abort',cancel);}}
-const options=(s:Stored,d:PublicDependencies):SocialDependencies=>({...d,...(d.storageAdmission?{fetcher:storageFetcher(d.storageAdmission.base,d.fetcher)}:{}),enabled:true,ruleOnly:s.execution.run.status!=='completed'||!((d.enabled??(process.env.SOCIAL_LLM_ENABLED==='true'&&process.env.STAKEHOLDER_LIVE_ENABLED==='true'))&&!!(d.key??process.env.OPENROUTER_API_KEY)?.trim()),communication:selectCommunication(s.execution.plan.draft.ontology?.entities??[],s.execution.plan.draft.ontology?.entityTypes??[],[...s.execution.plan.draft.domains,...s.execution.plan.draft.agents.flatMap(a=>a.goals.slice(0,2))].slice(0,12))});
+const options=(s:Stored,d:PublicDependencies):SocialDependencies=>({...d,...(d.storageAdmission?{fetcher:storageFetcher(d.storageAdmission.base,d.fetcher)}:{}),enabled:true,ruleOnly:s.execution.run.status!=='completed'||!((d.enabled??(process.env.SOCIAL_LLM_ENABLED==='true'&&process.env.STAKEHOLDER_LIVE_ENABLED==='true'))&&!!(d.key??configuredInferenceKey()).trim()),communication:selectCommunication(s.execution.plan.draft.ontology?.entities??[],s.execution.plan.draft.ontology?.entityTypes??[],[...s.execution.plan.draft.domains,...s.execution.plan.draft.agents.flatMap(a=>a.goals.slice(0,2))].slice(0,12))});
 async function refresh(s:Stored,state:SocialState,d:PublicDependencies){s.sessionId=state.sessionId;s.revision=state.revision;s.publicRun.society=publicSociety(state.world);s.publicRun.graph=summaryGraph(s.baseGraph,s.publicRun.society);if(s.publicRun.grounding)s.publicRun.graph=appendCitizenCommuteGraph(s.publicRun.graph,s.publicRun.grounding.impact,s.publicRun.graph.scenarioIdentity);const inspections:PublicExplore['inspections']={};for(const [id,value]of Object.entries(s.publicRun.inspections)){const role=s.baseGraph.nodes.find(n=>n.id===id)?.properties.roleId;inspections[!state.world.genesis.input.swarm&&typeof role==='string'?state.world.genesis.bindings[role]??id:id]=value;}s.publicRun.inspections=inspections;s.publicRun.session={id:s.sessionId!,token:s.token,revision:s.revision};jobProjection(s,d);await write(s,d);}
 function progress(state:SocialState):CoordinatorProgress {const records=state.world.hybrid?.records??[],accepted=records.filter(r=>r.status==='accepted'),admission=state.admission;return {...(state.world.genesis.input.swarm?.multiDay?{profileId:state.world.genesis.input.swarm.multiDay.profileId}:{}),...(state.capacityReason?{capacityReason:state.capacityReason}:{}),opportunities:records.length,revision:state.revision,tick:state.world.tick,totalSteps:state.world.genesis.config.steps,acceptedDecisions:accepted.length,participatingAgents:new Set(accepted.map(r=>r.context.actor.id)).size,capacity:state.world.genesis.input.hybrid?.maxCalls??0,admittedCalls:admission?.maxCalls??state.world.genesis.input.hybrid?.maxCalls??0,calls:admission?.calls??records.filter(r=>r.status!=='skipped').length,completed:multiDayComplete(state.world),budgetLimited:admission?.status==='budget-limited'&&(!!state.world.genesis.input.swarm?.multiDay||records.length<(state.world.genesis.input.hybrid?.maxCalls??0))};}
 function jobProjection(s:Stored,d:PublicDependencies){const job=coordinatorStatus(s.publicRun.runId,jobDirectory(d));if(job){s.publicRun.job=job;if(s.publicRun.society){s.publicRun.society.phase=job.status==='running'?'simulating':job.status==='completed'?'completed':'partial';if(job.status==='budget-limited')s.publicRun.society.limitations=[...new Set([...s.publicRun.society.limitations,'Provider admission exhausted. The accepted partial run is preserved; configured reasoning capacity is not a claim of completed inference.'])];}}return s.publicRun;}
@@ -153,13 +156,19 @@ export async function handlePublicExplore(request:Request,deps:DynamicDependenci
    if(!boundedStorage&&!social.prepareReview){const directory=join(root(social),'hybrid-attempts');await verifyPrivateStore(directory);
    const claim=join(directory,createHash('sha256').update(wire.attemptId).digest('hex')+'.json');
    const fd=(await import('node:fs')).openSync(claim,'wx',0o600);try{(await import('node:fs')).writeFileSync(fd,JSON.stringify({version:1,policy:'hybrid-citizen-explore-v1',attemptId:wire.attemptId,status:'claimed',questionHash:createHash('sha256').update(wire.request.question).digest('hex')}));(await import('node:fs')).fsyncSync(fd);}finally{(await import('node:fs')).closeSync(fd);}}
-   const prepared=await prepareHybridExplore(wire,{...social.hybrid,executionSignal:()=>executionSignal,key:deps.key??process.env.OPENROUTER_API_KEY??'',fetcher:deps.fetcher,enabled:deps.enabled??process.env.STAKEHOLDER_LIVE_ENABLED==='true'},request.signal);
+   const prepared=await prepareHybridExplore(wire,{...social.hybrid,executionSignal:()=>executionSignal,key:deps.key??configuredInferenceKey(),fetcher:deps.fetcher,enabled:deps.enabled??process.env.STAKEHOLDER_LIVE_ENABLED==='true'},request.signal);
    if(prepared.kind==='ready')initialization=prepared;
    else if(prepared.kind==='hybrid-map-review'&&prepared.analysisMode==='location-context'&&prepared.interventionType==='new_polyclinic'&&prepared.locations?.length)locationContext=prepared;
    else return response(prepared);
    const headers=new Headers(request.headers);headers.delete('content-length');dynamicRequest=new Request(request.url,{method:'POST',headers,signal:request.signal,body:JSON.stringify({version:1,attemptId:wire.attemptId,request:wire.request})});
   }
- }catch(error){const code=(error as {code?:string}).code;return response({error:'HYBRID_EXPLORE_STOPPED',message:'Map interpretation or citizen initialization could not proceed safely. Review the drawing and provider configuration. No automatic retry was made.',code:code==='EEXIST'?'DUPLICATE_ATTEMPT':typeof code==='string'&&/^AI_[A-Z_]+$/.test(code)?code:'INVALID_INTERVENTION'},409);}
+ }catch(error){
+  if(error instanceof AiError&&error.code==='AI_RATE_LIMIT'&&error.status===429){
+   const headers=aiRateLimitHeaders(error),retryAfterSeconds=headers['Retry-After']?Number(headers['Retry-After']):undefined;
+   return response({error:'HYBRID_EXPLORE_STOPPED',code:'AI_RATE_LIMIT',message:error.message,...(retryAfterSeconds!==undefined?{retryAfterSeconds}:{})},429,headers);
+  }
+  const code=(error as {code?:string}).code;return response({error:'HYBRID_EXPLORE_STOPPED',message:'Map interpretation or citizen initialization could not proceed safely. Review the drawing and provider configuration. No automatic retry was made.',code:code==='EEXIST'?'DUPLICATE_ATTEMPT':typeof code==='string'&&/^AI_[A-Z_]+$/.test(code)?code:'INVALID_INTERVENTION'},409);
+ }
  async function finishExecution(v:DynamicResponse){
  if(locationContext)social={...social,locationContext,citizenSelection:undefined,citizenGrounding:undefined,hybridSummary:undefined};
  const acceptedInitialization=initialization?.kind==='ready'&&v.run.status==='completed'&&v.run.events.length===8&&v.inference.records.length===8&&v.inference.records.every((r:{status:string})=>r.status==='accepted')?initialization:null;
@@ -172,7 +181,7 @@ export async function handlePublicExplore(request:Request,deps:DynamicDependenci
   if(boundedStorage){const base=storageBase(social.storageBase),claim=reserveStorageAdmission(wire.attemptId,createHash('sha256').update(canonical(wire)).digest('hex'),base);social={...social,storageAdmission:{base,claim}};deps={...deps,fetcher:storageFetcher(base,deps.fetcher),groundingFetcher:storageFetcher(base,deps.groundingFetcher)};}
   const value=await executePreparedDynamic({...prepared,plan},deps,signal);return finishExecution(value);
  })});
- const r=await handleDynamicRequest(dynamicRequest,deps),v=await r.json();if(v.kind!=='dynamic-execution')return response(v,r.status);return finishExecution(v);
+ const r=await handleDynamicRequest(dynamicRequest,deps),v=await r.json();if(v.kind!=='dynamic-execution'){const retry=r.headers.get('Retry-After');return response(v,r.status,retry?{'Retry-After':retry}:{});}return finishExecution(v);
 }
 /** Ordinary browser boundary: only summary DTOs. No raw switch, no executable client worlds. */
 export async function handlePublicSocial(request:Request,d:PublicDependencies={}){

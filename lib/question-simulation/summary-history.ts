@@ -12,4 +12,18 @@ export function readSummaryHistory(storage:HistoryStorage):PublicExplore[]{const
 export interface SummaryReference {version:1;kind:'summary-reference';runId:string;token:string}
 export function readSummaryReferences(storage:HistoryStorage):SummaryReference[]{const result:SummaryReference[]=[];for(let i=0;i<Math.min(storage.length,256);i++){const key=storage.key(i);if(!key?.startsWith(prefix))continue;try{const text=storage.getItem(key);if(!text||text.length>512)continue;const v=JSON.parse(text);if(Object.keys(v).sort().join(',')==='kind,runId,token,version'&&v.version===1&&v.kind==='summary-reference'&&typeof v.runId==='string'&&key===prefix+v.runId&&/^run-[A-Za-z0-9._:-]{1,150}$/.test(v.runId)&&typeof v.token==='string'&&/^[a-f0-9]{64}$/.test(v.token))result.push(v);}catch{}}return result.sort((a,b)=>(readIndex(storage)[b.runId]??0)-(readIndex(storage)[a.runId]??0)||a.runId.localeCompare(b.runId)).slice(0,4);}
 /** Compact references restore through passive, authenticated projections only. */
-export async function restoreSummaryHistory(storage:HistoryStorage,fetcher:typeof fetch=fetch,signal?:AbortSignal):Promise<PublicExplore[]>{const result=readSummaryHistory(storage);for(const ref of readSummaryReferences(storage)){try{signal?.throwIfAborted();const r=await fetcher('/api/social-simulate?runId='+encodeURIComponent(ref.runId)+'&token='+ref.token,{cache:'no-store',signal});if(!r.ok)continue;const v=parsePublicExplore(await r.json());if(v.runId===ref.runId&&v.session?.token===ref.token)result.push(v);}catch{/* Offline or unavailable records remain referenced for a later explicit inspection. */}}return rankSummaryHistory(result,readIndex(storage));}
+export async function restoreSummaryHistory(storage:HistoryStorage,fetcher:typeof fetch=fetch,signal?:AbortSignal,onUnavailable?:(count:number)=>void):Promise<PublicExplore[]>{
+ const result=readSummaryHistory(storage);let unavailable=0;
+ for(const ref of readSummaryReferences(storage)){
+  if(signal?.aborted)break;
+  try{
+   const r=await fetcher('/api/social-simulate?runId='+encodeURIComponent(ref.runId)+'&token='+ref.token,{cache:'no-store',signal});
+   if(!r.ok)throw new Error('Saved report unavailable');
+   const v=parsePublicExplore(await r.json());signal?.throwIfAborted();
+   if(v.runId!==ref.runId||v.session?.token!==ref.token)throw new Error('Saved report identity mismatch');
+   result.push(v);
+  }catch{if(signal?.aborted)break;unavailable++;/* References remain intact for an explicit passive retry. */}
+ }
+ if(!signal?.aborted)onUnavailable?.(unavailable);
+ return rankSummaryHistory(result,readIndex(storage));
+}

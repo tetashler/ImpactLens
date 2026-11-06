@@ -1,4 +1,5 @@
 import { AiError } from './errors.ts';
+import {providerRateLimitError} from './rate-limit.ts';
 
 // A byte ceiling also bounds worst-case input tokens without adding a tokenizer.
 export const INPUT_BYTE_LIMIT = 24_000;
@@ -55,7 +56,7 @@ export async function fetchJson(fetcher: typeof fetch, url: string, init: Reques
   const response = await fetcher(url, { ...init, redirect: 'error', cache: 'no-store' });
   if (!response.ok) {
     void response.body?.cancel().catch(() => {});
-    throw httpError(response.status);
+    throw response.status===429?providerRateLimitError(response.headers):httpError(response.status);
   }
   const limit = catalogue ? CATALOGUE_BYTE_LIMIT : OUTPUT_BYTE_LIMIT;
   const declared = response.headers.get('content-length');

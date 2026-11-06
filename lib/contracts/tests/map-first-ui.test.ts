@@ -24,6 +24,15 @@ test('pending map execution keeps the form with cancellation and no premature re
  const html=render('default',{question:context.question,state:{...initial(),phase:'preparing'},toolsOpen:false,result:null});assert.match(html,/>Cancel<\/button>/);assert.match(html,/role="status"/);assert.match(html,/disabled=""[^>]*type="submit"|type="submit"[^>]*disabled=""/);assert.doesNotMatch(html,/View Knowledge Graph|View Report/);
 });
 
+test('question box includes a labelled SVG microphone without another submit action',()=>{
+ const html=render('default',{question:'Keep my typed question',state:initial(),toolsOpen:false,result:null});
+ assert.match(html,/<div class="map-question-frame"><textarea[^>]*id="map-question"[^>]*>Keep my typed question<\/textarea><button[^>]*class="map-speech-microphone"[^>]*type="button"[^>]*aria-label="Record question"[^>]*aria-pressed="false"[^>]*><svg[^>]*aria-hidden="true"/);
+ assert.equal([...html.matchAll(/type="submit"/g)].length,1);
+ assert.equal([...html.matchAll(/<textarea\b/g)].length,1);
+ const inactive=render('default',{question:'Keep my typed question',state:initial(),toolsOpen:false,result:null,active:false});
+ assert.match(inactive,/<button[^>]*class="map-speech-microphone"[^>]*disabled=""/);
+});
+
 for(const analysisMode of ['location-context','clarification'] as const)test(`map ${analysisMode} review explains the stop without reporting execution failure`,()=>{
  const question='What if a polyclinic was built at this location?';
  const message='The plotted sites provide location context. This intervention has no supported quantitative model.';

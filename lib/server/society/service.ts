@@ -1,3 +1,4 @@
+import {activeInferenceRoute,configuredInferenceKey} from '../inference/route.ts';
 import type {SafeSocialDiagnosticV2} from '../../society/social-diagnostics-v2.ts';
 import {createResearchBriefing} from '../../grounding/briefing.ts';
 import {configuredProseObserver} from './rejection-observations-v2.ts';
@@ -61,7 +62,7 @@ const historicalDirectory=(d:SocialDependencies)=>resolve(directory(d))===storag
 const response=(v:unknown,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
 const cacheKey=(root:string,id:string)=>root+'/'+id;
 export function socialStatus(d:SocialDependencies={}){
- return {version:1,enabled:enabled(d),configured:!!(d.key??process.env.OPENROUTER_API_KEY)?.trim(),limits:HYBRID_DEFAULTS,model:'deepseek/deepseek-v4-flash-0731',provider:'digitalocean',fallback:false};
+ return {version:1,enabled:enabled(d),configured:!!(d.key??configuredInferenceKey()).trim(),limits:HYBRID_DEFAULTS,model:activeInferenceRoute().model,provider:activeInferenceRoute().provider,fallback:false};
 }
 function initialAdmission(c:ReturnType<typeof swarmHybrid>,baseline:ReturnType<typeof swarmHybrid>,d:SocialDependencies):ProviderAdmission {
  const source=d.admission??{},deadline=source.deadlineMs??(process.env.SOCIAL_PROVIDER_DEADLINE_MS===undefined?undefined:Number(process.env.SOCIAL_PROVIDER_DEADLINE_MS));
@@ -86,7 +87,10 @@ function admission(s:Session,d:SocialDependencies,next=false):SocialAdmissionSta
  const reason=Date.now()>=cap.deadlineMs?'deadline':calls+future>cap.maxCalls||!next&&calls>=cap.maxCalls?'completion-limit':tokens+reserved>cap.reservedTokens?'token-limit':costUsd+(future?DECISION_LIMITS.unknownCostUsd:0)>cap.costUsd?'cost-limit':null;
  return {status:reason?'budget-limited':'available',reason,deadlineMs:Number.isFinite(cap.deadlineMs)?cap.deadlineMs:null,calls,maxCalls:cap.maxCalls,tokens,reservedTokens:cap.reservedTokens,costUsd,costLimitUsd:cap.costUsd};
 }
-const fatalMultiDayTransport=(world:SocietyWorld)=>!!world.genesis.input.swarm?.multiDay&&!!world.hybrid?.records.some(r=>['AI_UPSTREAM','AI_TIMEOUT','AI_CREDITS','AI_CANCELLED','AI_RATE_LIMIT','SOCIAL_UNCERTAIN'].includes(r.error??''));
+const FATAL_TRANSPORT=['AI_UPSTREAM','AI_TIMEOUT','AI_CREDITS','AI_CANCELLED','AI_RATE_LIMIT','SOCIAL_UNCERTAIN'];
+const fatalMultiDayCode=(world:SocietyWorld)=>world.genesis.input.swarm?.multiDay?[...(world.hybrid?.records??[])].reverse().find(r=>FATAL_TRANSPORT.includes(r.error??''))?.error:undefined;
+/** Retains the safe persisted cause while keeping the existing SOCIAL_FATAL message contract. */
+export class SocialFatalError extends Error {readonly code:string;constructor(code:string){super('SOCIAL_FATAL');this.name='Error';this.code=[...FATAL_TRANSPORT,'AI_PROVIDER_IDENTITY','SOCIAL_TRANSITION'].includes(code)?code:'SOCIAL_FATAL';}}
 function capacityReason(world:SocietyWorld):SocietyCapacityReason|undefined{return world.status==='event-limit'?'EVENT_CAPACITY':world.status==='item-limit'?'ITEM_CAPACITY':undefined;}
 function project(s:Session,d:SocialDependencies):SocialState{return {...(capacityReason(s.world)?{capacityReason:capacityReason(s.world)}:{}),version:1,sessionId:s.id,revision:s.revision,world:s.world,budget:hybridBudget(s.world),admission:admission(s,d)};}
 function cache(s:Session,root:string){
@@ -210,7 +214,7 @@ export async function socialOperation(body:unknown,d:SocialDependencies={},signa
   try{
    if(d.storageAdmission){const bound=assertStorageAdmission(d.storageAdmission,s.runId);ensure(bound.sessionId===s.id&&resolve(root)===storageBundle(d.storageAdmission.base).sessions,'STORAGE_ADMISSION_BINDING');}
    signal.throwIfAborted();
-   ensure(!s.world.hybrid?.records.some(r=>['AI_PROVIDER_IDENTITY','SOCIAL_TRANSITION'].includes(r.error??''))&&!fatalMultiDayTransport(s.world),'SOCIAL_FATAL');
+   const fatalCode=s.world.hybrid?.records.find(r=>['AI_PROVIDER_IDENTITY','SOCIAL_TRANSITION'].includes(r.error??''))?.error??fatalMultiDayCode(s.world);if(fatalCode)throw new SocialFatalError(fatalCode);
    if(capacityReason(s.world)||s.world.genesis.input.swarm?.multiDay&&admission(s,d).status==='budget-limited')return project(s,d);
    const previous=s.world;let world=s.world.hybrid?prepareHybridStep(s.world):stepSociety(s.world);
    if(world.hybrid?.pending&&!hybridBudget(world).exhausted){
@@ -226,7 +230,7 @@ export async function socialOperation(body:unknown,d:SocialDependencies={},signa
      if(s.world.genesis.input.swarm)assertSwarmJournalAdmission(s,root);
      const release=acquireAiSlot('social:'+s.id);
      try{
-      const transport=createSocialTransport({key:d.key??process.env.OPENROUTER_API_KEY??'',fetcher:d.fetcher,...(['conversation-menu-v6','conversation-menu-v7'].includes(world.genesis.input.intelligence?.context??'')?{rejectionObserver:configuredProseObserver(s.id,d.proseRejectionObserver)}:world.genesis.input.intelligence?.context==='conversation-menu-v5'?{rejectionObserver:{version:1 as const,observe:createRejectionObserver(root,s.id)}}:{})});
+      const transport=createSocialTransport({key:d.key??configuredInferenceKey(),fetcher:d.fetcher,...(['conversation-menu-v6','conversation-menu-v7'].includes(world.genesis.input.intelligence?.context??'')?{rejectionObserver:configuredProseObserver(s.id,d.proseRejectionObserver)}:world.genesis.input.intelligence?.context==='conversation-menu-v5'?{rejectionObserver:{version:1 as const,observe:createRejectionObserver(root,s.id)}}:{})});
       s.reservation=world.hybrid.pending;await persist(s,root);
       let decision:unknown|null=null,error:string|null=null;
       try{if(d.storageAdmission)inspectStorageAdmission(d.storageAdmission.base);decision=(await transport.generate(world.hybrid.pending,signal)).value;if(signal.aborted){decision=null;error='AI_CANCELLED';}}
@@ -240,7 +244,7 @@ export async function socialOperation(body:unknown,d:SocialDependencies={},signa
    if(world===previous)return project(s,d);
    s.world=world;s.revision++;await persist(s,root);await checkpoint(s,root);
    if(world.hybrid?.records.at(-1)?.error==='AI_PROVIDER_IDENTITY')throw Error('SOCIAL_PROVIDER_IDENTITY');
-   if(world.hybrid?.records.at(-1)?.error==='SOCIAL_TRANSITION'||fatalMultiDayTransport(world))throw Error('SOCIAL_FATAL');
+   const committedFatalCode=world.hybrid?.records.at(-1)?.error==='SOCIAL_TRANSITION'?'SOCIAL_TRANSITION':fatalMultiDayCode(world);if(committedFatalCode)throw new SocialFatalError(committedFatalCode);
    return project(s,d);
   }catch(e){
    // A failed persistence can leave an uncertain durable reservation. Never dispatch from the uncommitted cache.

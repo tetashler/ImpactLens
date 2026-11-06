@@ -5,30 +5,30 @@ import {assertJsonData,ensure,object,freezeSnapshot,canonical} from '../experime
 import {parseStakeholderInput,parseStakeholderRun,type StakeholderSimulationInputV1,type StakeholderSimulationRunV1} from './contract.ts';
 import {inputFingerprints,verifyStakeholderRun} from './identities.ts';
 
-export const INFERENCE_MODEL='deepseek/deepseek-v4-flash-0731' as const;
-export const INFERENCE_PROVIDER='digitalocean' as const;
+import {inferenceIdentityFor,type InferenceModel,type InferenceProvider,type InferenceGateway,type InferenceServingProvider} from '../inference/model-identity.ts';
+export {INFERENCE_MODEL,INFERENCE_PROVIDER,CLAUDE_INFERENCE_MODEL,CLAUDE_INFERENCE_PROVIDER} from '../inference/model-identity.ts';
 export const INFERENCE_LIMITS=Object.freeze({agents:4,rounds:2,calls:8,outputTokens:800,reservedTokens:214400,runTimeoutMs:120000,costUsd:0.05} as const);
 export const INFERENCE_RESPONSE_BYTES=524288;
 const RESERVATION_BASIS='Conservative UTF-8 bytes plus bounded output; not billed usage.' as const;
 const CALL_ERRORS=new Set([...Object.keys(INFERENCE_REJECTION_MESSAGES),'AI_PLAN_INVALID','AI_TIMEOUT','AI_CANCELLED','AI_REQUEST_TOO_LARGE','AI_INVALID_REQUEST','AI_INVALID_RESPONSE','AI_PROVIDER_IDENTITY','AI_CREDITS','AI_RATE_LIMIT','AI_UPSTREAM','AI_CONFIG','AI_UNSUPPORTED_MODEL']);
 type Limits=Omit<typeof INFERENCE_LIMITS,'reservedTokens'>&{reservedTokens:120000|214400};
 export interface InferenceCallRecordV1 {
- requestedModel:typeof INFERENCE_MODEL;requestedProvider:typeof INFERENCE_PROVIDER;
- servingModel:typeof INFERENCE_MODEL|null;servingProvider:'DigitalOcean'|null;
+ requestedModel:InferenceModel;requestedProvider:InferenceProvider;
+ servingModel:InferenceModel|null;servingProvider:InferenceServingProvider|null;
  identityVerification:'completion'|'generation-details'|'unverified';generationId:string|null;
  inputTokens:number|null;outputTokens:number|null;totalTokens:number|null;costUsd:number|null;
  status:'accepted'|'failed';errorCode:string|null;durationMs:number;termination?:InferenceTerminationV1;
  plannerValidation?:PlannerDiagnostic;actionValidationRule?:ActionValidationRule;
 }
 export interface InferenceDiagnosticsV1 {
- version:1;requestedModel:typeof INFERENCE_MODEL;requestedProvider:typeof INFERENCE_PROVIDER;allowFallbacks:false;
+ version:1;requestedModel:InferenceModel;requestedProvider:InferenceProvider;allowFallbacks:false;
  successfulCalls:number;failedCalls:number;retries:0;inputTokens:number|null;outputTokens:number|null;totalTokens:number|null;costUsd:number|null;
  reservedTokens:number;reservationBasis:typeof RESERVATION_BASIS;durationMs:number;roundsCompleted:number;activeAgents:number;
  records:InferenceCallRecordV1[];limits:Limits;
 }
 export interface InferenceResponseV2 {version:2;attemptId:string;run:StakeholderSimulationRunV1;inference:InferenceDiagnosticsV1}
 export interface InferenceStatusV1 {
- version:1;model:typeof INFERENCE_MODEL;gateway:'OpenRouter';provider:typeof INFERENCE_PROVIDER;fallback:false;
+ version:1;model:InferenceModel;gateway:InferenceGateway;provider:InferenceProvider;fallback:false;
  connection:'configured'|'not-configured';enabled:boolean;servingIdentityVerified:false;limits:Limits;
 }
 
@@ -40,7 +40,8 @@ function liveInput(value:unknown){const input=parseStakeholderInput(value);ensur
 
 export function parseInferenceStatus(value:unknown):InferenceStatusV1 {
  bounded(value,8192);const status=object(value,['version','model','gateway','provider','fallback','connection','enabled','servingIdentityVerified','limits']);
- ensure(status.version===1&&status.model===INFERENCE_MODEL&&status.gateway==='OpenRouter'&&status.provider===INFERENCE_PROVIDER&&status.fallback===false&&status.servingIdentityVerified===false,'Unexpected inference connection identity.');
+ const identity=inferenceIdentityFor(status.model,status.provider);
+ ensure(status.version===1&&identity!==null&&status.gateway===identity.gateway&&status.fallback===false&&status.servingIdentityVerified===false,'Unexpected inference connection identity.');
  ensure(status.connection==='configured'||status.connection==='not-configured');ensure(typeof status.enabled==='boolean');limits(status.limits);
  return freezeSnapshot(value) as InferenceStatusV1;
 }
@@ -62,10 +63,10 @@ export function parseInferenceCallRecord(value:unknown,outputLimit=1200):Inferen
    for(const field of ['jsonValid','actionValid'])ensure(info[field]===null||typeof info[field]==='boolean');
    if(record.status==='accepted')ensure(info.finishReason==='stop'&&info.jsonValid===true&&info.actionValid===true,'Accepted call requires complete validated output.');
   }
-  ensure(record.requestedModel===INFERENCE_MODEL&&record.requestedProvider===INFERENCE_PROVIDER);ensure(record.servingModel===null||record.servingModel===INFERENCE_MODEL);ensure(record.servingProvider===null||record.servingProvider==='DigitalOcean');
+  const identity=inferenceIdentityFor(record.requestedModel,record.requestedProvider);ensure(identity!==null,'Unexpected inference routing.');ensure(record.servingModel===null||record.servingModel===identity.model);ensure(record.servingProvider===null||record.servingProvider===identity.servingProvider);
   ensure(['completion','generation-details','unverified'].includes(record.identityVerification as string));
   ensure(record.generationId===null||typeof record.generationId==='string'&&/^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/.test(record.generationId));
-  if(record.identityVerification!=='unverified')ensure(record.servingModel===INFERENCE_MODEL&&record.servingProvider==='DigitalOcean','Unverified serving identity.');
+  if(record.identityVerification!=='unverified')ensure(record.servingModel===identity.model&&record.servingProvider===identity.servingProvider,'Unverified serving identity.');
   if(record.identityVerification==='generation-details')ensure(record.generationId!==null);
   ensure(record.status==='accepted'||record.status==='failed');
   if(record.status==='accepted')ensure(record.identityVerification!=='unverified'&&record.errorCode===null,'Accepted call requires verified serving identity.');
@@ -78,14 +79,15 @@ export function parseInferenceCallRecord(value:unknown,outputLimit=1200):Inferen
 
 export function parseInferenceDiagnostics(value:unknown,runValue:StakeholderSimulationRunV1):InferenceDiagnosticsV1 {
  bounded(value);assertJsonData(runValue);const run=parseStakeholderRun(runValue),input=liveInput(run.inputSnapshot);
- ensure(run.execution.provider==='openrouter'&&run.execution.model===INFERENCE_MODEL,'Unexpected live execution identity.');
  const diagnostics=object(value,['version','requestedModel','requestedProvider','allowFallbacks','successfulCalls','failedCalls','retries','inputTokens','outputTokens','totalTokens','costUsd','reservedTokens','reservationBasis','durationMs','roundsCompleted','activeAgents','records','limits']);
- ensure(diagnostics.version===1&&diagnostics.requestedModel===INFERENCE_MODEL&&diagnostics.requestedProvider===INFERENCE_PROVIDER&&diagnostics.allowFallbacks===false&&diagnostics.retries===0,'Unexpected inference routing.');limits(diagnostics.limits,true);
+ const identity=inferenceIdentityFor(diagnostics.requestedModel,diagnostics.requestedProvider);
+ ensure(diagnostics.version===1&&identity!==null&&diagnostics.allowFallbacks===false&&diagnostics.retries===0,'Unexpected inference routing.');limits(diagnostics.limits,true);
+ ensure(run.execution.provider===identity.executionProvider&&run.execution.model===identity.model,'Unexpected live execution identity.');
  integer(diagnostics.successfulCalls,8);integer(diagnostics.failedCalls,1);integer(diagnostics.reservedTokens,(diagnostics.limits as Limits).reservedTokens);integer(diagnostics.durationMs,130000);integer(diagnostics.roundsCompleted,2);integer(diagnostics.activeAgents,4);
  ensure(diagnostics.activeAgents===input.stakeholderRoles.length&&diagnostics.roundsCompleted===Math.floor(run.events.length/input.stakeholderRoles.length),'Inference progress does not match recorded events.');
  ensure(diagnostics.reservationBasis===RESERVATION_BASIS);ensure(Array.isArray(diagnostics.records)&&diagnostics.records.length<=input.stakeholderRoles.length*input.simulationOptions.rounds,'Too many inference calls.');
  const records=diagnostics.records as unknown[];
- for(const value of records)parseInferenceCallRecord(value);
+ for(const value of records){const record=parseInferenceCallRecord(value);ensure(record.requestedModel===identity.model&&record.requestedProvider===identity.provider,'Call identity differs from execution.');}
  const typedRecords=records as InferenceCallRecordV1[];
  const accepted=typedRecords.filter(record=>record.status==='accepted').length,failed=typedRecords.length-accepted;
  ensure(diagnostics.successfulCalls===accepted&&diagnostics.failedCalls===failed,'Inference counts do not match call records.');

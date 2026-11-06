@@ -34,7 +34,7 @@ globalThis.fetch=async(input,init={})=>{
  }
  if(address==='https://openrouter.ai/api/v1/chat/completions'){
   const b=JSON.parse(String(init.body)),stage=b.response_format?.json_schema?.name;
-  if(b.model!=='deepseek/deepseek-v4-flash-0731'||JSON.stringify(b.provider)!==JSON.stringify({only:['digitalocean'],allow_fallbacks:false,require_parameters:true})||b.reasoning?.effort!=='none'||b.reasoning?.exclude!==true||b.stream!==false||!['social_decision_v1','dynamic_entities_v2','dynamic_entities_v3','dynamic_relationships_v2','stakeholder_turn_v1'].includes(stage))throw Error('PHASE4E2_FIXTURE_ROUTING');
+  if(b.model!=='deepseek/deepseek-v4-flash-0731'||JSON.stringify(b.provider)!==JSON.stringify({only:['digitalocean'],allow_fallbacks:false,require_parameters:true})||b.reasoning?.effort!=='none'||b.reasoning?.exclude!==true||b.stream!==false||!['social_decision_v1','dynamic_entities_v2','dynamic_entities_v3','dynamic_relationships_v2','dynamic_relationships_v3','stakeholder_turn_v1'].includes(stage))throw Error('PHASE4E2_FIXTURE_ROUTING');
   const c=JSON.parse(b.messages[1].content),entityStage=['dynamic_entities_v2','dynamic_entities_v3'].includes(stage);
   let value,usage;
   if(stage==='social_decision_v1'){
@@ -52,6 +52,7 @@ globalThis.fetch=async(input,init={})=>{
     value=entityStage?stageOne:{relationships:proposed.ontology.relationships.map(r=>({...r,source:mapped(r.source),target:mapped(r.target),typeId:registered.registration.registries.relationshipTypes.find(t=>t.original===r.typeId).canonical}))};
     for(const entity of(entityStage?value.ontology.entities:value.relationships))if(entity.support){const {sourceId,passageId}=entity.support;entity.support={sourceId,passageId};}
     if(entityStage)value=stage==='dynamic_entities_v3'?entityReferenceFixture(value):entityDeclarationFixture(value);else value.relationships=value.relationships.map(({id,...rest})=>rest);
+    if(stage==='dynamic_relationships_v3')value.scenarioAlignment='aligned';
    }else{
     const other=[...(c.previousEvents??[])].reverse().find(e=>e.roleId!==c.role?.id);
     value=stakeholderProviderFixture(c,{type:other?'response':'argument',addressedRoleId:other?.roleId??null,statement:`RAW_PHASE4E2_STAKEHOLDER ${c.role.title} discusses monthly wages, fair rosters and service coverage.`,previousEventIds:other?[other.id]:[],evidenceFindingIds:[],assumptionIds:[],reasoningSummary:'Explicit offline fixture uses accepted earlier context.',uncertainties:['No measured economic or public-opinion outcome is established.'],position:c.memory.position??'information-seeking',topics:['implementation-conditions']});

@@ -21,7 +21,7 @@ import {act,createSociety,stepSociety} from './engine.ts';
 import {threadPath} from './exposure.ts';
 import {DECISION_LIMITS as L,decisionTokenCharge,type DecisionContext,type SocialDecision,type SocialDecisionRecord} from './decision-contract.ts';
 import type {SocietyInput,SocietyWorld,Platform} from './contract.ts';
-import type {InferenceCallRecord} from '../server/inference/deepseek.ts';
+import type {InferenceCallRecord} from '../inference/call-record.ts';
 export const SOCIAL_RULES=['SOCIAL_SHAPE','SOCIAL_TARGET','SOCIAL_MEMORY','SOCIAL_PLATFORM','SOCIAL_TEXT','SOCIAL_STANCE','SOCIAL_STALE','SOCIAL_BUDGET'] as const;
 export class SocialDecisionError extends Error {readonly rule:typeof SOCIAL_RULES[number];readonly path:string;constructor(rule:typeof SOCIAL_RULES[number],path='decision'){super(rule);this.rule=rule;this.path=path;}}
 function check(v:unknown,r:typeof SOCIAL_RULES[number],path='decision'):asserts v {if(!v)throw new SocialDecisionError(r,path);}

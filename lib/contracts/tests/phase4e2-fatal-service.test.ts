@@ -15,7 +15,7 @@ for(const code of ['AI_UPSTREAM','AI_TIMEOUT','AI_CREDITS','AI_CANCELLED','AI_RA
   const fetcher:typeof fetch=async(u,i)=>{if(++calls===1)return mock.fetcher(u,i);if(code==='AI_UPSTREAM')throw TypeError('RAW_NETWORK_PRIVATE');throw new AiError('RAW_TRANSPORT_PRIVATE',code,502);};
   const d:SocialDependencies={directory,enabled:true,key:'offline',communication:phase4eCommunication(),swarm:multiDaySwarmPolicy(50,70,160),fetcher,admission:{maxCalls:70}};
   let state=await socialOperation({operation:'start',run:source},d),caught=false;
-  for(let i=0;i<100&&state.world.hybrid!.records.length<2;i++)try{state=await socialOperation({operation:'step',sessionId:state.sessionId,revision:state.revision},d);}catch(error){assert.match(String(error),/SOCIAL_FATAL/);caught=true;break;}
+  for(let i=0;i<100&&state.world.hybrid!.records.length<2;i++)try{state=await socialOperation({operation:'step',sessionId:state.sessionId,revision:state.revision},d);}catch(error){assert.match(String(error),/SOCIAL_FATAL/);assert.equal((error as {code?:string}).code,code);caught=true;break;}
   assert.equal(caught,true);state=await readSocialSession(state.sessionId,d);assert.equal(state.world.hybrid!.records.length,2);assert.equal(state.world.hybrid!.records[0].status,'accepted');assert.equal(state.world.hybrid!.records[1].error,code);assert.equal(calls,2);
   await assert.rejects(()=>socialOperation({operation:'step',sessionId:state.sessionId,revision:state.revision},d),/SOCIAL_FATAL/);evictFixtureSession(directory,state.sessionId);state=await readSocialSession(state.sessionId,d);
   await assert.rejects(()=>socialOperation({operation:'step',sessionId:state.sessionId,revision:state.revision},d),/SOCIAL_FATAL/);assert.equal(calls,2);

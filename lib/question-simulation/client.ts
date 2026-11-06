@@ -1,9 +1,9 @@
 import {parseAssumptionDecisions,type AssumptionReviewDraft,type AssumptionDecision} from '../assumption-review/contract.ts';
 import {parseHybridExploreOptions,type HybridExploreOptions,type HybridReview} from '../interventions/explore-contract.ts';
-import {PublicScenarioSession,parsePublicExplore} from './public-session.ts';
+import {PublicScenarioSession,ScenarioRateLimitError,parsePublicExplore} from './public-session.ts';
 import type {PublicExplore} from '../society/public-contract.ts';
 import {DynamicSession} from '../dynamic-scenarios/client.ts';
-import type {DynamicResponse,DynamicFailure} from '../dynamic-scenarios/response.ts';
+import {dynamicFailureMessage,type DynamicResponse,type DynamicFailure} from '../dynamic-scenarios/response.ts';
 /** Browser-safe question -> local plan -> immutable research -> bounded execution. */
 import { classifyQuestionContext, type QuestionContextV1 } from './context.ts';
 import { createScenarioPlan, parseScenarioRequest, type ScenarioPlan } from '../scenarios/contract.ts';
@@ -56,11 +56,11 @@ export interface QuestionSimulationSnapshot extends QuestionResult {
   selectedArchiveId: string | null;
   inferenceStatus?:InferenceStatusV1|null;
 }
-export interface QuestionSimulationOptions { fetcher?: typeof fetch; timeoutMs?: number; execution?:QuestionExecutionChoice;publicOnly?:boolean }
+export interface QuestionSimulationOptions { fetcher?: typeof fetch; timeoutMs?: number; execution?:QuestionExecutionChoice;publicOnly?:boolean;onPublicRunAccepted?:(value:PublicExplore)=>void }
 interface Attempt { id: string; revision: number; mode:QuestionExecutionChoice; geographicConfirmed:boolean; deadline:number; promise: Promise<void>; resolve: () => void; timer: ReturnType<typeof setTimeout> | null }
 class Superseded extends Error {}
 const SAFE_LIVE_ERRORS=new Set([
-  'Live AI simulation is not configured. DeepSeek via DigitalOcean is unavailable for this run.',
+  'Live AI simulation is not configured. The configured model provider is unavailable for this run.',
   'Live inference is not configured or enabled on the server. Check Settings.',
   'Live inference is busy. Wait before starting a new attempt.',
   'Live inference request timed out. Start a new attempt.',
@@ -83,6 +83,7 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
   let inputKey = '';
   let revision = 0;
   let active: Attempt | null = null;
+  let locallyAcceptedRunIds:string[]=[];
   const session = new StakeholderRequestSession();
   const liveSession=new LiveInferenceSession();
   const dynamicSession=new DynamicSession(),publicSession=new PublicScenarioSession();
@@ -139,16 +140,22 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
       ...result, id: result.publicRun?.runId??result.run?.runId ?? result.record?.experimentId ?? `review-${attempt.id}`,
       attemptId: attempt.id, revision: attempt.revision, phase, createdAt: new Date().toISOString(),
     };
-    publish({ ...result, phase, error: result.run?questionRunErrorMessage(result.run):null, history: [archive, ...state.history].slice(0, 4), selectedArchiveId: null });
+    let error=result.run?questionRunErrorMessage(result.run):null;
+    // Persist the initial accepted run before consumers begin passive background refresh.
+    if(result.publicRun){
+      locallyAcceptedRunIds=[result.publicRun.runId,...locallyAcceptedRunIds.filter(id=>id!==result.publicRun!.runId)].slice(0,4);
+      try{options.onPublicRunAccepted?.(result.publicRun);}catch{error='Browser summary persistence is unavailable; server records remain retained.';}
+    }
+    publish({ ...result, phase, error, history: [archive, ...state.history.filter(item=>item.id!==archive.id)].slice(0, 4), selectedArchiveId: null });
   }
   async function prepare(attempt: Attempt, context: QuestionSimulationContext) {
     try {
-      if(attempt.mode==='dynamic'&&options.publicOnly){publish({phase:'preparing'});const response=await checked(attempt,publicSession.execute({version:1,question:context.question,geometry:context.geometry,geometryRevision:context.geometryRevision},`${attempt.id}:${attempt.revision}`,options.fetcher??fetch,Math.max(1,Math.min(context.hybrid?235000:125000,attempt.deadline-Date.now())),context.hybrid));if(!response)return;if(response.kind==='assumption-review'){publish({...emptyResult(context.question),executionMode:'dynamic',phase:'reviewing-assumptions',assumptionReview:response});return;}if(response.kind==='hybrid-map-review'){publish({...emptyResult(context.question),executionMode:'dynamic',phase:'needs-map-review',hybridReview:response,error:response.message});return;}if(response.kind==='planning-failed'){publish({...emptyResult(context.question),executionMode:'dynamic',phase:'error',dynamicFailure:response,error:response.error.message});return;}finish(attempt,{...emptyResult(context.question),executionMode:'dynamic',publicRun:response},response.status==='completed'?'completed':response.initialActions.length?'partial':'failed');return;}
+      if(attempt.mode==='dynamic'&&options.publicOnly){publish({phase:'preparing'});const response=await checked(attempt,publicSession.execute({version:1,question:context.question,geometry:context.geometry,geometryRevision:context.geometryRevision},`${attempt.id}:${attempt.revision}`,options.fetcher??fetch,Math.max(1,Math.min(context.hybrid?235000:125000,attempt.deadline-Date.now())),context.hybrid));if(!response)return;if(response.kind==='assumption-review'){publish({...emptyResult(context.question),executionMode:'dynamic',phase:'reviewing-assumptions',assumptionReview:response});return;}if(response.kind==='hybrid-map-review'){publish({...emptyResult(context.question),executionMode:'dynamic',phase:'needs-map-review',hybridReview:response,error:response.message});return;}if(response.kind==='planning-failed'){publish({...emptyResult(context.question),executionMode:'dynamic',phase:'error',dynamicFailure:response,error:dynamicFailureMessage(response)});return;}finish(attempt,{...emptyResult(context.question),executionMode:'dynamic',publicRun:response},response.status==='completed'?'completed':response.initialActions.length?'partial':'failed');return;}
       if(attempt.mode==='dynamic'){
         publish({phase:'preparing'});
         const response=await checked(attempt,dynamicSession.execute({version:1,question:context.question,geometry:context.geometry,geometryRevision:context.geometryRevision},`${attempt.id}:${attempt.revision}`,options.fetcher??fetch,Math.max(1,Math.min(125000,attempt.deadline-Date.now()))));
         if(!response){if(owns(attempt))publish({phase:'cancelled'});return;}
-        if(response.kind==='planning-failed'){publish({...emptyResult(context.question),executionMode:'dynamic',phase:'error',dynamicFailure:response,error:response.error.message});return;}
+        if(response.kind==='planning-failed'){publish({...emptyResult(context.question),executionMode:'dynamic',phase:'error',dynamicFailure:response,error:dynamicFailureMessage(response)});return;}
         const result:QuestionResult={...emptyResult(context.question),executionMode:'dynamic',dynamic:response,run:response.run};
         finish(attempt,result,response.run.status);return;
       }
@@ -181,7 +188,7 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
       if(attempt.mode==='live'){
         if(!selectQuestionLiveDomain(scope)){finish(attempt,result,'unsupported');return;}
         const status=await checked(attempt,refreshInferenceStatus());
-        if(!status||status.connection!=='configured'||!status.enabled)throw new Error('Live AI simulation is not configured. DeepSeek via DigitalOcean is unavailable for this run.');
+        if(!status||status.connection!=='configured'||!status.enabled)throw new Error('Live AI simulation is not configured. The configured model provider is unavailable for this run.');
         const prepared=await checked(attempt,prepareQuestionLiveInput(record,scope));
         publish({phase:'executing'});
         const response=await checked(attempt,liveSession.execute(prepared.input,`${attempt.id}:${attempt.revision}`,options.fetcher??fetch,Math.max(1,Math.min(125000,attempt.deadline-Date.now()))));
@@ -208,7 +215,7 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
       result.run = run; result.linked = linked;
       finish(attempt, result, 'completed');
     } catch (error) {
-      if (owns(attempt) && !(error instanceof Superseded)) publish({ phase: 'error', run: null, linked: null,publicRun:null,live:null,dynamic:null,dynamicFailure:null, error: attempt.mode!=='scripted'&&error instanceof Error&&SAFE_LIVE_ERRORS.has(error.message)?error.message:'This question could not be prepared or executed safely. Try again.' });
+      if (owns(attempt) && !(error instanceof Superseded)) publish({ phase: 'error', run: null, linked: null,publicRun:null,live:null,dynamic:null,dynamicFailure:null, error: error instanceof ScenarioRateLimitError?error.message:attempt.mode!=='scripted'&&error instanceof Error&&SAFE_LIVE_ERRORS.has(error.message)?error.message:'This question could not be prepared or executed safely. Try again.' });
     } finally {
       if (active === attempt) { if (attempt.timer !== null) clearTimeout(attempt.timer); active = null; }
       attempt.resolve();
@@ -262,7 +269,18 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
     }
     else publish({ selectedArchiveId: null });
   }
-  return {restorePublicHistory:(values:PublicExplore[])=>{const history=values.slice(0,4).map(value=>{const p=parsePublicExplore(value);return {...emptyResult(p.question),publicRun:p,id:p.runId,attemptId:p.attemptId,revision:0,phase:(p.status==='completed'?'completed':'partial') as 'completed'|'partial',createdAt:new Date().toISOString()};});publish({history});},
+  return {restorePublicHistory:(values:PublicExplore[])=>{
+      const history=new Map(state.history.map(item=>[item.id,item]));
+      for(const value of values.slice(0,4)){
+        const p=parsePublicExplore(value),previous=history.get(p.runId)?.publicRun;
+        if(previous&&Math.max(previous.session?.revision??0,previous.job?.revision??0)>=Math.max(p.session?.revision??0,p.job?.revision??0))continue;
+        const archive:QuestionSimulationArchive={...emptyResult(p.question),publicRun:p,id:p.runId,attemptId:p.attemptId,revision:0,phase:p.status==='completed'?'completed':'partial',createdAt:new Date().toISOString()};
+        history.set(p.runId,archive);
+      }
+      // Keep an active report and inspected archive visible, then honour restored recency.
+      const ids=[...new Set([state.publicRun?.runId,state.selectedArchiveId,...locallyAcceptedRunIds,...values.slice(0,4).map(value=>value.runId),...state.history.map(item=>item.id)])];
+      publish({history:ids.flatMap(id=>id&&history.has(id)?[history.get(id)!]:[]).slice(0,4)});
+    },
     getSnapshot: () => state,
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
     invalidate, start, startReviewed, reviseReview, cancel, inspectArchive,refreshInferenceStatus,
