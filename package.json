@@ -26,7 +26,10 @@
     "agents:impact": "node prototype/agents/impact-cli.ts",
     "mrt:validate": "node prototype/mrt/cli.ts",
     "mrt:report": "node prototype/mrt/cli.ts --write",
-    "mrt:simulate": "node prototype/mrt/simulate-cli.ts"
+    "mrt:simulate": "node prototype/mrt/simulate-cli.ts",
+    "storage:status": "node scripts/storage.ts status",
+    "storage:rotate": "node scripts/storage.ts rotate",
+    "storage:verify": "node scripts/storage.ts verify"
   },
   "dependencies": {
     "cytoscape": "3.33.1",

@@ -3,10 +3,12 @@ import {mkdirSync,existsSync,lstatSync,readFileSync,openSync,writeFileSync,fsync
 import {join,resolve} from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 import {canonical,ensure,object} from '../../experiments/validation.ts';
+import {assertStorageLifecycle,registerStorageRuntime,archivedAttemptUsed,storageArchiveCount} from './storage-lifecycle.ts';
+import type {StorageCapacityStatus} from '../../society/storage-status.ts';
 
 export const STORAGE_ADMISSION_POLICY='storage-admission-v1' as const;
 export const STORAGE_ADMISSION_SLOTS=32;
-export const STORAGE_NAMESPACE_LIMITS=Object.freeze({files:256,bytes:3*1024*1024*1024,directories:8,depth:3});
+export const STORAGE_NAMESPACE_LIMITS=Object.freeze({files:384,bytes:3*1024*1024*1024,directories:8,depth:3});
 export interface StorageClaim {version:1;policy:typeof STORAGE_ADMISSION_POLICY;slot:number;nonce:string;attemptHash:string;requestHash:string;sessionId:string}
 export interface StorageBinding {version:1;policy:typeof STORAGE_ADMISSION_POLICY;slot:number;nonce:string;runId:string;sessionId:string}
 export interface StorageAdmission {base:string;claim:StorageClaim}
@@ -22,6 +24,7 @@ const directory=(base:string)=>join(storageBase(base),'session-store-v2','admiss
 const pathFor=(base:string,slot:number,extension:string)=>join(directory(base),'slot-'+String(slot).padStart(2,'0')+'.'+extension);
 /** Inspection threshold, not a prepaid filesystem reservation. Never reads private bodies or removes evidence. */
 export function inspectStorageAdmission(base=storageBase()){
+ assertStorageLifecycle(base);
  const root=join(storageBase(base),'session-store-v2');let files=0,bytes=0,directories=0;
  if(!existsSync(root))return {files,bytes};
  function visit(path:string,depth:number){
@@ -70,6 +73,7 @@ function bindingValue(v:unknown,c:StorageClaim):StorageBinding {
 /** All reads are bounded by thirty-two fixed slots; a partial file always blocks dispatch. */
 function inventory(base:string){
  const result:{claim:StorageClaim;binding:StorageBinding|null}[]=[],attempts=new Set<string>(),sessions=new Set<string>(),nonces=new Set<string>(),runs=new Set<string>();
+ const dir=directory(base);if(existsSync(dir)){const st=lstatSync(dir);ensure(st.isDirectory()&&!st.isSymbolicLink(),'STORAGE_ADMISSION_CORRUPT');const handle=opendirSync(dir);let count=0;try{for(let entry=handle.readSync();entry;entry=handle.readSync())ensure(++count<=96&&/^slot-(0\d|[12]\d|3[01])\.(claim|binding|initialization)$/.test(entry.name),'STORAGE_ADMISSION_CORRUPT');}finally{handle.closeSync();}}
  for(let slot=0;slot<STORAGE_ADMISSION_SLOTS;slot++){
   const path=pathFor(base,slot,'claim'),bindingPath=pathFor(base,slot,'binding'),intent=pathFor(base,slot,'initialization');
   if(!existsSync(path)){ensure(!existsSync(bindingPath)&&!existsSync(intent),'STORAGE_ADMISSION_CORRUPT');continue;}
@@ -90,7 +94,7 @@ function writeExclusive(path:string,value:unknown){
 export function availableStorageAdmissionSlots(base=storageBase()){inspectStorageAdmission(base);return STORAGE_ADMISSION_SLOTS-inventory(base).length;}
 export function reserveStorageAdmission(attemptId:string,requestHash:string,base=storageBase()):StorageClaim {
  ensure(typeof attemptId==='string'&&attemptId.length<=64&&/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(attemptId)&&/^[a-f0-9]{64}$/.test(requestHash),'STORAGE_ADMISSION_INPUT');
- inspectStorageAdmission(base);const attemptHash=hash(attemptId);ensure(!legacyAttemptUsed(attemptHash,base),'STORAGE_ADMISSION_DUPLICATE');mkdirSync(directory(base),{recursive:true,mode:0o700});
+ registerStorageRuntime(base);inspectStorageAdmission(base);const attemptHash=hash(attemptId);ensure(!legacyAttemptUsed(attemptHash,base)&&!archivedAttemptUsed(attemptHash,base),'STORAGE_ADMISSION_DUPLICATE');mkdirSync(directory(base),{recursive:true,mode:0o700});
  ensure(!inventory(base).some(v=>v.claim.attemptHash===attemptHash),'STORAGE_ADMISSION_DUPLICATE');
  // Legacy hybrid attempt claims remain authoritative and are never reused.
  ensure(!existsSync(join(storageBundle(base,true).archives,'hybrid-attempts',attemptHash+'.json')),'STORAGE_ADMISSION_DUPLICATE');
@@ -102,6 +106,7 @@ export function reserveStorageAdmission(attemptId:string,requestHash:string,base
  throw Error('STORAGE_ADMISSION_CAPACITY');
 }
 function owned(claim:StorageClaim,base:string){
+ assertStorageLifecycle(base);
  ensure(Number.isSafeInteger(claim?.slot)&&claim.slot>=0&&claim.slot<STORAGE_ADMISSION_SLOTS,'STORAGE_ADMISSION_BINDING');
  const entry=inventory(base).find(v=>v.claim.slot===claim.slot);ensure(entry&&canonical(entry.claim)===canonical(claim),'STORAGE_ADMISSION_BINDING');return entry;
 }
@@ -123,4 +128,10 @@ export function beginStorageInitialization(claim:StorageClaim,runId:string,base=
  inspectStorageAdmission(base);
  const binding=assertStorageAdmission({claim,base},runId);
  try{writeExclusive(pathFor(base,claim.slot,'initialization'),binding);}catch(error){if((error as NodeJS.ErrnoException).code==='EEXIST')throw Error('STORAGE_INITIALIZATION_UNCERTAIN');throw error;}
+}
+/** Public bounded status; inspection failure never invents available capacity. */
+export function getStorageCapacity(base=storageBase()):StorageCapacityStatus {
+ const common={version:1 as const,policy:STORAGE_ADMISSION_POLICY,capacity:32 as const,archiveLimit:16 as const};
+ try{inspectStorageAdmission(base);const used=inventory(base).length,archivedPeriods=storageArchiveCount(base);return {...common,status:used===32?'full':'ready',reason:used===32?'capacity':null,used,available:32-used,archivedPeriods};}
+ catch(error){const message=error instanceof Error?error.message:'';const reason=/MAINTENANCE|TRANSACTION/.test(message)?'maintenance':/ARCHIVE_LIMIT/.test(message)?'history-limit':/ADMISSION_FILES|ADMISSION_BYTES|ADMISSION_ARTIFACT/.test(message)?'storage-limit':'unavailable';return {...common,status:'blocked',reason,used:null,available:null,archivedPeriods:null};}
 }

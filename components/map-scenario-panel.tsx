@@ -5,6 +5,7 @@ import {questionRunErrorMessage} from '../lib/question-simulation/errors';
 import AssumptionReviewPanel from './assumption-review-panel';
 import type {AssumptionDecision} from '../lib/assumption-review/contract';
 import {useSpeechInput} from './use-speech-input';
+import StorageCapacity from './storage-capacity';
 
 export function WorkspaceViews({current,onMap,onGraph,onReport}:{current:'map'|'knowledge'|'report';onMap:()=>void;onGraph:()=>void;onReport:()=>void}){
  return <nav className="general-tabs" aria-label="Workspace views"><button type="button" aria-current={current==='map'?'page':undefined} onClick={onMap}>Map</button><button type="button" aria-current={current==='knowledge'?'page':undefined} onClick={onGraph}>Knowledge Graph</button><button type="button" aria-current={current==='report'?'page':undefined} onClick={onReport}>Report</button></nav>;
@@ -36,6 +37,7 @@ export default function MapScenarioPanel({question,state,toolsOpen,result,active
    {speech.state.status==='overflow'&&<div className="map-speech-recovery"><textarea aria-label="Transcript to copy" readOnly value={speech.state.transcript} rows={3}/><div><button type="button" onClick={speech.insertRecovered}>Add transcript again</button><button type="button" onClick={speech.cancel}>Discard transcript</button></div></div>}
    <div className="map-question-actions"><button type="button" aria-expanded={toolsOpen} aria-controls="map-plot-controls" onClick={onToggleTools}>Plot Tools</button><button className="map-explore-button" disabled={!question.trim()||busy||speech.pending} type="submit">Explore</button></div>
   </form></>}
+  <StorageCapacity/>
   <div className="map-exploration-status" role="status" aria-live="polite" data-ui-tone={processTone(busy?'running':result==='completed'?(state.publicRun?.job?.status??state.publicRun?.society?.phase??'completed'):result==='partial'?'partial':review?'needs-map-review':current&&state.phase==='cancelled'?'cancelled':error?'failed':undefined)}>{busy?<><span className="spinner"/> {busyLabel}</>:result==='completed'?<>Exploration complete <span>{state.publicRun?.initialActions.length??state.run?.events.length} accepted turns</span></>:result==='partial'?<>Exploration interrupted <span>{state.publicRun?.initialActions.length??state.run?.events.length} accepted turns retained</span></>:review?review.analysisMode==='location-context'?'Location context available':'Map review needed':current&&state.phase==='cancelled'?'Exploration cancelled':error?'Exploration could not complete':null}</div>
   {busy&&<button type="button" className="map-cancel-button" onClick={onCancel}>Cancel</button>}
   {error&&<p className="map-exploration-error" role="alert">{error}</p>}

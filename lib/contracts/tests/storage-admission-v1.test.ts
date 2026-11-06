@@ -65,7 +65,7 @@ test('valid bounded attempt identifiers keep their existing punctuation contract
 });
 
 test('a failed claim fsync consumes the attempt and can never authorize dispatch on retry',async t=>{
- const a=await api(),base=fixture(),original=fs.fsyncSync;const fault=t.mock.method(fs,'fsyncSync',()=>{throw Object.assign(Error('FIXTURE_FSYNC'),{code:'EIO'});});syncBuiltinESMExports();
+ const a=await api(),base=fixture(),original=fs.fsyncSync;const {registerStorageRuntime}=await import('../../server/society/storage-lifecycle.ts');registerStorageRuntime(base);const fault=t.mock.method(fs,'fsyncSync',()=>{throw Object.assign(Error('FIXTURE_FSYNC'),{code:'EIO'});});syncBuiltinESMExports();
  try{assert.throws(()=>a.reserveStorageAdmission('failed-sync',hash('failed-sync'),base),{code:'EIO'});}finally{fault.mock.restore();syncBuiltinESMExports();}
  assert.equal(fs.fsyncSync,original);assert.throws(()=>a.reserveStorageAdmission('failed-sync',hash('failed-sync'),base),/STORAGE_ADMISSION_DUPLICATE/);
  const next=a.reserveStorageAdmission('next-independent',hash('next-independent'),base);assert.equal(next.slot,1);
@@ -91,7 +91,7 @@ test('a normal atomic checkpoint pending during retry cannot stop concurrent adm
  assert.equal(readFileSync(path,'utf8'),'next');assert.equal(readdirSync(root).filter(f=>f.endsWith('.pending')).length,0);
 });
 test('unexpected ancillary file accumulation stops admission at the bounded inspection limit',async()=>{
- const a=await api(),base=fixture();a.reserveStorageAdmission('first',hash('first'),base);const root=join(base,'session-store-v2');for(let i=0;i<256;i++)writeFileSync(join(root,'ancillary-'+i),'x');
+ const a=await api(),base=fixture();a.reserveStorageAdmission('first',hash('first'),base);const root=join(base,'session-store-v2');for(let i=0;i<a.STORAGE_NAMESPACE_LIMITS.files;i++)writeFileSync(join(root,'ancillary-'+i),'x');
  assert.throws(()=>a.reserveStorageAdmission('second',hash('second'),base),/STORAGE_ADMISSION_FILES/);
 });
 test('aggregate apparent bytes stop admission without allocating a huge disk fixture',async t=>{

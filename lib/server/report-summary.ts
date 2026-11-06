@@ -11,6 +11,9 @@ import {isReportRunUpdating} from '../report-summary/readiness.ts';
 import {privateStoreDirectory, replacePrivateCheckpoint, verifyPrivateStore} from './society/storage.ts';
 import {createStructuredTransport, type DeepseekTransportOptions} from './inference/deepseek.ts';
 import {AiError} from './ai/errors.ts';
+import {registerStorageRuntime,resolveStorageArtifactDirectory} from './society/storage-lifecycle.ts';
+import {storageFetcher} from './society/storage-fetcher.ts';
+import {storageBase} from './society/storage-admission.ts';
 
 export {projectReportEvidence} from '../report-summary/evidence.ts';
 import {projectReportEvidence, reportSnapshotPayload, type ReportEvidence} from '../report-summary/evidence.ts';
@@ -29,12 +32,15 @@ export interface ReportSummaryDependencies {
   generate: (evidence: ReportWriterEvidence) => Promise<ReportSections|ReportNarrative>;
   readDiscussion?: (run:PublicExplore,token:string) => Promise<PublicDiscussionEvidence>;
   storeDirectory?: string;
+  /** Trusted server lookup, invoked only after snapshot authentication. */
+  resolveArtifactDirectory?: (runId:string)=>string;
+  registerRuntime?: ()=>void;
   promptVersion?: string;
 }
 const inFlight = (globalThis as typeof globalThis & {__reportSummaryInFlight?: Map<string, Promise<ReportSummary>>}).__reportSummaryInFlight ??= new Map();
 export function createReportSummaryService(deps: ReportSummaryDependencies) {
   const directory = resolve(deps.storeDirectory ?? join(privateStoreDirectory('accepted-private'), 'report-summaries'));
-  const pathFor = (runId: string) => join(directory, createHash('sha256').update(runId).digest('hex') + '.json');
+  const pathFor = (runId: string) => join(deps.resolveArtifactDirectory?.(runId)??directory, createHash('sha256').update(runId).digest('hex') + '.json');
   async function snapshot(runId: string, token: string) {
     const run = await deps.readSnapshot(runId, token);
     if (run.runId !== runId) throw new AiError('Report access denied.', 'REPORT_ACCESS', 403);
@@ -54,7 +60,9 @@ export function createReportSummaryService(deps: ReportSummaryDependencies) {
       return {snapshotKey: current.snapshotKey, summary: saved(runId, current.snapshotKey)};
     },
     async generate(runId: string, token: string, expectedSnapshotKey: string): Promise<ReportSummary> {
+      deps.registerRuntime?.();
       const current = await snapshot(runId, token);
+      if(current.run.storage?.disposition==='historical-read-only')throw new AiError('This historical run is read-only. Retained summaries remain available.','REPORT_READ_ONLY',409);
       const stale = () => new AiError('The run changed. Reload the report before generating its summary.', 'REPORT_STALE', 409);
       if(isReportRunUpdating(current.run))throw new AiError('The simulation is still running. Pause it or wait for it to finish before generating a summary.','REPORT_RUNNING',409);
       if (current.snapshotKey !== expectedSnapshotKey) throw stale();
@@ -98,12 +106,14 @@ export function createReportSummaryGenerator(options: DeepseekTransportOptions) 
   return async(evidence:ReportEvidence)=>(await (evidence.assumptionReview?(reviewed??=make(true)):transport).generate(evidence)).value;
 }
 const defaultService = createReportSummaryService({
-  readSnapshot: async (runId, token) => (await import('./society/public-service.ts')).readPublicReportSnapshot(runId, token),
+  readSnapshot: async (runId, token) => (await import('./society/public-service.ts')).readPublicReportSnapshot(runId, token,{},true),
+  resolveArtifactDirectory:runId=>resolveStorageArtifactDirectory(runId,'report-summaries'),
+  registerRuntime:()=>registerStorageRuntime(),
   readDiscussion:async(run,token)=>{
     if(!run.session||!run.society)return {version:1,scope:'No accepted public discussion is available.',initialStatements:0,followupStatements:0,omitted:0,statements:[],nodes:[]};
     return (await import('./society/public-service.ts')).readPublicReportDiscussion(run.runId,token,run.session.revision,run.society.tick);
   },
-  generate: async evidence => createReportSummaryGenerator({key: configuredInferenceKey()})(evidence),
+  generate: async evidence => createReportSummaryGenerator({key: configuredInferenceKey(),fetcher:storageFetcher(storageBase())})(evidence),
 });
 const response = (value: unknown, status = 200, extraHeaders:Record<string,string>={}) => Response.json(value, {status, headers: {'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', Vary: 'Authorization',...extraHeaders}});
 export async function handleReportSummary(request: Request, service = defaultService) {

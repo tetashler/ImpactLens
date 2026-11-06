@@ -1,0 +1,17 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {spawnSync} from 'node:child_process';
+const ready={version:1,policy:'storage-admission-v1',status:'ready',reason:null,capacity:32,used:3,available:29,archivedPeriods:0,archiveLimit:16};
+function render(props:unknown){
+ const url=new URL('../../../components/storage-capacity.tsx',import.meta.url).href;
+ const script=`import {registerHooks} from 'node:module';import {readFileSync,existsSync} from 'node:fs';import babel from 'next/dist/compiled/babel/core.js';import ts from 'next/dist/compiled/babel/preset-typescript.js';import react from 'next/dist/compiled/babel/preset-react.js';import {createElement} from 'react';import {renderToStaticMarkup} from 'react-dom/server';registerHooks({resolve(s,c,n){if(s.startsWith('.')&&c.parentURL)for(const x of ['.tsx','.ts']){const u=new URL(s+x,c.parentURL);if(existsSync(u))return n(u.href,c);}return n(s,c);},load(u,c,n){if(u.endsWith('.css'))return {format:'module',source:'',shortCircuit:true};if(/\\.tsx?$/.test(u))return {format:'module',source:babel.transformSync(readFileSync(new URL(u),'utf8'),{filename:new URL(u).pathname,presets:[[ts,{isTSX:u.endsWith('.tsx'),allExtensions:true}],[react,{runtime:'automatic'}]],babelrc:false,configFile:false}).code,shortCircuit:true};return n(u,c);}});let m;try{m=await import(${JSON.stringify(url)});}catch{process.stdout.write('MISSING_CAPACITY_UI');process.exit(0);}process.stdout.write(renderToStaticMarkup(createElement(m.StorageCapacityView,{...JSON.parse(readFileSync(0,'utf8')),onRefresh:()=>{}})));`;
+ const r=spawnSync(process.execPath,['--input-type=module','--eval',script],{input:JSON.stringify(props),encoding:'utf8',timeout:20000});assert.equal(r.status,0,r.stderr);return r.stdout;
+}
+test('capacity view distinguishes consumed claims from browser history and offers passive refresh with local CLI instructions',()=>{
+ const html=render({status:ready,loading:false});assert.match(html,/3 of 32 slots used/);assert.match(html,/29 available/);assert.match(html,/0 of 16 archive periods retained/);assert.match(html,/failed attempts/);assert.match(html,/role="status"/);assert.match(html,/>Refresh capacity<\/button>/);assert.match(html,/npm run storage:status/);assert.match(html,/npm run storage:rotate -- --confirm/);assert.match(html,/npm run storage:verify -- &lt;archive-id&gt;/);assert.match(html,/--confirm --complete/);
+ assert.equal([...html.matchAll(/<button\b/g)].length,1,'maintenance is CLI-only');assert.doesNotMatch(html,/type="submit"|Clear storage|Delete run/);
+});
+test('full and blocked views explain the stopping condition without fabricated free slots',()=>{
+ const full=render({status:{...ready,status:'full',reason:'capacity',used:32,available:0},loading:false});assert.match(full,/storage is full/i);assert.match(full,/32 of 32 slots used/);
+ const unavailable=render({status:{...ready,status:'blocked',reason:'unavailable',used:null,available:null,archivedPeriods:null},loading:false});assert.match(unavailable,/capacity is unavailable/i);assert.doesNotMatch(unavailable,/0 of 32|32 available|29 available/);
+ const maintenance=render({status:{...ready,status:'blocked',reason:'maintenance',used:null,available:null},loading:false});assert.match(maintenance,/maintenance/i);assert.doesNotMatch(maintenance,/29 available/);
+ const refreshing=render({status:ready,loading:true});assert.match(refreshing,/Checking local simulation storage/);assert.doesNotMatch(refreshing,/29 available/);assert.match(refreshing,/<button[^>]*disabled=""/);
+});

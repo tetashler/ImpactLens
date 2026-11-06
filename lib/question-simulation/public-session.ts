@@ -80,6 +80,19 @@ export class ScenarioRateLimitError extends Error {
   this.name='ScenarioRateLimitError';
  }
 }
+const STORAGE_ERRORS={
+ PRIVATE_STORAGE_CAPACITY:'Local simulation storage is full. Stop the app and archive the current storage period using the local CLI instructions. Existing records are retained. No automatic retry was made.',
+ PRIVATE_STORAGE_UNAVAILABLE:'Local simulation storage is unavailable. Check local storage status before starting another attempt. Existing records are retained. No automatic retry was made.',
+ PRIVATE_STORAGE_DUPLICATE:'This simulation attempt was already used. Start a new attempt. Existing records are retained. No automatic retry was made.',
+} as const;
+export class TrustedScenarioStorageError extends Error {
+ constructor(code:keyof typeof STORAGE_ERRORS){super(STORAGE_ERRORS[code]);this.name='TrustedScenarioStorageError';}
+}
+function rejectStorageFailure(response:Response,body:unknown){
+ if(response.ok||!body||typeof body!=='object')return;
+ const value=body as Record<string,unknown>,code=value.code??value.error;
+ if(typeof code==='string'&&Object.hasOwn(STORAGE_ERRORS,code))throw new TrustedScenarioStorageError(code as keyof typeof STORAGE_ERRORS);
+}
 export class PublicScenarioSession extends StakeholderRequestGate{
  private review:{draft:AssumptionReviewDraft;key:string;input:DynamicRequest}|null=null;
  private async send(payload:unknown,key:string,fetcher:typeof fetch,timeoutMs:number){
@@ -97,6 +110,7 @@ export class PublicScenarioSession extends StakeholderRequestGate{
   const input=parseDynamicRequest(value);this.discard(fetcher);
   // The transport's preparation attempt is an unguessable identity independent of UI revisions.
   const attemptId='review-'+crypto.randomUUID(),result=await this.send({version:3,operation:'prepare',attemptId,request:input,...(hybrid?{hybrid:parseHybridExploreOptions(hybrid)}:{})},key,fetcher,Math.min(timeoutMs,130000));if(!result)return null;const {response,body}=result;
+  rejectStorageFailure(response,body);
   if(response.status===429&&(body?.code==='AI_RATE_LIMIT'||body?.error==='AI_RATE_LIMIT')&&body?.kind!=='planning-failed')throw new ScenarioRateLimitError(body.retryAfterSeconds);
   if(body.kind==='hybrid-map-review'){const r=parseHybridReview(body);ensure(r.question===input.question&&r.geometryRevision===input.geometryRevision);return r;}
   if(body.kind==='planning-failed'){const failed=await validateDynamicResponse(body,{version:1,attemptId,request:input});ensure(failed.kind==='planning-failed');return failed;}
@@ -106,6 +120,7 @@ export class PublicScenarioSession extends StakeholderRequestGate{
  async startReviewed(decisions:AssumptionDecision[],key:string,fetcher:typeof fetch=fetch,timeoutMs=240000):Promise<PublicExplore|null>{
   const held=this.review;ensure(held&&held.key===key&&Date.now()<Date.parse(held.draft.expiresAt),'This review expired. Prepare a new review.');parseAssumptionDecisions(decisions,held.draft.assumptions);this.review=null;
   const result=await this.send({version:3,operation:'start',draftId:held.draft.draftId,token:held.draft.token,contextKey:held.draft.contextKey,decisions},key,fetcher,timeoutMs);if(!result)return null;
+  rejectStorageFailure(result.response,result.body);
   ensure(result.response.ok&&result.body.kind==='summary-execution','Execution could not complete. No automatic retry was made.');const accepted=parsePublicExplore(result.body);
   ensure(accepted.attemptId===held.draft.attemptId&&accepted.requestIdentity===await digest('dynamic-request-',held.input)&&accepted.assumptionReview?.contextKey===held.draft.contextKey,'Reviewed result identity mismatch.');return accepted;
  }

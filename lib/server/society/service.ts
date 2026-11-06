@@ -11,7 +11,8 @@ import {appendSwarmJournal,readSwarmJournal,recoverIncompleteSwarmTail,assertSwa
 import {writeMaterialCheckpoint,readMaterialCheckpoint} from './checkpoint.ts';
 import {withSocialOwner} from './session-lock.ts';
 import {privateStoreDirectory} from './storage.ts';
-import {assertStorageAdmission,beginStorageInitialization,storageBundle,storageBase,inspectStorageAdmission,type StorageAdmission} from './storage-admission.ts';
+import {assertStorageAdmission,beginStorageInitialization,storageBundle,storageBase,inspectStorageAdmission,type StorageAdmission,type StorageBundle} from './storage-admission.ts';
+import {assertArchivedFile,registerStorageRuntime} from './storage-lifecycle.ts';
 import {TOPIC_POLICY,QUALITY_POLICY,CITIZEN_POLICY,CITIZEN_MENU_POLICY,CITIZEN_PROSE_POLICY,CITIZEN_DECLARATION_POLICY} from '../../society/intelligence.ts';
 import {createRejectionObserver} from './rejection-observations.ts';
 import {validateCitizenGroundingAsync,type CitizenGroundedInput} from '../../citizen-grounding/social.ts';
@@ -33,6 +34,9 @@ import {canonical,ensure,object} from '../../experiments/validation.ts';
 export interface SocialDependencies {
  /** Trusted filesystem policy only; never accepted from a browser request. */
  storageBase?:string;storageAdmission?:StorageAdmission;
+ /** Trusted immutable archive interpretation; never parsed from an HTTP body. */
+ storageHistorical?:boolean;
+ storageArchiveBundle?:StorageBundle;
  /** Trusted initialization only. Never parsed from browser JSON; no provider dispatch is supplied here. */
  citizenSelection?:(input:SocietyInput)=>import('../../citizen-grounding/selection.ts').CitizenSelectionV2;
  citizenGrounding?:(preview:SocietyWorld)=>Promise<CitizenGroundedInput>;
@@ -58,7 +62,7 @@ const globalState=globalThis as typeof globalThis&{__socialSessions?:Map<string,
 const sessions=globalState.__socialSessions??=new Map<string,Session>();
 const enabled=(d:SocialDependencies)=>d.enabled??(process.env.SOCIAL_LLM_ENABLED==='true'&&process.env.STAKEHOLDER_LIVE_ENABLED==='true');
 const directory=(d:SocialDependencies)=>privateStoreDirectory('social-sessions',d.directory);
-const historicalDirectory=(d:SocialDependencies)=>resolve(directory(d))===storageBundle(storageBase(d.storageBase),true).sessions;
+const historicalDirectory=(d:SocialDependencies)=>d.storageHistorical===true||resolve(directory(d))===storageBundle(storageBase(d.storageBase),true).sessions;
 const response=(v:unknown,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
 const cacheKey=(root:string,id:string)=>root+'/'+id;
 export function socialStatus(d:SocialDependencies={}){
@@ -149,23 +153,27 @@ async function load(id:string,root:string,readOnly=false):Promise<Session>{
 function validateIdentity(id:unknown):asserts id is string {ensure(typeof id==='string'&&/^[a-f0-9-]{36}$/.test(id),'SOCIAL_SESSION');}
 /** Passive load/recovery. Never invokes the model or advances the simulation clock. */
 export async function readSocialSession(sessionId:string,d:SocialDependencies={}):Promise<SocialState>{
- validateIdentity(sessionId);const root=directory(d);if(historicalDirectory(d))return project(await load(sessionId,root,true),d);mkdirSync(root,{recursive:true});
- if(d.storageAdmission)try{inspectStorageAdmission(d.storageAdmission.base);}catch{return project(await load(sessionId,root,true),d);}
+ validateIdentity(sessionId);const root=directory(d);if(historicalDirectory(d))return readSocialSessionReadonly(sessionId,d);
+ if(d.storageAdmission)try{registerStorageRuntime(d.storageAdmission.base);inspectStorageAdmission(d.storageAdmission.base);}catch{return project(await load(sessionId,root,true),d);}
+ mkdirSync(root,{recursive:true});
  return withSocialOwner(root,sessionId,async()=>project(await load(sessionId,root),d));
 }
 /** Strict passive read: no directories, locks, recovery, checkpoints, cache changes or journal writes. */
 export async function readSocialSessionReadonly(sessionId:string,d:SocialDependencies={}):Promise<SocialState>{
- validateIdentity(sessionId);return project(await load(sessionId,directory(d),true),d);
+ validateIdentity(sessionId);const root=directory(d);
+ if(d.storageArchiveBundle){ensure(resolve(root)===resolve(d.storageArchiveBundle.sessions),'SOCIAL_ARCHIVED_READ_ONLY');assertArchivedFile(join(root,sessionId+'.jsonl'),d.storageBase);const material=join(root,sessionId+'.materialized.json');if(existsSync(material))assertArchivedFile(material,d.storageBase);}
+ return project(await load(sessionId,root,true),d);
 }
 export async function checkpointSocialSession(sessionId:string,d:SocialDependencies={}){
  validateIdentity(sessionId);ensure(!historicalDirectory(d),'SOCIAL_ARCHIVED_READ_ONLY');const root=directory(d);
- if(d.storageAdmission)inspectStorageAdmission(d.storageAdmission.base);
+ if(d.storageAdmission){registerStorageRuntime(d.storageAdmission.base);inspectStorageAdmission(d.storageAdmission.base);}
  return withSocialOwner(root,sessionId,async()=>{const s=await load(sessionId,root);await checkpoint(s,root,true);return project(s,d);});
 }
 /** Typed internal API avoids serialising private worlds through an HTTP Response. */
 export async function socialOperation(body:unknown,d:SocialDependencies={},signal:AbortSignal=new AbortController().signal):Promise<SocialState>{
  ensure(enabled(d),'SOCIAL_DISABLED');signal.throwIfAborted();
  ensure(!historicalDirectory(d),'SOCIAL_ARCHIVED_READ_ONLY');
+ if(d.storageAdmission)registerStorageRuntime(d.storageAdmission.base);
  const b=body as Record<string,any>,root=directory(d);mkdirSync(root,{recursive:true});
  if(b.operation==='start'){
   object(b,['operation','run']);await verifyStakeholderRun(b.run as StakeholderSimulationRunV1);

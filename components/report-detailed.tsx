@@ -6,6 +6,7 @@ import {reportDownloadFilename,reportToMarkdown,reportToPrintHtml} from '../lib/
 import {isReportRunUpdating} from '../lib/report-summary/readiness';
 import type {AutomaticReportsState} from '../lib/report-detailed/automatic';
 import {reportPreparationState} from '../lib/report-detailed/preparation';
+import {parseSavedDetailedReport} from '../lib/report-summary/saved';
 import './report-detailed.css';
 
 type View={identity:string;key:string;report:DetailedReport|null;loading:boolean;generating:boolean;error:string};
@@ -21,6 +22,7 @@ export function DetailedReportContent({report}:{report:DetailedReport}) {
 
 export default function ReportDetailed({result,onPause,autoGenerate=false,automaticReports}:{result:PublicExplore;onPause?:()=>void;autoGenerate?:boolean;automaticReports?:AutomaticReportsState}) {
  const updating=isReportRunUpdating(result);
+ const historical=result.storage?.disposition==='historical-read-only';
  const token=result.session?.token;
  const projection=useMemo(()=>{
   if(updating)return {payload:`updating:${result.runId}`,error:''};
@@ -63,19 +65,17 @@ export default function ReportDetailed({result,onPause,autoGenerate=false,automa
     const body=await response.json();
     if(!isCurrent())return;
     if(!response.ok)throw Error(body.message||'The saved detailed report could not be loaded.');
-    if(body.snapshotKey!==key)throw Error('The run changed. Refresh the run before preparing its detailed report.');
-    const report=body.report===null?null:parseDetailedReport(body.report);
-    if(report&&(report.runId!==result.runId||report.snapshotKey!==key||report.question!==result.question))throw Error('The saved detailed report does not match this run.');
-    setView({identity,key,report,loading:false,generating:false,error:''});
+    const saved=parseSavedDetailedReport(body,result,key);
+    setView({identity,key:saved.snapshotKey,report:saved.report,loading:false,generating:false,error:''});
    }catch(error){if(isCurrent())setView({...empty(identity),loading:false,error:error instanceof Error?error.message:'The detailed report is unavailable.'});}
   }
   void load();
   return ()=>controller.abort();
- },[identity,updating,projection.error,projection.payload,token,result.runId,result.question,reload]);
+ },[identity,updating,projection.error,projection.payload,token,result.runId,result.question,historical,reload]);
 
  async function generate(){
   const controller=active.current;
-  if(preparing||latest.current.updating||latest.current.identity!==identity||busy.current||current.loading||!current.key||!token||!controller||controller.signal.aborted)return;
+  if(historical||preparing||latest.current.updating||latest.current.identity!==identity||busy.current||current.loading||!current.key||!token||!controller||controller.signal.aborted)return;
   const isCurrent=()=>!controller.signal.aborted&&latest.current.identity===identity&&active.current===controller;
   busy.current=true;
   setView(v=>({...v,generating:true,error:''}));
@@ -113,7 +113,8 @@ export default function ReportDetailed({result,onPause,autoGenerate=false,automa
    {preparing&&<p role="status">{preparation.message}</p>}
    {!preparing&&(current.loading||current.generating)&&<p role="status">{current.generating?'Writing detailed report…':'Checking for a saved detailed report…'}</p>}
    {error&&<p className="report-detailed-error" role="alert">{error}</p>}
-   {!preparing&&!current.loading&&!current.report&&current.key&&<button type="button" disabled={current.generating} onClick={()=>void generate()}>{error?'Retry detailed report':'Generate detailed report'}</button>}
+   {historical&&!current.loading&&!current.report&&<p>No matching saved detailed report is available for this read-only archived run.</p>}
+   {!historical&&!preparing&&!current.loading&&!current.report&&current.key&&<button type="button" disabled={current.generating} onClick={()=>void generate()}>{error?'Retry detailed report':'Generate detailed report'}</button>}
    {!preparing&&!current.loading&&!current.key&&token&&<button type="button" onClick={()=>setReload(v=>v+1)}>Check saved detailed report again</button>}
    {current.report&&<DetailedReportContent report={current.report}/>}
   </>}

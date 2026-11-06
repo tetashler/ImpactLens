@@ -5,14 +5,16 @@ import type {KnowledgeGraph} from '../lib/knowledge-graph/contract.ts';
 import {parseReportSummary,type ReportSummary} from '../lib/report-summary/contract.ts';
 import {projectReportEvidence,reportSnapshotPayload} from '../lib/report-summary/evidence.ts';
 import {isReportRunUpdating} from '../lib/report-summary/readiness.ts';
+import {savedArtifactSnapshotKey} from '../lib/report-summary/saved.ts';
 
-interface GraphReportSnapshot {runId:string;token:string;payload:string;identity:string}
+interface GraphReportSnapshot {runId:string;token:string;payload:string;identity:string;historical:boolean}
 export function graphReportSnapshot(run?:PublicExplore|null,graph:KnowledgeGraph|null|undefined=run?.graph):GraphReportSnapshot|null {
   if(!run?.runId||!run.session?.token||isReportRunUpdating(run))return null;
   if(!graph||graph.executionIdentity!==run.runId||run.graph.executionIdentity!==run.runId||graph.scenarioIdentity!==run.graph.scenarioIdentity)return null;
   try {
     const payload=reportSnapshotPayload(projectReportEvidence(run));
-    return {runId:run.runId,token:run.session.token,payload,identity:JSON.stringify([run.runId,run.session.token,payload])};
+    const historical=run.storage?.disposition==='historical-read-only';
+    return {runId:run.runId,token:run.session.token,payload,identity:JSON.stringify([run.runId,run.session.token,payload,historical]),historical};
   } catch {return null;}
 }
 
@@ -24,11 +26,12 @@ export function watchSavedGraphReportSummary(snapshot:GraphReportSnapshot|null,a
     try {
       const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(snapshot!.payload));
       if(controller.signal.aborted)return;
-      const key=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+      const expectedKey=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
       const response=await fetcher(`/api/reports/summary?runId=${encodeURIComponent(snapshot!.runId)}`,{method:'GET',headers:{Authorization:`Bearer ${snapshot!.token}`},cache:'no-store',signal:controller.signal});
       if(!response.ok)return;
       const body=await response.json();
-      if(controller.signal.aborted||body?.snapshotKey!==key)return;
+      if(controller.signal.aborted)return;
+      const key=savedArtifactSnapshotKey(snapshot!.historical,expectedKey,body?.snapshotKey);
       const summary=body.summary===null?null:parseReportSummary(body.summary);
       if(summary&&(summary.runId!==snapshot!.runId||summary.snapshotKey!==key))return;
       if(!controller.signal.aborted)receive(summary);

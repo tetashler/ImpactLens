@@ -1,6 +1,7 @@
 import type {PublicExplore} from '../society/public-contract.ts';
 import {isReportRunUpdating} from '../report-summary/readiness.ts';
 import {GRAPH_SUMMARY_BATCH_SIZE, graphSummarySnapshotPayload, parseGraphNodeSummaries, type GraphNodeSummaries} from './contract.ts';
+import {savedArtifactSnapshotKey} from '../report-summary/saved.ts';
 
 export interface AutomaticGraphSummariesState {
   runId: string;
@@ -96,7 +97,7 @@ async function execute(task: Task, run: PublicExplore, deps: AutomaticGraphSumma
   const fetcher = deps.fetcher ?? fetch, storage = deps.storage === undefined ? browserStorage() : deps.storage;
   const active = () => task.observers.size > 0 && !task.controller.signal.aborted;
   const headers = {Authorization: `Bearer ${run.session!.token}`}, endpoint = '/api/knowledge-graph/summaries';
-  const snapshotKey = task.state.snapshotKey!;
+  let snapshotKey = task.state.snapshotKey!;
   let explicitRetry = deps.retry === true;
   try {
     task.state.phase = 'checking'; notify(task);
@@ -105,7 +106,9 @@ async function execute(task: Task, run: PublicExplore, deps: AutomaticGraphSumma
     const savedBody = record(await saved.json());
     if (!active()) return;
     if (!saved.ok) throw Error(typeof savedBody.message === 'string' ? savedBody.message : 'The saved graph summaries could not be loaded.');
+    snapshotKey=savedArtifactSnapshotKey(run.storage?.disposition==='historical-read-only',snapshotKey,savedBody.snapshotKey);
     const initial = validateEnvelope(savedBody, run, snapshotKey, null, false);
+    task.state.snapshotKey=snapshotKey;
     task.state.artifact = initial.artifact;
     if (initial.complete) {task.state.phase = 'complete'; notify(task); return;}
     task.state.phase = 'idle'; notify(task);

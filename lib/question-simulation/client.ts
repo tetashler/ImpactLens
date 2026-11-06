@@ -1,6 +1,6 @@
 import {parseAssumptionDecisions,type AssumptionReviewDraft,type AssumptionDecision} from '../assumption-review/contract.ts';
 import {parseHybridExploreOptions,type HybridExploreOptions,type HybridReview} from '../interventions/explore-contract.ts';
-import {PublicScenarioSession,ScenarioRateLimitError,parsePublicExplore} from './public-session.ts';
+import {PublicScenarioSession,ScenarioRateLimitError,TrustedScenarioStorageError,parsePublicExplore} from './public-session.ts';
 import type {PublicExplore} from '../society/public-contract.ts';
 import {DynamicSession} from '../dynamic-scenarios/client.ts';
 import {dynamicFailureMessage,type DynamicResponse,type DynamicFailure} from '../dynamic-scenarios/response.ts';
@@ -215,7 +215,7 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
       result.run = run; result.linked = linked;
       finish(attempt, result, 'completed');
     } catch (error) {
-      if (owns(attempt) && !(error instanceof Superseded)) publish({ phase: 'error', run: null, linked: null,publicRun:null,live:null,dynamic:null,dynamicFailure:null, error: error instanceof ScenarioRateLimitError?error.message:attempt.mode!=='scripted'&&error instanceof Error&&SAFE_LIVE_ERRORS.has(error.message)?error.message:'This question could not be prepared or executed safely. Try again.' });
+      if (owns(attempt) && !(error instanceof Superseded)) publish({ phase: 'error', run: null, linked: null,publicRun:null,live:null,dynamic:null,dynamicFailure:null, error: error instanceof ScenarioRateLimitError||error instanceof TrustedScenarioStorageError?error.message:attempt.mode!=='scripted'&&error instanceof Error&&SAFE_LIVE_ERRORS.has(error.message)?error.message:'This question could not be prepared or executed safely. Try again.' });
     } finally {
       if (active === attempt) { if (attempt.timer !== null) clearTimeout(attempt.timer); active = null; }
       attempt.resolve();
@@ -255,7 +255,7 @@ export function createQuestionSimulation(options: QuestionSimulationOptions = {}
     void(async()=>{try{
       const response=await checked(attempt,publicSession.startReviewed(decisions,`${id}:${revision}`,options.fetcher??fetch,240000));if(!response)return;
       finish(attempt,{...emptyResult(response.question),executionMode:'dynamic',publicRun:response},response.status==='completed'?'completed':response.initialActions.length?'partial':'failed');
-    }catch{if(owns(attempt))publish({phase:'error',error:'The reviewed simulation could not complete safely. No automatic retry was made.'});}
+    }catch(error){if(owns(attempt))publish({phase:'error',error:error instanceof TrustedScenarioStorageError?error.message:'The reviewed simulation could not complete safely. No automatic retry was made.'});}
     finally{if(active===attempt){if(attempt.timer!==null)clearTimeout(attempt.timer);active=null;}attempt.resolve();}})();return promise;
   }
   function reviseReview(){stop();publish({...emptyResult(input?.question??state.question),phase:'idle',attemptId:null,error:null,selectedArchiveId:null});}

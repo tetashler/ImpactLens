@@ -10,6 +10,9 @@ import {GRAPH_SUMMARY_BATCH_SIZE, GRAPH_SUMMARY_PROMPT_VERSION, graphSummarySnap
 import type {GraphSummaryWriterEvidence} from './graph-summary-evidence.ts';
 import {protectPrivateConversationSummaries} from './graph-conversation-privacy.ts';
 import {AiError} from './ai/errors.ts';
+import {registerStorageRuntime,resolveStorageArtifactDirectory} from './society/storage-lifecycle.ts';
+import {storageFetcher} from './society/storage-fetcher.ts';
+import {storageBase} from './society/storage-admission.ts';
 import {createStructuredTransport, type DeepseekTransportOptions} from './inference/deepseek.ts';
 import {privateStoreDirectory, replacePrivateCheckpoint, verifyPrivateStore} from './society/storage.ts';
 
@@ -18,6 +21,9 @@ export interface GraphNodeSummaryDependencies {
   readEvidence:(run:PublicExplore, token:string, nodeIds:string[])=>Promise<GraphSummaryWriterEvidence>;
   generate:(evidence:GraphSummaryWriterEvidence)=>Promise<GraphNodeSummary[]>;
   storeDirectory?:string;
+  /** Trusted server lookup, invoked only after snapshot authentication. */
+  resolveArtifactDirectory?:(runId:string)=>string;
+  registerRuntime?:()=>void;
   promptVersion?:string;
 }
 export interface GraphNodeSummaryEnvelope {snapshotKey:string;artifact:GraphNodeSummaries|null;totalNodes:number;complete:boolean}
@@ -31,7 +37,7 @@ export function graphNodeSummarySnapshotKey(run:PublicExplore,promptVersion=GRAP
 export function createGraphNodeSummaryService(deps:GraphNodeSummaryDependencies) {
   // This directory and identity are independent of all report artifacts.
   const directory=resolve(deps.storeDirectory??join(privateStoreDirectory('accepted-private'),'graph-node-summaries'));
-  const pathFor=(runId:string)=>join(directory,createHash('sha256').update(runId).digest('hex')+'.json');
+  const pathFor=(runId:string)=>join(deps.resolveArtifactDirectory?.(runId)??directory,createHash('sha256').update(runId).digest('hex')+'.json');
   const stale=()=>new AiError('The run changed. Reload before preparing its node summaries.','GRAPH_SUMMARY_STALE',409);
   async function snapshot(runId:string,token:string) {
     const run=await deps.readSnapshot(runId,token);
@@ -59,7 +65,9 @@ export function createGraphNodeSummaryService(deps:GraphNodeSummaryDependencies)
       return envelope(current.snapshotKey,current.nodeIds.length,saved(runId,current.snapshotKey,current.allowedIds));
     },
     async generate(runId:string,token:string,expectedSnapshotKey:string):Promise<GraphNodeSummaryEnvelope> {
+      deps.registerRuntime?.();
       const current=await snapshot(runId,token);
+      if(current.run.storage?.disposition==='historical-read-only')throw new AiError('This historical run is read-only. Retained node summaries remain available.','GRAPH_SUMMARY_READ_ONLY',409);
       if(isReportRunUpdating(current.run))throw new AiError('The simulation is still running. Wait for it to settle before preparing node summaries.','GRAPH_SUMMARY_RUNNING',409);
       if(current.snapshotKey!==expectedSnapshotKey)throw stale();
       const existing=saved(runId,current.snapshotKey,current.allowedIds);
@@ -123,9 +131,11 @@ export function createGraphNodeSummaryGenerator(options:DeepseekTransportOptions
 }
 
 const defaultService=createGraphNodeSummaryService({
-  readSnapshot:async(runId,token)=>(await import('./society/public-service.ts')).readPublicReportSnapshot(runId,token),
+  readSnapshot:async(runId,token)=>(await import('./society/public-service.ts')).readPublicReportSnapshot(runId,token,{},true),
+  resolveArtifactDirectory:runId=>resolveStorageArtifactDirectory(runId,'graph-node-summaries'),
+  registerRuntime:()=>registerStorageRuntime(),
   readEvidence:async(run,token,nodeIds)=>(await import('./society/public-service.ts')).readPublicGraphSummaryEvidence(run.runId,token,run.session?.revision??0,run.society?.tick??0,nodeIds),
-  generate:async evidence=>createGraphNodeSummaryGenerator({key:configuredInferenceKey()})(evidence),
+  generate:async evidence=>createGraphNodeSummaryGenerator({key:configuredInferenceKey(),fetcher:storageFetcher(storageBase())})(evidence),
 });
 const response=(value:unknown,status=200,extraHeaders:Record<string,string>={})=>Response.json(value,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',Vary:'Authorization',...extraHeaders}});
 export async function handleGraphNodeSummaries(request:Request,service=defaultService) {

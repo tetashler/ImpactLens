@@ -6,6 +6,7 @@ import {projectReportEvidence, reportSnapshotPayload} from '../lib/report-summar
 import {isReportRunUpdating} from '../lib/report-summary/readiness';
 import type {AutomaticReportsState} from '../lib/report-detailed/automatic';
 import {reportPreparationState} from '../lib/report-detailed/preparation';
+import {parseSavedReportSummary} from '../lib/report-summary/saved';
 import './report-ai-summary.css';
 
 type View = {identity: string; key: string; summary: ReportSummary | null; loading: boolean; generating: boolean; error: string};
@@ -13,6 +14,7 @@ const empty = (identity: string): View => ({identity, key: '', summary: null, lo
 const labels = {findings: 'Findings', agreements: 'Agreements', disagreements: 'Disagreements', concerns: 'Concerns', unknowns: 'Unknowns'};
 export default function ReportAiSummary({result, onPause, automaticReports}: {result: PublicExplore; onPause?: () => void; automaticReports?:AutomaticReportsState}) {
   const updating = isReportRunUpdating(result);
+  const historical=result.storage?.disposition==='historical-read-only';
   const projection = useMemo(() => {
     if (updating) return {identity: `updating:${result.runId}`, error: ''};
     try {return {identity: reportSnapshotPayload(projectReportEvidence(result)), error: ''};}
@@ -52,19 +54,17 @@ export default function ReportAiSummary({result, onPause, automaticReports}: {re
         const response = await fetch(`/api/reports/summary?runId=${encodeURIComponent(result.runId)}`, {headers: {Authorization: `Bearer ${token}`}, cache: 'no-store', signal: controller.signal});
         const body = await response.json();
         if (!response.ok) throw Error(body.message || 'The saved summary could not be loaded.');
-        if (body.snapshotKey !== key) throw Error('The run changed. Refresh the report to view its current summary.');
-        const summary = body.summary === null ? null : parseReportSummary(body.summary);
-        if (summary && (summary.runId !== result.runId || summary.snapshotKey !== key)) throw Error('The saved summary does not match this report.');
-        if (!controller.signal.aborted) setView({identity, key, summary, loading: false, generating: false, error: ''});
+        const saved=parseSavedReportSummary(body,result,key);
+        if (!controller.signal.aborted) setView({identity, key:saved.snapshotKey, summary:saved.summary, loading: false, generating: false, error: ''});
       } catch (error) {
         if (!controller.signal.aborted) setView({...empty(identity), loading: false, error: error instanceof Error ? error.message : 'Summary unavailable.'});
       }
     }
     void load();
     return () => controller.abort();
-  }, [updating, identity, projection.error, token, result.runId, reload]);
+  }, [updating, identity, projection.error, token, result.runId, historical, reload]);
   async function generate() {
-    if (preparing || latest.current.updating || latest.current.identity !== identity || latest.current.token !== token || busy.current || !current.key || !token) return;
+    if (historical || preparing || latest.current.updating || latest.current.identity !== identity || latest.current.token !== token || busy.current || !current.key || !token) return;
     busy.current = true;
     const controller = active.current;
     setView(v => ({...v, generating: true, error: ''}));
@@ -87,7 +87,8 @@ export default function ReportAiSummary({result, onPause, automaticReports}: {re
       {preparing && <p role="status">{preparation.message}</p>}
       {!preparing && (current.loading || current.generating) && <p role="status">{current.generating ? 'Writing summary…' : 'Checking for a saved summary…'}</p>}
       {error && <p role="alert">{error}</p>}
-      {!preparing && !current.loading && !current.summary && current.key && <button type="button" disabled={current.generating} onClick={() => void generate()}>{error?'Retry summary':'Generate summary'}</button>}
+      {historical&&!current.loading&&!current.summary&&<p>No matching saved summary is available for this read-only archived run.</p>}
+      {!historical && !preparing && !current.loading && !current.summary && current.key && <button type="button" disabled={current.generating} onClick={() => void generate()}>{error?'Retry summary':'Generate summary'}</button>}
       {!preparing && !current.loading && !current.key && token && <button type="button" onClick={() => setReload(v => v + 1)}>Check saved summary again</button>}
       {current.summary && <><small>Generated {new Date(current.summary.generatedAt).toLocaleString()}</small>{REPORT_SECTION_KEYS.map(key => <section key={key} data-report-section={key}><h3>{labels[key]}</h3><p className="report-ai-summary-text">{current.summary!.sections[key]}</p></section>)}</>}
     </>}

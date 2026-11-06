@@ -10,6 +10,9 @@ import {isReportRunUpdating} from '../report-summary/readiness.ts';
 import {DETAILED_REPORT_PROMPT_VERSION, DETAILED_REPORT_SECTION_KEYS, detailedReportSnapshotPayload, parseDetailedReport, parseDetailedReportSections, type DetailedReport, type DetailedReportSections} from '../report-detailed/contract.ts';
 import {projectDetailedReportEvidence} from '../report-detailed/evidence.ts';
 import {AiError} from './ai/errors.ts';
+import {registerStorageRuntime,resolveStorageArtifactDirectory} from './society/storage-lifecycle.ts';
+import {storageFetcher} from './society/storage-fetcher.ts';
+import {storageBase} from './society/storage-admission.ts';
 import {createStructuredTransport, type DeepseekTransportOptions} from './inference/deepseek.ts';
 import {privateStoreDirectory, replacePrivateCheckpoint, verifyPrivateStore} from './society/storage.ts';
 
@@ -19,6 +22,9 @@ export interface DetailedReportDependencies {
   readDiscussion: (run: PublicExplore, token: string) => Promise<PublicDiscussionEvidence>;
   generate: (evidence: DetailedReportWriterEvidence) => Promise<DetailedReportSections>;
   storeDirectory?: string;
+  /** Trusted server lookup, invoked only after snapshot authentication. */
+  resolveArtifactDirectory?: (runId:string)=>string;
+  registerRuntime?: ()=>void;
   promptVersion?: string;
 }
 
@@ -40,7 +46,7 @@ const inFlight = (globalThis as typeof globalThis & {__detailedReportInFlight?: 
 export function createDetailedReportService(deps: DetailedReportDependencies) {
   // Separate from quick summaries: neither prompt changes nor writes touch their cache.
   const directory = resolve(deps.storeDirectory ?? join(privateStoreDirectory('accepted-private'), 'detailed-reports'));
-  const pathFor = (runId: string) => join(directory, createHash('sha256').update(runId).digest('hex') + '.json');
+  const pathFor = (runId: string) => join(deps.resolveArtifactDirectory?.(runId)??directory, createHash('sha256').update(runId).digest('hex') + '.json');
   const stale = () => new AiError('The run changed. Reload the report before generating its detailed analysis.', 'REPORT_STALE', 409);
   const running = () => new AiError('The simulation is still running. Pause it or wait for it to finish before generating a detailed report.', 'REPORT_RUNNING', 409);
 
@@ -66,7 +72,9 @@ export function createDetailedReportService(deps: DetailedReportDependencies) {
       return {snapshotKey: current.snapshotKey, report: saved(runId, current.snapshotKey)};
     },
     async generate(runId: string, token: string, expectedSnapshotKey: string): Promise<DetailedReport> {
+      deps.registerRuntime?.();
       const current = await snapshot(runId, token);
+      if(current.run.storage?.disposition==='historical-read-only')throw new AiError('This historical run is read-only. Retained reports remain available.','REPORT_READ_ONLY',409);
       if (isReportRunUpdating(current.run)) throw running();
       if (current.snapshotKey !== expectedSnapshotKey) throw stale();
       const existing = saved(runId, current.snapshotKey);
@@ -116,12 +124,14 @@ export function createDetailedReportGenerator(options: DeepseekTransportOptions)
 }
 
 const defaultService = createDetailedReportService({
-  readSnapshot: async (runId, token) => (await import('./society/public-service.ts')).readPublicReportSnapshot(runId, token),
+  readSnapshot: async (runId, token) => (await import('./society/public-service.ts')).readPublicReportSnapshot(runId, token,{},true),
+  resolveArtifactDirectory:runId=>resolveStorageArtifactDirectory(runId,'detailed-reports'),
+  registerRuntime:()=>registerStorageRuntime(),
   readDiscussion: async (run, token) => {
     if (!run.session || !run.society) return {version: 1, scope: 'No accepted public discussion is available.', initialStatements: 0, followupStatements: 0, omitted: 0, statements: [], nodes: []};
     return (await import('./society/public-service.ts')).readPublicDetailedReportDiscussion(run.runId, token, run.session.revision, run.society.tick);
   },
-  generate: async evidence => createDetailedReportGenerator({key: configuredInferenceKey()})(evidence),
+  generate: async evidence => createDetailedReportGenerator({key: configuredInferenceKey(),fetcher:storageFetcher(storageBase())})(evidence),
 });
 
 const response = (value: unknown, status = 200, extraHeaders:Record<string,string>={}) => Response.json(value, {status, headers: {'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', Vary: 'Authorization',...extraHeaders}});
