@@ -7,7 +7,7 @@ import type {CitizenImpactPublic} from '../../citizen-grounding/public-contract.
 import type {CitizenDataset,CitizenCommuteRun,TransportDemandReference} from '../../citizen-grounding/contract.ts';
 import type {Graph} from '../../../prototype/mrt/graph.ts';
 import {getBaseline} from '../mrt-service.ts';
-import {loadTransportDemandReference,loadStationAccessPoints} from './transport-data.ts';
+import {loadTransportData,loadTransportDemandReference,loadStationAccessPoints} from './transport-data.ts';
 
 type MaybePromise<T>=T|Promise<T>;
 export interface CitizenImpactDependencies {dataset:()=>MaybePromise<CitizenDataset>;baseline:(date:string)=>MaybePromise<Graph>;demand:(graph:Graph)=>MaybePromise<TransportDemandReference>;access:(graph:Graph)=>MaybePromise<StationAccessIndex>}
@@ -20,7 +20,9 @@ const defaults:CitizenImpactDependencies={dataset:async()=>{const {getCitizenDat
 export async function calculateCitizenImpact(input:unknown,dependencies:Partial<CitizenImpactDependencies>={}):Promise<PrivateCitizenImpact>{
  const parsed=parseCitizenImpactRequest(input),deps={...defaults,...dependencies};
  const dataset=await deps.dataset(),baseline=await deps.baseline(parsed.serviceDate);ensure(baseline.date===parsed.serviceDate,'CITIZEN_DATE_BINDING');
- const demandReference=await deps.demand(baseline),stationAccessPoints=await deps.access(baseline),run=calculateCitizenCommutes(dataset,baseline,parsed.intervention,{demandReference,stationAccessPoints});
+ // Keep individual overrides in their existing order; default readers share one verified snapshot.
+ const transport=dependencies.demand===undefined&&dependencies.access===undefined?loadTransportData(baseline):{reference:await deps.demand(baseline),index:await deps.access(baseline)};
+ const run=calculateCitizenCommutes(dataset,baseline,parsed.intervention,{demandReference:transport.reference,stationAccessPoints:transport.index});
  const reference=run.demandReference,publicResult=parseCitizenImpactPublic({version:1,policy:'citizen-commute-v1',runId:run.id,datasetId:dataset.id,populationId:dataset.populationId,scenarioFingerprint:run.scenarioFingerprint,requestFingerprint:await citizenImpactRequestFingerprint(parsed),serviceDate:run.serviceDate,summary:run.summary,diagnostics:run.diagnostics,
   sources:dataset.manifest.sources.map(({id,title,organisation,referenceYear,publicationUrl,sha256})=>({id,title,organisation,referenceYear,publicationUrl,sha256})),
   demandReference:reference?{version:reference.version,policy:reference.policy,sourceHash:reference.sourceHash,period:reference.period,records:reference.records,totalTrips:reference.totalTrips,matchedTrips:reference.matchedTrips,unmappedTrips:reference.unmappedTrips,stationCodes:reference.stationMappings.length,mappedStationCodes:reference.stationMappings.filter(s=>s.stationId!==null).length,dayTypes:reference.dayTypes,hours:reference.hours,exitSourceHash:reference.exitSourceHash,exitFeatures:reference.exitFeatures,matchedExits:reference.matchedExits,limitations:reference.limitations}:null,

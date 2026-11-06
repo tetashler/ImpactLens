@@ -61,8 +61,10 @@ export function parseStationAccessPoints(value:unknown,graph:Graph,sourceHash:st
  for(const rows of Object.values(points))rows.sort((a,b)=>a.sourceId.localeCompare(b.sourceId));return freezeSnapshot({index:{sourceHash,points},totalExits:data.features.length,matchedExits});
 }
 
-const cache=new Map<string,{reference:TransportDemandReference;index:StationAccessIndex}>();
-function load(graph:Graph){
+export interface TransportData {reference:TransportDemandReference;index:StationAccessIndex}
+const cache=new Map<string,TransportData>();
+/** Verify current source bytes once, then return both graph-bound reference snapshots. */
+export function loadTransportData(graph:Graph):TransportData{
  const key=graphCostFingerprint(graph);
  const root=process.cwd(),od=readFileSync(join(root,'data/transport/origin_destination_train_202609.csv')),exits=readFileSync(join(root,'data/transport/LTAMRTStationExitGEOJSON.geojson')),stopsBytes=readFileSync(join(root,'data/transport/mrt-network/stops.txt'));ensure(hash(od)===OD_SOURCE_SHA256&&hash(exits)===EXIT_SOURCE_SHA256&&hash(stopsBytes)===STOP_CROSSWALK_SHA256,'CITIZEN_TRANSPORT_SOURCE_CHANGED');
  const prior=cache.get(key);if(prior)return prior;
@@ -70,5 +72,5 @@ function load(graph:Graph){
  const reference:TransportDemandReference={...core,exitSourceHash:EXIT_SOURCE_SHA256,exitFeatures:mapped.totalExits,matchedExits:mapped.matchedExits,limitations:['The existing files are source-byte pinned; original acquisition receipts and local GTFS provenance remain unauthenticated.','OD period September 2026 is separate from Census 2020 employment/residence aggregates and the selected service date.','Monthly station-pair trips are not unique commuters, resident-to-work journeys or demographic observations; counts do not assign citizen trips or calculate their travel times.','Mappings use explicit GTFS code/parent relationships and reviewed canonical aliases. Unsupported/ambiguous codes retain all associated unmapped trip mass.','Exact normalized unique station-name matching links exit points; unmatched exits remain counted, and no fuzzy geographic association is inferred.','Exit coordinates do not establish pedestrian connectivity, accessibility, opening status or exit-to-platform travel time.']};
  const result=freezeSnapshot({reference,index:mapped.index});if(cache.size>=8)cache.delete(cache.keys().next().value!);cache.set(key,result);return result;
 }
-export function loadTransportDemandReference(graph:Graph):TransportDemandReference{return load(graph).reference;}
-export function loadStationAccessPoints(graph:Graph):StationAccessIndex{return load(graph).index;}
+export function loadTransportDemandReference(graph:Graph):TransportDemandReference{return loadTransportData(graph).reference;}
+export function loadStationAccessPoints(graph:Graph):StationAccessIndex{return loadTransportData(graph).index;}

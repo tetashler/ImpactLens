@@ -4,6 +4,9 @@ import {calculateCitizenImpact,getPrivateCitizenImpact,citizenImpactResponse} fr
 import {parseCitizenImpactPublic,parseCitizenImpactRequest,citizenImpactRequestFingerprint,assertCitizenImpactBinding} from '../../citizen-grounding/public-contract.ts';
 import {transportCitizen,transportDataset,transportReference} from './citizen-transport-fixture.ts';
 import {baselineFixture,proposalFixture} from '../../../prototype/mrt/tests/scenario-fixtures.ts';
+import {loadTransportDemandReference,loadStationAccessPoints} from '../../server/citizen-grounding/transport-data.ts';
+import fs from 'node:fs';
+import {syncBuiltinESMExports} from 'node:module';
 const request=()=>({serviceDate:'2026-10-27',intervention:proposalFixture()});
 const dependencies=()=>({dataset:()=>transportDataset(),baseline:()=>baselineFixture(),demand:()=>transportReference,access:()=>({sourceHash:'e'.repeat(64),points:{}})});
 
@@ -44,4 +47,31 @@ test('HTTP response never dispatches providers or echoes private diagnostics on 
 test('private impact cache retains only two completed runs and exposes no enumeration HTTP method',async()=>{
  const ids=[];for(let i=0;i<3;i++){const q=request();q.intervention.id='FIXTURE_API_'+i;ids.push((await calculateCitizenImpact(q,dependencies())).publicResult.runId);}assert.equal(getPrivateCitizenImpact(ids[0]),null);assert.ok(getPrivateCitizenImpact(ids[2]));
  const method=await citizenImpactResponse(new Request('http://localhost/api/citizen-impact',{method:'GET'}),dependencies());assert.equal(method.status,405);
+});
+
+test('default transport loading reads each source once per calculation with unchanged results',async()=>{
+ const graph=baselineFixture(),dataset=transportDataset(),base={dataset:()=>dataset,baseline:()=>graph};
+ const paths=['data/transport/origin_destination_train_202609.csv','data/transport/LTAMRTStationExitGEOJSON.geojson','data/transport/mrt-network/stops.txt'],reads=new Map(paths.map(path=>[path,0])),original=fs.readFileSync;
+ let first,second;
+ try{
+  fs.readFileSync=((path:unknown,...args:unknown[])=>{const name=String(path).replaceAll('\\','/');for(const source of paths)if(name.endsWith(source))reads.set(source,reads.get(source)!+1);return Reflect.apply(original,fs,[path,...args]);}) as typeof original;syncBuiltinESMExports();
+  first=await calculateCitizenImpact(request(),base);assert.deepEqual([...reads.values()],[1,1,1]);
+  second=await calculateCitizenImpact(request(),base);assert.deepEqual([...reads.values()],[2,2,2]);
+ }finally{fs.readFileSync=original;syncBuiltinESMExports();}
+ const separate=await calculateCitizenImpact(request(),{...base,demand:loadTransportDemandReference,access:loadStationAccessPoints});
+ assert.deepEqual(first.run,separate.run);assert.deepEqual(first.publicResult,separate.publicResult);assert.deepEqual(second.run,first.run);
+});
+
+test('partial transport overrides use the supplied reader and retain the other default',async()=>{
+ const graph=baselineFixture(),base={dataset:()=>transportDataset(),baseline:()=>graph};let demandCalls=0,accessCalls=0;
+ const customAccess={sourceHash:'e'.repeat(64),points:{}};
+ const demandOnly=await calculateCitizenImpact(request(),{...base,demand:async()=>{demandCalls++;return transportReference;}});
+ assert.equal(demandCalls,1);assert.equal(demandOnly.run.demandReference?.sourceHash,transportReference.sourceHash);
+ const expectedDemand=await calculateCitizenImpact(request(),{...base,demand:()=>transportReference,access:loadStationAccessPoints});assert.deepEqual(demandOnly.run,expectedDemand.run);
+ const accessOnly=await calculateCitizenImpact(request(),{...base,access:async()=>{accessCalls++;return customAccess;}});
+ assert.equal(accessCalls,1);
+ const expectedAccess=await calculateCitizenImpact(request(),{...base,demand:loadTransportDemandReference,access:()=>customAccess});assert.deepEqual(accessOnly.run,expectedAccess.run);
+ const order:string[]=[];
+ await calculateCitizenImpact(request(),{...base,demand:async()=>{order.push('demand');await Promise.resolve();order.push('demand-complete');return transportReference;},access:async()=>{assert.equal(order.at(-1),'demand-complete');order.push('access');return customAccess;}});
+ assert.deepEqual(order,['demand','demand-complete','access']);
 });

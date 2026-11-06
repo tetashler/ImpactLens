@@ -1,6 +1,6 @@
 # Transport source-read optimization: research and implementation plan
 
-> Status: researched and documented; application changes have not been implemented. The user authorized saving this document after the read-only investigation. Implementation requires a subsequent instruction.
+> Status: implemented on 2026-11-06 following the user?s instruction to continue. Focused tests, final TypeScript, production build and independent review passed.
 >
 > For agentic implementers: use the project's implementation and verification skills, preserve unrelated working-tree changes, and complete the focused regression checks below. Do not run paid inference or resume saved simulations.
 
@@ -117,12 +117,12 @@ This preserves partial override behaviour: a custom demand reader does not accid
 
 **Test file:** `lib/contracts/tests/citizen-transport-data.test.ts`.
 
-- [ ] Add tests for a combined frozen result, wrapper identity compatibility and per-source read counts.
-- [ ] Observe the new tests fail because the combined accessor is not available or the required behaviour is missing.
-- [ ] Export `TransportData` and `loadTransportData`, reusing the existing loader without changing its verification/cache ordering.
-- [ ] Keep the individual exported accessors delegating to the combined path.
-- [ ] Confirm existing source-corruption tests remain unchanged and pass.
-- [ ] Add equivalent corruption coverage for station-exit bytes and the combined accessor.
+- [x] Add tests for a combined frozen result, wrapper identity compatibility and per-source read counts.
+- [x] Observe the new tests fail because the combined accessor is not available or the required behaviour is missing.
+- [x] Export `TransportData` and `loadTransportData`, reusing the existing loader without changing its verification/cache ordering.
+- [x] Keep the individual exported accessors delegating to the combined path.
+- [x] Confirm existing source-corruption tests remain unchanged and pass.
+- [x] Add equivalent corruption coverage for station-exit bytes and the combined accessor.
 
 ### Task 2: use one transport load per default calculation
 
@@ -130,21 +130,21 @@ This preserves partial override behaviour: a custom demand reader does not accid
 
 **Test file:** `lib/contracts/tests/citizen-impact-api.test.ts`.
 
-- [ ] Add a regression showing one default calculation currently reads each transport source twice.
-- [ ] Change its expected count to once and observe the failure before implementation.
-- [ ] Import and use `loadTransportData` when neither individual transport override is provided.
-- [ ] Keep existing independently injected demand/access paths and their sequential order.
-- [ ] Test both overrides together, demand-only override and access-only override. Use controlled fixtures/stubs and restore any patched filesystem functions after each test.
-- [ ] Verify unchanged calculated outputs and source/calculation identities for equivalent inputs.
+- [x] Add a regression showing one default calculation currently reads each transport source twice.
+- [x] Change its expected count to once and observe the failure before implementation.
+- [x] Import and use `loadTransportData` when neither individual transport override is provided.
+- [x] Keep existing independently injected demand/access paths and their sequential order.
+- [x] Test both overrides together, demand-only override and access-only override. Use controlled fixtures/stubs and restore any patched filesystem functions after each test.
+- [x] Verify unchanged calculated outputs and source/calculation identities for equivalent inputs.
 
 ### Task 3: verify correctness and measure the actual benefit
 
-- [ ] Run the focused tests below with bounded concurrency.
-- [ ] Run TypeScript and an appropriate production build after the focused checks pass.
-- [ ] Compare cold and warm loading before/after in separate controlled processes, with the same graph and source files. Record read counts, elapsed time and peak memory if measured.
-- [ ] Separate transport-loading time from end-to-end calculation time and from provider/network latency.
-- [ ] Report observed timings with the machine, runtime and sample count. Do not claim an unmeasured latency target or a 50% reduction in total simulation time.
-- [ ] Review the final diff to ensure no datasets, pins, formulas, public contracts or unrelated changes were altered.
+- [x] Run the focused tests below with bounded concurrency.
+- [x] Run TypeScript and an appropriate production build after the focused checks pass.
+- [x] Compare cold and warm loading before/after in separate controlled processes, with the same graph and source files. Record read counts, elapsed time and peak memory if measured.
+- [x] Separate transport-loading time from end-to-end calculation time and from provider/network latency.
+- [x] Report observed timings with the machine, runtime and sample count. Do not claim an unmeasured latency target or a 50% reduction in total simulation time.
+- [x] Review the final diff to ensure no datasets, pins, formulas, public contracts or unrelated changes were altered.
 
 ## Acceptance tests
 
@@ -215,3 +215,40 @@ File watchers can be an invalidation hint, not the sole integrity mechanism. Met
 Estimated first implementation: **2–4 focused hours**, including regression coverage and measurements. This is an engineering estimate, not a measured completion time. An immutable-source or metadata-cache redesign should be estimated separately after selecting its integrity policy.
 
 At document creation: repository code and tests were inspected, file sizes were read, Node documentation was checked, and an independent read-only review was completed. No application implementation, test run, benchmark, paid API call or saved-simulation recovery was performed.
+
+
+## Implementation record ? 2026-11-06
+
+The combined `loadTransportData(graph)` accessor is implemented. The default citizen-impact path loads one verified transport snapshot; the compatibility wrappers and independently supplied reader paths remain available. Source hashes are still checked before each cache lookup. The graph fingerprint, eight-entry eviction, numerical formulas and response shapes were not changed.
+
+### Regression and review evidence
+
+- Test-first reproduction: the default calculation read each source twice rather than once; the combined accessor was absent. Three expected red failures were recorded before production changes.
+- Final focused run: **34 tests passed, zero failures**, covering actual source pins, cold/warm combined loading, frozen reference reuse, all three sources being corrupted/missing/unreadable, per-calculation read counts, unchanged results, partial overrides and sequential override completion.
+- The cold combined-loader test uses a cloned baseline with a distinct graph fingerprint; it does not mutate the shared baseline.
+- A deliberate temporary `Promise.all` mutation was rejected by the strengthened demand-completion assertion. The correct sequential implementation was restored immediately in a `finally` block.
+- Final standalone TypeScript check passed. Independent review reported no remaining material issues after two test-coverage improvements.
+- Final production webpack build passed, including page generation and postbuild private-trace filtering.
+- No full repository suite was rerun; verification was scoped to the transport loader, API and commute calculations plus TypeScript and the production build.
+
+### Local benchmark
+
+Two fresh Node.js **v24.18.0** processes each performed one cold invocation and ten warm invocations against the same `2026-10-27` baseline and unchanged source files. The separate-accessor mode reproduces the previous call path using the retained compatibility wrappers. No task build or test process ran concurrently with these measurements. Operating-system file caching was uncontrolled, so cold timings are not physical-cold-disk measurements.
+
+| Measurement | Separate accessors | Combined accessor |
+|---|---:|---:|
+| Cold transport load | 4,839.6 ms | 4,023.9 ms |
+| Median of ten warm loads | 266.186 ms | 166.314 ms |
+| Minimum warm load | 219.586 ms | 86.610 ms |
+| Maximum warm load | 441.434 ms | 254.449 ms |
+| Source-file reads across eleven invocations | 66 | 33 |
+| Source bytes per invocation | 76,514,822 | 38,257,411 |
+| Whole-process peak RSS | 716,920 KiB | 751,200 KiB |
+
+The local warm-loading median decreased by approximately **37.5%**. This is a measurement of the transport-loading step, not end-to-end simulation latency. The samples do not establish a general speed or memory guarantee; peak process memory was not reduced in this measurement.
+
+Every result in both processes had the same SHA-256: `c36ed40bc7e9afa14a7b7d9fd7a2114999d400ed3bfb8dea0bbff48d78a6452a`.
+
+Local artifacts: `tmp/transport-source-reads-red.log`, `tmp/transport-source-reads-final-tests.log`, `tmp/transport-source-reads-order-mutation.log`, `tmp/transport-source-reads-types-final.log`, `tmp/transport-source-reads-benchmark.json`, `tmp/transport-source-reads-build.log` and `tmp/transport-source-reads-progress.md`.
+
+The implementation was verified before the user requested committing and pushing it. No provider calls, source dataset changes or saved-simulation recovery were performed.

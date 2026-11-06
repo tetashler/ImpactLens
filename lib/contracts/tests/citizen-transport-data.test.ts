@@ -5,6 +5,7 @@ import {baselineFixture} from '../../../prototype/mrt/tests/scenario-fixtures.ts
 import {getBaseline} from '../../server/mrt-service.ts';
 import fs from 'node:fs';
 import {syncBuiltinESMExports} from 'node:module';
+import * as transportData from '../../server/citizen-grounding/transport-data.ts';
 
 const header='YEAR_MONTH,DAY_TYPE,TIME_PER_HOUR,PT_TYPE,ORIGIN_PT_CODE,DESTINATION_PT_CODE,TOTAL_TRIPS';
 test('reviewed stop-code parents and combined interchange codes map only to one unambiguous served station',()=>{
@@ -41,4 +42,32 @@ test('the explicit GTFS stop-code crosswalk remains source-pinned even after a r
  const graph=getBaseline('2026-10-27');loadTransportDemandReference(graph);const original=fs.readFileSync;
  try{fs.readFileSync=((path:unknown,...args:unknown[])=>String(path).replaceAll('\\','/').endsWith('mrt-network/stops.txt')?Buffer.from('corrupted crosswalk source'):Reflect.apply(original,fs,[path,...args])) as typeof original;syncBuiltinESMExports();assert.throws(()=>loadTransportDemandReference(graph),/SOURCE_CHANGED/);}
  finally{fs.readFileSync=original;syncBuiltinESMExports();}
+});
+
+test('combined transport loading verifies every source once and preserves frozen cached members',()=>{
+ assert.equal(typeof transportData.loadTransportData,'function');
+ const graph=structuredClone(getBaseline('2026-10-27')),original=fs.readFileSync,paths=['data/transport/origin_destination_train_202609.csv','data/transport/LTAMRTStationExitGEOJSON.geojson','data/transport/mrt-network/stops.txt'];
+ graph.costs.initialWaitSeconds+=7; // Unique graph key exercises a cold load without mutating the shared baseline.
+ const reads=new Map(paths.map(path=>[path,0]));
+ try{
+  fs.readFileSync=((path:unknown,...args:unknown[])=>{const name=String(path).replaceAll('\\','/');for(const source of paths)if(name.endsWith(source))reads.set(source,reads.get(source)!+1);return Reflect.apply(original,fs,[path,...args]);}) as typeof original;syncBuiltinESMExports();
+  const first=transportData.loadTransportData(graph);
+  assert.deepEqual([...reads.values()],[1,1,1]);assert.ok(Object.isFrozen(first)&&Object.isFrozen(first.reference)&&Object.isFrozen(first.index.points));
+  assert.throws(()=>{first.index.sourceHash='invalid';},TypeError);
+  assert.strictEqual(transportData.loadTransportData(graph),first);assert.deepEqual([...reads.values()],[2,2,2]);
+  assert.strictEqual(loadTransportDemandReference(graph),first.reference);assert.strictEqual(loadStationAccessPoints(graph),first.index);
+  assert.deepEqual([...reads.values()],[4,4,4]);
+ }finally{fs.readFileSync=original;syncBuiltinESMExports();}
+});
+
+test('combined warm transport loading rejects corrupt, missing and unreadable sources without stale fallback',()=>{
+ assert.equal(typeof transportData.loadTransportData,'function');
+ const graph=getBaseline('2026-10-27'),original=fs.readFileSync;transportData.loadTransportData(graph);
+ for(const source of ['origin_destination_train_202609.csv','LTAMRTStationExitGEOJSON.geojson','mrt-network/stops.txt'])for(const code of ['corrupt','ENOENT','EACCES']){
+  try{
+   fs.readFileSync=((path:unknown,...args:unknown[])=>{if(String(path).replaceAll('\\','/').endsWith(source)){if(code==='corrupt')return Buffer.from('corrupted source bytes');throw Object.assign(Error('Controlled fixture read error'),{code});}return Reflect.apply(original,fs,[path,...args]);}) as typeof original;syncBuiltinESMExports();
+   assert.throws(()=>transportData.loadTransportData(graph),code==='corrupt'?/SOURCE_CHANGED/:{code});
+  }finally{fs.readFileSync=original;syncBuiltinESMExports();}
+ }
+ assert.ok(transportData.loadTransportData(graph).reference.records>0);
 });
