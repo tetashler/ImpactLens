@@ -1,7 +1,8 @@
 await import((await import('node:url')).pathToFileURL((await import('node:path')).resolve('scripts/testing/offline-network.mjs')).href);
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,readFileSync,writeFileSync,rmSync} from 'node:fs';
+import {mkdirSync,readFileSync,writeFileSync} from 'node:fs';
+import {createOfflineTestFixture,finishOfflineTestFixture} from '../../../scripts/testing/fixture-retention.ts';
 import {createHash} from 'node:crypto';
 import {resolve,join,relative,sep} from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -49,7 +50,7 @@ const prime=async f=>{await initial(f);await f(endpoint,request('citizen_persona
 `;
 
 function run(source:string,inspect?:(directory:string)=>void){
- mkdirSync('tmp',{recursive:true});const directory=mkdtempSync(join(process.cwd(),'tmp','admission-timeout-smoke-guard-test-'));mkdirSync(join(directory,'diagnostics'));
+ const fixture=createOfflineTestFixture('admission-timeout-smoke-guard-test-'),directory=fixture.directory;mkdirSync(join(directory,'diagnostics'));
  const gatePath=join(directory,'offline-gate.json'),identityPath=join(directory,'identity.json'),buildId=join(directory,'BUILD_ID');
  const pin=(name:string)=>{const path=join(directory,name);writeFileSync(path,'isolated dummy '+name);return {path:relative(process.cwd(),path).split(sep).join('/'),sha256:''};};
  const dataset=pin('dataset-dummy.json'),protectedFile=pin('protected-dummy.json');
@@ -64,8 +65,8 @@ function run(source:string,inspect?:(directory:string)=>void){
  writeFileSync(mockPath, `import {createHash} from 'node:crypto';const sha=v=>createHash('sha256').update(v).digest('hex');export async function preloadGeographicSelectionProof({proofSha256}){return {policy:'geographic-selection-admission-v1',proofSha256,representedAgents:10000,improved:4,summarySha256:'a'.repeat(64),scenarioSha256:'b'.repeat(64),createdAt:'2020-01-01T00:00:00Z'};}; export async function verifyGeographicSelectionAdmission({actor,contextId,context,proofSha256}){globalThis.__verificationStarted?.();if(globalThis.__verificationDelay)await globalThis.__verificationDelay();globalThis.__verificationFinished?.();if(actor!==context.actor.id||contextId!==context.id||contextId==='decision-fail') throw Error('MOCK_SELECTION_REJECT');return {policy:'geographic-selection-admission-v1',proofSha256,active:50,capable:35,ruleDriven:15,improvedSelected:4,improvedCapable:4,comparisonAreas:25,byBucket:{impact:4,geography:12,comparison:34,fallback:0},selectionSha256:'c'.repeat(64),bindingSha256:'d'.repeat(64),scenarioSha256:'b'.repeat(64),populationSha256:'e'.repeat(64),summarySha256:'a'.repeat(64),runSha256:sha('dummy-run'),contextSha256:sha(contextId),actorSha256:sha(actor)};}`);
  writeFileSync(contextMockPath, `import {createHash} from 'node:crypto';const sha=v=>createHash('sha256').update(v).digest('hex');export function verifyPreparedStoredContext({context}){return {inputSha256:'a'.repeat(64),selectionSha256:'c'.repeat(64),runSha256:sha(context.runId)};}`);
  writeFileSync(loaderPath, `import {registerHooks} from 'node:module'; registerHooks({resolve(specifier,context,next){if(specifier==='./phased-provider-admission.mjs') return {url:${JSON.stringify(pathToFileURL(contextMockPath).href)},shortCircuit:true};if(specifier==='./geographic-selection-admission.mjs') return {url:${JSON.stringify(pathToFileURL(mockPath).href)},shortCircuit:true};return next(specifier,context);}});`);
- try{const result=spawnSync(process.execPath,['--import',pathToFileURL(loaderPath).href,'--input-type=module','-e',setup+source],{cwd:process.cwd(),encoding:'utf8',timeout:120000,env:{...process.env,NODE_ENV:'test',IMPACTLENS_ADMISSION_TIMEOUT_SMOKE_LIVE_DIRECTORY:directory,IMPACTLENS_ADMISSION_TIMEOUT_SMOKE_IDENTITY:identityPath,IMPACTLENS_ADMISSION_TIMEOUT_SMOKE_OFFLINE_GATE:gatePath,IMPACTLENS_ADMISSION_TIMEOUT_SMOKE_TEST_BUILD_ID_PATH:buildId,IMPACTLENS_ADMISSION_TIMEOUT_SMOKE_LIVE_GUARD:'false'}});assert.equal(result.status,0,result.stderr||result.stdout);inspect?.(directory);}
- finally{/* Preserve isolated offline evidence; never delete an existing task artifact. */}
+ let passed=false;try{const result=spawnSync(process.execPath,['--import',pathToFileURL(loaderPath).href,'--input-type=module','-e',setup+source],{cwd:process.cwd(),encoding:'utf8',timeout:120000,env:{...process.env,NODE_ENV:'test',IMPACTLENS_ADMISSION_TIMEOUT_SMOKE_LIVE_DIRECTORY:directory,IMPACTLENS_ADMISSION_TIMEOUT_SMOKE_IDENTITY:identityPath,IMPACTLENS_ADMISSION_TIMEOUT_SMOKE_OFFLINE_GATE:gatePath,IMPACTLENS_ADMISSION_TIMEOUT_SMOKE_TEST_BUILD_ID_PATH:buildId,IMPACTLENS_ADMISSION_TIMEOUT_SMOKE_LIVE_GUARD:'false'}});assert.equal(result.status,0,result.stderr||result.stdout);inspect?.(directory);passed=true;}
+ finally{finishOfflineTestFixture(fixture,passed);}
 }
 
 

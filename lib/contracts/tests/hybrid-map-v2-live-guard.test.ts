@@ -1,7 +1,8 @@
 import '../../../scripts/testing/offline-network.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,readFileSync,writeFileSync,rmSync} from 'node:fs';
+import {readFileSync,writeFileSync} from 'node:fs';
+import {createOfflineTestFixture,finishOfflineTestFixture} from '../../../scripts/testing/fixture-retention.ts';
 import {createHash} from 'node:crypto';
 import {resolve,join,relative,sep} from 'node:path';
 import {spawnSync} from 'node:child_process';
@@ -46,7 +47,7 @@ const prime=async f=>{await initial(f);await f(endpoint,request('citizen_persona
 `;
 
 function run(source:string,inspect?:(directory:string)=>void){
- mkdirSync('tmp',{recursive:true});const directory=mkdtempSync(join(process.cwd(),'tmp','hybrid-map-v2-guard-test-'));
+ const fixture=createOfflineTestFixture('hybrid-map-v2-guard-test-'),directory=fixture.directory;
  const gatePath=join(directory,'offline-gate.json'),identityPath=join(directory,'identity.json'),buildId=join(directory,'BUILD_ID');
  const pin=(name:string)=>{const path=join(directory,name);writeFileSync(path,'isolated dummy '+name);return {path:relative(process.cwd(),path).split(sep).join('/'),sha256:''};};
  const dataset=pin('dataset-dummy.json'),protectedFile=pin('protected-dummy.json');
@@ -57,8 +58,8 @@ function run(source:string,inspect?:(directory:string)=>void){
  // Hash the dummy files outside the child to keep every protected pin independent.
  for(const item of [dataset,protectedFile])item.sha256=createHash('sha256').update(readFileSync(item.path)).digest('hex');
  writeFileSync(identityPath,JSON.stringify(identity));writeFileSync(gatePath,JSON.stringify({version:2,taskId:identity.taskId,offlinePass:true,nodeTests:1687,tsApp:true,tsStrict:true,productionBuild:'isolated-fixture-build',desktop50:true,desktop100:true,plotDesktop1440:true,plotDesktop1920:true,benchmarks14:false,benchmarkAssessment:{version:1,decision:'not-rerun',reason:'unchanged-simulation-and-selection',sourceBaselineFingerprint:'a'.repeat(64),evidenceFiles:[dataset],unchangedSourceFiles:[protectedFile]},historical20:true,classifiedArtifact:true,privacy:true,fullAndTailReplay:true,protectedHash:true,datasetPins:true,providerCalls:0,networkAttempts:0,historicalReportPath:join(directory,'historical-replay.json'),readinessReportPath:join(directory,'readiness.json')}));
- try{const result=spawnSync(process.execPath,['--input-type=module','-e',setup+source],{cwd:process.cwd(),encoding:'utf8',timeout:120000,env:{...process.env,NODE_ENV:'test',IMPACTLENS_HYBRID_MAP_V2_LIVE_DIRECTORY:directory,IMPACTLENS_HYBRID_MAP_V2_IDENTITY:identityPath,IMPACTLENS_HYBRID_MAP_V2_OFFLINE_GATE:gatePath,IMPACTLENS_HYBRID_MAP_V2_TEST_BUILD_ID_PATH:buildId,IMPACTLENS_HYBRID_MAP_V2_LIVE_GUARD:'false'}});assert.equal(result.status,0,result.stderr||result.stdout);inspect?.(directory);}
- finally{assert.ok(resolve(directory).startsWith(resolve('tmp')+sep+'hybrid-map-v2-guard-test-'));rmSync(directory,{recursive:true,force:true});}
+ let passed=false;try{const result=spawnSync(process.execPath,['--input-type=module','-e',setup+source],{cwd:process.cwd(),encoding:'utf8',timeout:120000,env:{...process.env,NODE_ENV:'test',IMPACTLENS_HYBRID_MAP_V2_LIVE_DIRECTORY:directory,IMPACTLENS_HYBRID_MAP_V2_IDENTITY:identityPath,IMPACTLENS_HYBRID_MAP_V2_OFFLINE_GATE:gatePath,IMPACTLENS_HYBRID_MAP_V2_TEST_BUILD_ID_PATH:buildId,IMPACTLENS_HYBRID_MAP_V2_LIVE_GUARD:'false'}});assert.equal(result.status,0,result.stderr||result.stdout);inspect?.(directory);passed=true;}
+ finally{finishOfflineTestFixture(fixture,passed);}
 }
 
 test('only one new task can arm and all distinct schema caps survive the complete allowance',()=>run(`

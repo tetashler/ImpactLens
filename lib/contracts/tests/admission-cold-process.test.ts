@@ -1,7 +1,8 @@
 await import((await import('node:url')).pathToFileURL((await import('node:path')).resolve('scripts/testing/offline-network.mjs')).href);
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,readFileSync,writeFileSync,rmSync} from 'node:fs';
+import {mkdirSync,readFileSync,writeFileSync} from 'node:fs';
+import {createOfflineTestFixture,finishOfflineTestFixture} from '../../../scripts/testing/fixture-retention.ts';
 import {createHash} from 'node:crypto';
 import {resolve,join,relative,sep} from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -49,7 +50,7 @@ const prime=async f=>{await initial(f);await f(endpoint,request('citizen_persona
 `;
 
 function run(source:string,inspect?:(directory:string)=>void){
- mkdirSync('tmp',{recursive:true});const directory=mkdtempSync(join(process.cwd(),'tmp','admission-cold-process-test-'));mkdirSync(join(directory,'diagnostics'));
+ const fixture=createOfflineTestFixture('admission-cold-process-test-'),directory=fixture.directory;mkdirSync(join(directory,'diagnostics'));
  const gatePath=join(directory,'offline-gate.json'),identityPath=join(directory,'identity.json'),buildId=join(directory,'BUILD_ID');
  const pin=(name:string)=>{const path=join(directory,name);writeFileSync(path,'isolated dummy '+name);return {path:relative(process.cwd(),path).split(sep).join('/'),sha256:''};};
  const dataset=pin('dataset-dummy.json'),protectedFile=pin('protected-dummy.json');
@@ -62,7 +63,7 @@ function run(source:string,inspect?:(directory:string)=>void){
  writeFileSync(join(directory,'selection-proof.json'),'DUMMY_OFFLINE_PROOF');writeFileSync(identityPath,JSON.stringify(identity));writeFileSync(gatePath,JSON.stringify({version:3,taskId:identity.taskId,offlinePass:true,nodeTests:2049,focusedPass:true,focusedTests:1,tsApp:true,tsStrict:true,productionBuild:'isolated-fixture-build',desktop50:true,desktop100:true,plotDesktop1440:true,plotDesktop1920:true,benchmarks14:true,benchmarkAssessment:{version:1,decision:'fresh-14-row-pass',reason:'fresh-run',sourceBaselineFingerprint:'a'.repeat(64),evidenceFiles:[dataset],unchangedSourceFiles:[protectedFile]},historical20:true,classifiedArtifact:true,privacy:true,fullAndTailReplay:true,protectedHash:true,datasetPins:true,proseDiagnosticSink:true,providerCalls:0,networkAttempts:0,historicalReportPath:join(directory,'historical-replay.json'),readinessReportPath:join(directory,'readiness.json')}));
  const childEnv:NodeJS.ProcessEnv={...process.env,NODE_ENV:'test',SOCIAL_STORAGE_ROOT:directory,IMPACTLENS_ADMISSION_TIMEOUT_SMOKE_LIVE_DIRECTORY:directory,IMPACTLENS_ADMISSION_TIMEOUT_SMOKE_IDENTITY:identityPath,IMPACTLENS_ADMISSION_TIMEOUT_SMOKE_OFFLINE_GATE:gatePath,IMPACTLENS_ADMISSION_TIMEOUT_SMOKE_TEST_BUILD_ID_PATH:buildId,IMPACTLENS_ADMISSION_TIMEOUT_SMOKE_LIVE_GUARD:'false'};
  const runChild=(source:string)=>{const result=spawnSync(process.execPath,['--import',pathToFileURL(resolve('tmp/admission-timeout-repair-20261102/admission-absolute-offline.mjs')).href,'--input-type=module','-e',source],{cwd:process.cwd(),encoding:'utf8',timeout:180000,env:childEnv});assert.equal(result.status,0,result.stderr||result.stdout);return result;};
- try{
+ let passed=false;try{
   // Separate preparer creates only isolated synthetic authority. The measured worker is a new cold process.
   runChild(setup+`await g.armAttempt(1);console.log(JSON.stringify({isolatedOfflineAuthority:true,paidCalls:0}));`);
   const result=runChild(source);
@@ -71,8 +72,9 @@ function run(source:string,inspect?:(directory:string)=>void){
   assert.ok(line,result.stdout);const receipt=JSON.parse(line);
   assert.equal(receipt.status,'PASS');assert.equal(receipt.nativeSocial,2);assert.equal(receipt.cancelledBeforeReservation,true);
   writeFileSync('tmp/admission-timeout-repair-20261102/cold-process-integration-latest.json',JSON.stringify(receipt,null,2)+'\n');
+  passed=true;
  }
- finally{/* Retain this new isolated offline authority as bounded evidence. */}
+ finally{finishOfflineTestFixture(fixture,passed);}
 }
 
 
