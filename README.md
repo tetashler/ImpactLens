@@ -12,6 +12,8 @@ Live **Explore** first prepares AI-proposed scenario assumptions for review. Cho
 
 Reviews expire after 15 minutes and are invalidated by question, drawing or intervention-setting changes. **Back to editing** and **Cancel** discard the draft. Pending reviews are local to the server process and do not survive a restart. Accepted runs preserve both allowed and rejected choices in the report; approval does not verify AI claims.
 
+For persistent operation, use the [single-instance Linux deployment guide](docs/SINGLE_INSTANCE_DEPLOYMENT.md): one supervised process, private SSH access and durable storage outside the checkout. The supplied systemd unit and shared instance lock cover startup and offline maintenance. Server restarts preserve stored evidence but do not automatically resume simulations or pending reviews. See also [local archival and capacity](docs/STORAGE_ARCHIVE_LIFECYCLE.md).
+
 ## Run locally
 
 Install Node.js 24 or later, then run these commands from the repository root. The supplied GTFS, subzone and HDB data files must be present.

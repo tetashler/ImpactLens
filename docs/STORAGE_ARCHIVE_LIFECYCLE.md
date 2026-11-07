@@ -2,6 +2,8 @@
 
 ImpactLens admits up to **32 execution attempts per active storage period**. A failed attempt can consume a slot because its immutable claim prevents accidental repeat execution. Removing a recorded exploration from the browser does not release a server slot. The capacity display under Explore is advisory; the server checks admission again before execution.
 
+For the supervised Linux deployment, follow the [persistent deployment guide's locked maintenance commands](SINGLE_INSTANCE_DEPLOYMENT.md#locked-maintenance-and-archival). Stop systemd first, hold the external instance lock and pass the production `--root` explicitly. The storage CLI does not read systemd's EnvironmentFile.
+
 ## Check capacity
 
 From the project directory:

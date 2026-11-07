@@ -1,0 +1,39 @@
+[Unit]
+Description=ImpactLens persistent single-instance server
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=exec
+User=impactlens
+Group=impactlens
+WorkingDirectory=/opt/impactlens/current
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=/etc/impactlens/impactlens.env
+StateDirectory=impactlens
+StateDirectoryMode=0700
+UMask=0077
+ExecStart=/bin/sh /opt/impactlens/current/deploy/start-single-instance.sh
+Restart=on-failure
+RestartSec=10s
+RestartPreventExitStatus=73 78
+SuccessExitStatus=130 143
+KillSignal=SIGTERM
+KillMode=control-group
+TimeoutStopSec=300
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/impactlens/current/.next/cache
+LimitCORE=0
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=impactlens
+
+[Install]
+WantedBy=multi-user.target

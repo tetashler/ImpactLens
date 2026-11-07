@@ -1,6 +1,6 @@
 /** Local immutable citizen extension. No network, provider keys or mutation of base population. */
 import {readFileSync,mkdirSync,openSync,writeFileSync,fsyncSync,closeSync,statSync} from 'node:fs';
-import {join} from 'node:path';
+import {join,resolve} from 'node:path';
 import {ensure,freezeSnapshot} from '../../experiments/validation.ts';
 import {buildPopulation} from '../population/store.ts';
 import {buildSocietyGeography} from '../population/geography.ts';
@@ -25,11 +25,12 @@ function writeOnce(path:string,content:string){
  try{fd=openSync(path,'wx',0o600);}catch(error){if((error as NodeJS.ErrnoException).code!=='EEXIST')throw error;ensure(readFileSync(path,'utf8')===content,'CITIZEN_SNAPSHOT_IMMUTABLE');return;}
  try{writeFileSync(fd,content);fsyncSync(fd);}finally{closeSync(fd);}
 }
-export function persistCitizenDataset(data:CitizenDataset,root=join(process.cwd(),'data/synthetic')):string{
+const snapshotDirectory=()=>process.env.CITIZEN_DATASET_ROOT?resolve(process.env.CITIZEN_DATASET_ROOT):join(process.cwd(),'data/synthetic');
+export function persistCitizenDataset(data:CitizenDataset,root=snapshotDirectory()):string{
  const expected=getCitizenDataset();if(data!==expected)validateCitizenDataset(data,buildPopulation({size:10000,seed:'impactlens-society-v1'}));ensure(data.id===expected.id,'CITIZEN_RECIPE_MISMATCH');
  mkdirSync(root,{recursive:true,mode:0o700});const id=safeId(data.id);writeOnce(join(root,id+'.json'),JSON.stringify(data));writeOnce(join(root,id+'.manifest.json'),JSON.stringify(data.manifest,null,2));return id;
 }
-export function loadCitizenDataset(id:string,root=join(process.cwd(),'data/synthetic')):CitizenDataset{
+export function loadCitizenDataset(id:string,root=snapshotDirectory()):CitizenDataset{
  const path=join(root,safeId(id)+'.json');ensure(statSync(path).size<=64000000,'CITIZEN_ARCHIVE_BOUND');const data=JSON.parse(readFileSync(path,'utf8')) as CitizenDataset;
  const manifestPath=join(root,safeId(id)+'.manifest.json');ensure(statSync(manifestPath).size<=2000000&&readFileSync(manifestPath,'utf8')===JSON.stringify(data.manifest,null,2),'CITIZEN_MANIFEST_IMMUTABLE');
  validateCitizenDataset(data,buildPopulation({size:10000,seed:'impactlens-society-v1'}));ensure(data.id===id&&data.id===getCitizenDataset().id,'CITIZEN_RECIPE_MISMATCH');return getCitizenDataset();

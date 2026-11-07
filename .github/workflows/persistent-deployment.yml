@@ -1,0 +1,34 @@
+name: Persistent Linux deployment
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  single-instance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      STAKEHOLDER_LIVE_ENABLED: 'false'
+      SOCIAL_LLM_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - run: npm ci
+      - name: Check native service configuration and shell syntax
+        run: |
+          for script in deploy/*.sh; do sh -n "$script"; done
+          systemd-analyze verify deploy/impactlens.service
+      - name: Test snapshots, preflight, singleton and archive regressions
+        run: node --test --test-concurrency=2 lib/contracts/tests/persistent-deployment*.test.ts lib/contracts/tests/population-foundation.test.ts lib/contracts/tests/citizen-data-server.test.ts lib/contracts/tests/storage-archive*.test.ts lib/contracts/tests/storage-lifecycle*.test.ts
+      - run: npm run build -- --webpack
+      - name: Check the actual built persistent server
+        run: node scripts/testing/persistent-production-smoke.ts

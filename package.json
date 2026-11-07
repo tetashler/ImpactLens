@@ -29,7 +29,8 @@
     "mrt:simulate": "node prototype/mrt/simulate-cli.ts",
     "storage:status": "node scripts/storage.ts status",
     "storage:rotate": "node scripts/storage.ts rotate",
-    "storage:verify": "node scripts/storage.ts verify"
+    "storage:verify": "node scripts/storage.ts verify",
+    "deployment:check": "sh deploy/with-instance-lock.sh node scripts/deployment-preflight.ts"
   },
   "dependencies": {
     "cytoscape": "3.33.1",

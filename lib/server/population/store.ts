@@ -1,13 +1,13 @@
-/** Local Census recipe/snapshot persistence. No inference, no environment configuration. */
+/** Local Census recipe/snapshot persistence. No inference; optional private storage root. */
 import {readFileSync,mkdirSync,writeFileSync,existsSync,statSync} from 'node:fs';
-import {join} from 'node:path';
+import {join,resolve} from 'node:path';
 import {createHash} from 'node:crypto';
 import {prepareCensus} from '../../../prototype/agents/prepare.ts';
 import {generatePopulation} from '../../../prototype/agents/generate.ts';
 import type {DemographicDistribution,PopulationOptions} from '../../../prototype/agents/types.ts';
 import {canonical,freezeSnapshot,ensure,object} from '../../experiments/validation.ts';
 import {POPULATION_LIMITS,type PopulationSnapshot,type PopulationValidation,type PopulationView} from '../../population/contract.ts';
-const directory=()=>join(process.cwd(),'data/derived/agents/society');
+const directory=()=>process.env.POPULATION_STORAGE_ROOT?resolve(process.env.POPULATION_STORAGE_ROOT):join(process.cwd(),'data/derived/agents/society');
 let distribution:DemographicDistribution|undefined;
 const cache=new Map<string,PopulationSnapshot>();
 export function censusDistribution(){return distribution??=prepareCensus(readFileSync(join(process.cwd(),'data/demographics/ResidentPopulationbyPlanningAreaSubzoneofResidenceAgeGroupandSexCensusofPopulation2020.csv'),'utf8'));}
