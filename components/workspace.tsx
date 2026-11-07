@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CitizensPanel from './citizens-panel';
 import ImpactPanel from './impact-panel';
 import {CitizenCommuteReport} from './citizen-commute-panel';
+import ControlledMrtPanel from './controlled-mrt-panel';
 import type {CitizenImpactPublic} from '../lib/citizen-grounding/public-contract';
 import {appendCitizenCommuteGraph} from '../lib/citizen-grounding/graph';
 import { citizenViewPairFixture } from '../lib/citizens/fixtures';
@@ -154,7 +155,7 @@ export default function Workspace() {
   const [interventionMode,setInterventionMode]=useState<'mrt'|'aac'>('mrt');
   const aac=useAacScenario(!exploring&&interventionMode==='aac');
   const aacOrigins=aac.report?.result.provenance.originReferences??NO_AAC_ORIGINS;
-  const [inspector,setInspector]=useState<'journey'|'citizens'|'impact'>('journey');
+  const [inspector,setInspector]=useState<'journey'|'citizens'|'impact'|'controlled'>('journey');
   const [impactWide,setImpactWide]=useState(false);
   const [impactView,setImpactView]=useState<'baseline'|'scenario'>('scenario'),[impactRevision,setImpactRevision]=useState(0);
   const [pair,setPair]=useState<CitizenViewPair>(citizenViewPairFixture),[view,setView]=useState<CitizenView>('baseline');
@@ -357,7 +358,7 @@ export default function Workspace() {
   const mapResult=mapResultFor(flow.state,{question:planner.question,geometry:plot.geometry,geometryRevision:plot.revision});
   const min = (value: number | null | undefined) => value == null ? '—' : value.toFixed(2);
 
-  return <main className={`workspace-shell scenario-experience general-experience map-first impactlens-polish impactlens-light stage-${stage} ${plotToolsOpen?'plot-tools-open':''} ${!exploring&&tab==='general'&&experienceView!=='map'?'report-view':''} ${labOpen&&!exploring&&stage==='general'?'experiment-open':''} ${tab==='knowledge'?'knowledge-active':''} ${guided?'guided-experience':''} ${advanced?'advanced-open':''} ${interventionMode==='aac'?'inspecting-aac':inspector==='citizens'?'inspecting-citizens':inspector==='impact'?'inspecting-impact':''} ${interventionMode==='mrt'&&impactWide?'dashboard-wide':''}`}>
+  return <main className={`workspace-shell scenario-experience general-experience map-first impactlens-polish impactlens-light stage-${stage} ${plotToolsOpen?'plot-tools-open':''} ${!exploring&&tab==='general'&&experienceView!=='map'?'report-view':''} ${labOpen&&!exploring&&stage==='general'?'experiment-open':''} ${tab==='knowledge'?'knowledge-active':''} ${guided?'guided-experience':''} ${advanced?'advanced-open':''} ${interventionMode==='aac'?'inspecting-aac':inspector==='citizens'?'inspecting-citizens':(inspector==='impact'||inspector==='controlled')?'inspecting-impact':''} ${inspector==='controlled'?'inspecting-controlled':''} ${interventionMode==='mrt'&&impactWide?'dashboard-wide':''}`}>
     <header className="app-header"><button type="button" onClick={openMapView} className="brand" aria-label="ImpactLens SG map"><span className="brand-symbol"><Icon name="layers" size={24} /></span><strong>ImpactLens<span>SG</span></strong></button>
       <WorkspaceViews current={tab==='knowledge'?'knowledge':experienceView} onMap={openMapView} onGraph={()=>void openQuestionGraph()} onReport={()=>{setTab('general');setExperienceView('report');}}/>
     </header>
@@ -394,8 +395,9 @@ export default function Workspace() {
       </section>
 
       <aside hidden={exploring||stage==='general'||stage==='workspace'||interventionMode!=='mrt'||(guided&&stage==='configure')} className="results-panel" aria-label="Journey comparison">
-        <div className="inspector-tabs" role="group" aria-label="Inspector"><button aria-pressed={inspector==='journey'} onClick={()=>setInspector('journey')}>MRT journey</button><button aria-pressed={inspector==='impact'} onClick={()=>setInspector('impact')}>Calculated impact</button></div>
+        <div className="inspector-tabs" role="group" aria-label="Inspector"><button aria-pressed={inspector==='journey'} onClick={()=>setInspector('journey')}>MRT journey</button><button aria-pressed={inspector==='impact'} onClick={()=>setInspector('impact')}>Calculated impact</button><button aria-pressed={inspector==='controlled'} onClick={()=>setInspector('controlled')}>Controlled options</button></div>
         <div className="impact-slot" hidden={inspector!=='impact'}><ImpactPanel intervention={draftToIntervention(draft)} serviceDate={date} proposalRevision={impactRevision} canRun={canRun} view={impactView} onView={setImpactView} expanded={impactWide} onExpand={()=>setImpactWide(v=>!v)} resultContext={graphIdentity} onResult={onGraphPopulation} onCitizenResult={onCitizenImpact}/></div>
+        <div className="impact-slot" hidden={inspector!=='controlled'}><div className="results-scroll"><button type="button" className="run-button secondary" aria-expanded={impactWide} onClick={()=>setImpactWide(v=>!v)}>{impactWide?'Compact comparison':'Expand comparison'}</button><ControlledMrtPanel intervention={draftToIntervention(draft)} serviceDate={date} revision={impactRevision} canRun={canRun}/></div></div>
         {inspector==='citizens'?<div className="results-scroll citizen-inspector"><p className="citizen-disclaimer">{citizenNotice}</p><CitizensPanel pair={pair} view={view} onView={setView} selectedId={selectedId} onSelect={selectCitizen} playing={playing} onPlayPause={togglePlayback} onReset={()=>{setPlaying(false);setResetKey(k=>k+1);setCitizenStats(s=>({...s,elapsedSeconds:0}));}} speed={speed} onSpeed={setSpeed} elapsedSeconds={citizenStats.elapsedSeconds} enabled={citizensEnabled} onEnabled={setCitizensEnabled} onFocus={focusCitizens} stats={citizenStats} pedestrianArea={pair===citizenViewPairFixture?{id:pedestrianArea,onChange:changePedestrianArea}:undefined} showPath={pair===citizenViewPairFixture?{value:showPedestrianPath,onChange:setShowPedestrianPath}:undefined} onImport={loadCitizens} onRestoreFixture={()=>loadCitizens(citizenViewPairFixture)} /></div>:inspector==='journey'?<>
         <div className="panel-heading"><div><button type="button" className="native-back-button" onClick={openAdvancedMrt}>Edit MRT settings</button><h2>Journey comparison</h2><p>One journey. Two networks.</p></div><span className="small-icon teal"><Icon name="arrow" /></span></div>
         <div className="results-scroll">

@@ -44,7 +44,7 @@ test('same seed repeats the semantic sequence and changed assumptions change rec
   const changed=structuredClone(input);changed.assumptions[0].value='negotiated';changed.assumptions[1].value='replacement-agreements';
   const c=await runStakeholderSimulation(changed,{attemptId:'c'});
   assert.notDeepEqual(semantic(a),semantic(c));assert.notEqual(a.inputFingerprint,c.inputFingerprint);
-  const comparison=compareStakeholderRuns(a,c);assert.equal(comparison.changedAssumptions.length,2);assert.match(comparison.interpretation,/not changes in real/);
+  const comparison=compareStakeholderRuns(a,c);assert.equal(comparison.changedAssumptions.length,2);assert.match(comparison.interpretation,/not changes in real/);assert.match(comparison.interpretation,/model variability/);assert.match(comparison.interpretation,/not confidence intervals for Singapore residents/);
   assert.ok(comparison.topics.some(t=>t.difference!==0));
 });
 test('evidence citations resolve source lineage and missing evidence never invents URLs',async()=>{
