@@ -31,7 +31,8 @@
     "storage:rotate": "node scripts/storage.ts rotate",
     "storage:verify": "node scripts/storage.ts verify",
     "deployment:check": "sh deploy/with-instance-lock.sh node scripts/deployment-preflight.ts",
-    "workspace:cleanup": "node scripts/workspace-cleanup.ts"
+    "workspace:cleanup": "node scripts/workspace-cleanup.ts",
+    "pilot:decision": "node scripts/decision-pilot.ts"
   },
   "dependencies": {
     "cytoscape": "3.33.1",

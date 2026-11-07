@@ -1,0 +1,55 @@
+.decision-pilot { color-scheme:light; --pilot-ink:#10212e; --pilot-muted:#52677a; --pilot-line:#d0dae2; --pilot-action:#0a5f86; min-height:100dvh; background:#e8edf1; color:var(--pilot-ink); font-family:var(--font-text),"Segoe UI Variable","Segoe UI",sans-serif; }
+.decision-pilot .pilot-header { height:66px; padding:0 32px; display:flex; align-items:center; gap:28px; background:#0e2030; color:#e8edf1; border-bottom:1px solid #17324a; }
+.decision-pilot .pilot-brand { font-size:22px; font-weight:650; letter-spacing:-.8px; }
+.decision-pilot .pilot-local { margin-left:auto; font-size:12px; color:#adc0ce; }
+.decision-pilot .pilot-shell { max-width:1480px; margin:0 auto; padding:32px; }
+.decision-pilot .pilot-heading { display:flex; align-items:center; justify-content:space-between; gap:24px; margin-bottom:24px; }
+.decision-pilot h1 { font-size:30px; font-weight:600; margin-top:5px; }
+.decision-pilot h2 { font-size:20px; font-weight:600; line-height:1.4; letter-spacing:-.4px; }
+.decision-pilot h3 { font-size:15px; margin-bottom:8px; }
+.decision-pilot .pilot-kicker { font-size:12px; color:var(--pilot-muted); }
+.decision-pilot p { line-height:1.65; }
+.decision-pilot button { min-height:40px; padding:9px 16px; border:1px solid #a8bdca; border-radius:6px; background:#f8fafb; color:var(--pilot-action); font-weight:600; }
+.decision-pilot button:hover:not(:disabled) { background:#dbeaf3; border-color:var(--pilot-action); }
+.decision-pilot button.pilot-primary { background:var(--pilot-action); color:#fff; border-color:var(--pilot-action); }
+.decision-pilot button.pilot-primary:hover:not(:disabled) { background:#084c6c; }
+.decision-pilot :is(button,a,input,textarea):focus-visible { outline:2px solid #0a5f86; outline-offset:3px; }
+.decision-pilot .pilot-header a:focus-visible { outline-color:#b7dfef; }
+.decision-pilot .pilot-intake { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.2fr); gap:36px; padding:24px; border:1px solid var(--pilot-line); border-radius:10px; background:#f8fafb; }
+.decision-pilot .pilot-intake p { color:var(--pilot-muted); font-size:13px; margin:8px 0 14px; }
+.decision-pilot .pilot-file { display:grid; gap:7px; font-size:12px; font-weight:600; }
+.decision-pilot input[type=file] { background:#e9eff3; color:var(--pilot-ink); border-color:var(--pilot-line); }
+.decision-pilot .pilot-consent { border-left:1px solid var(--pilot-line); padding-left:30px; }
+.decision-pilot .pilot-consent label,.decision-pilot fieldset label { display:flex; align-items:flex-start; gap:9px; margin:12px 0; font-size:13px; }
+.decision-pilot input[type=checkbox],.decision-pilot input[type=radio] { flex:none; margin:4px 0 0; padding:0; width:15px; height:15px; min-height:0; accent-color:var(--pilot-action); }
+.decision-pilot .pilot-case { margin-top:24px; border:1px solid var(--pilot-line); border-radius:10px; background:#f8fafb; overflow:hidden; }
+.decision-pilot .pilot-case-bar { display:flex; align-items:center; gap:28px; padding:18px 24px; background:#e9eff3; border-bottom:1px solid var(--pilot-line); }
+.decision-pilot .pilot-case-bar>div:first-child { display:grid; gap:3px; }
+.decision-pilot .pilot-case-bar>div:first-child>span { font-size:12px; color:var(--pilot-muted); }
+.decision-pilot .pilot-time { display:flex; gap:24px; margin-left:auto; font-size:12px; color:var(--pilot-muted); }
+.decision-pilot .pilot-time strong { display:block; color:var(--pilot-ink); font-size:24px; font-variant-numeric:tabular-nums; font-weight:500; }
+.decision-pilot .pilot-timer-note { padding:12px 24px; color:var(--pilot-muted); font-size:12px; border-bottom:1px solid var(--pilot-line); }
+.decision-pilot .pilot-review-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+.decision-pilot .pilot-material { padding:28px; min-width:0; }
+.decision-pilot .pilot-material section { margin-top:26px; }
+.decision-pilot .pilot-response { padding:28px; border-left:1px solid var(--pilot-line); background:#eef2f5; }
+.decision-pilot .pilot-muted { color:var(--pilot-muted); font-size:12px; margin:10px 0; }
+.decision-pilot .pilot-preserve { white-space:pre-wrap; overflow-wrap:anywhere; }
+.decision-pilot .pilot-evidence { list-style:none; padding:0; margin:12px 0 0; display:grid; gap:12px; }
+.decision-pilot .pilot-evidence li { background:#fff; border:1px solid var(--pilot-line); border-radius:6px; padding:14px; overflow-wrap:anywhere; }
+.decision-pilot .pilot-evidence code { display:block; font-size:11px; color:var(--pilot-muted); margin-bottom:6px; }
+.decision-pilot .pilot-evidence a { color:var(--pilot-action); text-decoration:underline; text-underline-offset:3px; font-weight:600; }
+.decision-pilot .pilot-evidence p { margin-top:8px; font-size:13px; }
+.decision-pilot .pilot-evidence small { display:block; margin-top:7px; font-size:11px; color:var(--pilot-muted); }
+.decision-pilot .pilot-field { display:grid; gap:6px; margin-top:20px; font-size:13px; font-weight:600; }
+.decision-pilot .pilot-field small { color:var(--pilot-muted); font-weight:400; font-size:12px; }
+.decision-pilot textarea { width:100%; resize:vertical; min-height:64px; border:1px solid #a8bdca; border-radius:5px; padding:10px; color:var(--pilot-ink); background:#fff; font:inherit; font-weight:400; line-height:1.6; }
+.decision-pilot fieldset { margin:24px 0 0; padding:14px; border:1px solid #a8bdca; border-radius:5px; }
+.decision-pilot legend { padding:0 5px; font-weight:600; }
+.decision-pilot .pilot-save { display:flex; gap:24px; justify-content:space-between; align-items:center; padding:20px 24px; border-top:1px solid var(--pilot-line); }
+.decision-pilot .pilot-save p { color:var(--pilot-muted); font-size:12px; }
+.decision-pilot .pilot-notice { color:#624708; background:#f7efd9; border-left:3px solid #b48a2c; padding:12px 16px; font-size:12px; }
+.decision-pilot .pilot-error { color:#872721; background:#fbe9e7; border:1px solid #e4b7b3; padding:14px 18px; margin-top:20px; border-radius:6px; }
+.decision-pilot .pilot-paused,.decision-pilot .pilot-saved { padding:40px 28px; }
+.decision-pilot .pilot-paused p,.decision-pilot .pilot-saved p { color:var(--pilot-muted); margin:12px 0; }
+.decision-pilot .pilot-saved button { margin-top:12px; }

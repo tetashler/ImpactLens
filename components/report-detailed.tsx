@@ -2,7 +2,7 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import type {PublicExplore} from '../lib/society/public-contract';
 import {DETAILED_REPORT_LABELS,DETAILED_REPORT_SECTION_KEYS,detailedReportSnapshotPayload,legacyDetailedReportSnapshotPayload,parseDetailedReport,type DetailedReport} from '../lib/report-detailed/contract';
-import {reportDownloadFilename,reportToMarkdown,reportToPrintHtml} from '../lib/report-detailed/export';
+import {reportDownloadFilename,reportToMarkdown,reportToPrintHtml,reportToJSON} from '../lib/report-detailed/export';
 import {isReportRunUpdating} from '../lib/report-summary/readiness';
 import type {AutomaticReportsState} from '../lib/report-detailed/automatic';
 import {reportPreparationState} from '../lib/report-detailed/preparation';
@@ -108,10 +108,16 @@ export default function ReportDetailed({result,onPause,autoGenerate=false,automa
   printWindow.opener=null;
   printWindow.document.open();printWindow.document.write(reportToPrintHtml(current.report));printWindow.document.close();printWindow.focus();printWindow.print();
  }
+ function downloadEvidenceJSON(){
+  if(!current.report||latest.current.identity!==identity)return;
+  const url=URL.createObjectURL(new Blob([reportToJSON(current.report)],{type:'application/json;charset=utf-8'}));
+  const anchor=document.createElement('a');anchor.href=url;anchor.download=reportDownloadFilename(current.report,'json');document.body.append(anchor);anchor.click();anchor.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+ }
  // The workspace coordinator generates reports independently of the selected tab.
  void autoGenerate;
  return <section className="report-detailed" aria-label="Detailed AI report" aria-busy={!updating&&(preparing||current.loading||current.generating)}>
-  <div className="report-detailed-heading"><h2>Detailed AI report</h2>{!updating&&current.report&&<div className="report-detailed-actions"><button type="button" onClick={downloadMarkdown}>Download Markdown</button><button type="button" onClick={printReport}>Print / Save as PDF</button></div>}</div>
+  <div className="report-detailed-heading"><h2>Detailed AI report</h2>{!updating&&current.report&&<div className="report-detailed-actions"><button type="button" onClick={downloadMarkdown}>Download Markdown</button><button type="button" onClick={printReport}>Print / Save as PDF</button><button type="button" onClick={downloadEvidenceJSON}>Download evidence JSON</button></div>}</div>
   <p className="report-detailed-note">A fuller assessment of this simulation, including competing perspectives, trade-offs and next steps. Participants and discussions are fictional.</p>
   {updating?<><p role="status">The simulation is still running{result.job?` (step ${result.job.tick} of ${result.job.totalSteps})`:''}. Your detailed report will be generated automatically when it finishes. Pause only if you want a partial report now.</p>{onPause&&<button type="button" onClick={onPause}>Pause for a partial report</button>}</>:<>
    {preparing&&<p role="status">{preparation.message}</p>}
