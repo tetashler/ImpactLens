@@ -37,7 +37,7 @@ function artifacts(value: PublicExplore) {
   const common = {version: 1, runId: value.runId, generatedAt: '2026-11-02T10:00:00.000Z'};
   return {
     summary: {...common, snapshotKey: snapshot.summary, sections: {findings: 'Initial views only.', agreements: 'Unknown.', disagreements: 'Unknown.', concerns: 'Unknown.', unknowns: 'Unknown.'}},
-    detailed: {...common, snapshotKey: snapshot.detailed, question: value.question, runStatus: value.status,
+    detailed: {...common, version:2, findings:[], evidence:[], snapshotKey: snapshot.detailed, question: value.question, runStatus: value.status,
       sections: {assessment: 'Initial views only.', impacts: 'Unknown.', perspectives: 'Unknown.', tradeoffs: 'Unknown.', developments: 'Unknown.', nextSteps: 'Unknown.'}},
   };
 }

@@ -1,12 +1,13 @@
 'use client';
 import {useEffect,useMemo,useRef,useState} from 'react';
 import type {PublicExplore} from '../lib/society/public-contract';
-import {DETAILED_REPORT_LABELS,DETAILED_REPORT_SECTION_KEYS,detailedReportSnapshotPayload,parseDetailedReport,type DetailedReport} from '../lib/report-detailed/contract';
+import {DETAILED_REPORT_LABELS,DETAILED_REPORT_SECTION_KEYS,detailedReportSnapshotPayload,legacyDetailedReportSnapshotPayload,parseDetailedReport,type DetailedReport} from '../lib/report-detailed/contract';
 import {reportDownloadFilename,reportToMarkdown,reportToPrintHtml} from '../lib/report-detailed/export';
 import {isReportRunUpdating} from '../lib/report-summary/readiness';
 import type {AutomaticReportsState} from '../lib/report-detailed/automatic';
 import {reportPreparationState} from '../lib/report-detailed/preparation';
 import {parseSavedDetailedReport} from '../lib/report-summary/saved';
+import {ReportFindings} from './report-findings';
 import './report-detailed.css';
 
 type View={identity:string;key:string;report:DetailedReport|null;loading:boolean;generating:boolean;error:string};
@@ -16,6 +17,7 @@ export function DetailedReportContent({report}:{report:DetailedReport}) {
  return <div className="report-detailed-content">
   <p className="report-detailed-question">{report.question}</p>
   <p className="report-detailed-metadata">Generated <time dateTime={report.generatedAt}>{new Date(report.generatedAt).toLocaleString()}</time><span>Run status: {report.runStatus}{report.runStatus!=='completed'?' — partial simulation snapshot':''}</span></p>
+  {report.version===2?<ReportFindings report={report}/>:<p className="report-detailed-note">This saved report predates inspectable findings. Its original six chapters are retained.</p>}
   {DETAILED_REPORT_SECTION_KEYS.map(key=><section className="report-detailed-chapter" key={key}><h3>{DETAILED_REPORT_LABELS[key]}</h3><p>{report.sections[key]}</p></section>)}
  </div>;
 }
@@ -26,9 +28,9 @@ export default function ReportDetailed({result,onPause,autoGenerate=false,automa
  const token=result.session?.token;
  const projection=useMemo(()=>{
   if(updating)return {payload:`updating:${result.runId}`,error:''};
-  try{return {payload:detailedReportSnapshotPayload(result),error:''};}
+  try{return {payload:historical?`historical-detailed-report:${result.runId}`:detailedReportSnapshotPayload(result),error:''};}
   catch{return {payload:`unavailable:${result.runId}`,error:'The detailed report could not be prepared for this snapshot.'};}
- },[result,updating]);
+ },[result,updating,historical]);
  // Access changes invalidate both visible content and in-flight responses immediately.
  const identity=`${projection.payload}\u0000${token??''}`;
  const [view,setView]=useState<View>(()=>empty(identity));
@@ -65,7 +67,9 @@ export default function ReportDetailed({result,onPause,autoGenerate=false,automa
     const body=await response.json();
     if(!isCurrent())return;
     if(!response.ok)throw Error(body.message||'The saved detailed report could not be loaded.');
-    const saved=parseSavedDetailedReport(body,result,key);
+    const legacyKey=body.legacyReport?Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(legacyDetailedReportSnapshotPayload(result)))),b=>b.toString(16).padStart(2,'0')).join(''):undefined;
+    if(!isCurrent())return;
+    const saved=parseSavedDetailedReport(body,result,key,legacyKey);
     setView({identity,key:saved.snapshotKey,report:saved.report,loading:false,generating:false,error:''});
    }catch(error){if(isCurrent())setView({...empty(identity),loading:false,error:error instanceof Error?error.message:'The detailed report is unavailable.'});}
   }
@@ -116,7 +120,7 @@ export default function ReportDetailed({result,onPause,autoGenerate=false,automa
    {historical&&!current.loading&&!current.report&&<p>No matching saved detailed report is available for this read-only archived run.</p>}
    {!historical&&!preparing&&!current.loading&&!current.report&&current.key&&<button type="button" disabled={current.generating} onClick={()=>void generate()}>{error?'Retry detailed report':'Generate detailed report'}</button>}
    {!preparing&&!current.loading&&!current.key&&token&&<button type="button" onClick={()=>setReload(v=>v+1)}>Check saved detailed report again</button>}
-   {current.report&&<DetailedReportContent report={current.report}/>}
+   {current.report&&<>{historical&&<p className="report-detailed-note">Retained report snapshot; it may predate the archived run’s final state.</p>}{!historical&&current.report.version===1&&<button type="button" disabled={current.generating} onClick={()=>void generate()}>Generate evidence-linked update</button>}<DetailedReportContent report={current.report}/></>}
   </>}
  </section>;
 }

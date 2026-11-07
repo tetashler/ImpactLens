@@ -16,9 +16,10 @@ export function parseSavedReportSummary(value:unknown,run:PublicExplore,expected
  if(summary&&(summary.runId!==run.runId||summary.snapshotKey!==snapshotKey))throw Error('The saved summary does not match this report.');
  return {snapshotKey,summary};
 }
-export function parseSavedDetailedReport(value:unknown,run:PublicExplore,expectedKey:string){
+export function parseSavedDetailedReport(value:unknown,run:PublicExplore,expectedKey:string,legacyExpectedKey?:string){
  const body=envelope(value),snapshotKey=savedArtifactSnapshotKey(run.storage?.disposition==='historical-read-only',expectedKey,body.snapshotKey);
- const report=body.report===null?null:parseDetailedReport(body.report);
+ let report=body.report===null?null:parseDetailedReport(body.report);
  if(report&&(report.runId!==run.runId||report.snapshotKey!==snapshotKey||report.question!==run.question))throw Error('The saved detailed report does not match this run.');
+ if(!report&&body.legacyReport!==undefined){const legacy=parseDetailedReport(body.legacyReport);if(run.storage?.disposition==='historical-read-only'||legacy.version!==1||legacy.runId!==run.runId||legacy.question!==run.question||!legacyExpectedKey||legacy.snapshotKey!==legacyExpectedKey)throw Error('The legacy detailed report does not match this run.');report=legacy;}
  return {snapshotKey,report};
 }

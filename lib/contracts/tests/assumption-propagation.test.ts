@@ -54,6 +54,7 @@ test('all three report/graph writer prompts enforce reviewed unknowns without al
  for(const [index,create]of generators.entries()){
   const seen=observer(),evidence:any={...(index===2?projectGraphSummaryContext(value):index===1?projectDetailedReportEvidence(value):projectReportEvidence(value)),publicDiscussion};
   if(index===2)evidence.nodes=[{nodeId:'node-a',label:'Fictional venue',kind:'communication',recordType:'venue',description:'Scenario context.',provenance:'model-generated',relationships:[],metrics:{},limitations:[],evidenceScope:'public-context-and-accepted-public-statements'}];
+  if(index===1)evidence.findingEvidence=[];
   await assert.rejects(create(seen.fetcher)(evidence));assert.equal(seen.bodies.length,1);assert.ok(seen.bodies[0].messages[0].content.includes(ASSUMPTION_REVIEW_INSTRUCTION));assert.equal(JSON.parse(seen.bodies[0].messages[1].content).assumptionReview.items.length,6);
  }
 });

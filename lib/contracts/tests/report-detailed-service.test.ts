@@ -14,6 +14,7 @@ function run(): PublicExplore {
   return {version:3,kind:'summary-execution',attemptId:'attempt',requestIdentity:'request',runId:'detailed-test',planId:null,question:'What may change?',status:'partial',request:null,graph:{version:1,scenarioIdentity:'scenario',executionIdentity:'detailed-test',nodes:[],edges:[],limitations:[]},inspections:{},roles:[{id:'resident',label:'Resident',goals:['Reliable access']}],initialActions:[],assumptions:['Fictional scenario'],limitations:['Incomplete run'],sources:[],accounting:{planningCalls:null,actionCalls:null,inputTokens:null,outputTokens:null,costUsd:null},demographics:null,session:{id:'session',token,revision:1},society:null};
 }
 const sections = () => ({assessment:'The interrupted fictional discussion suggests conditional support.',impacts:'Effects depend on the assumptions; no observed outcomes are available.',perspectives:'Residents prioritise reliable access.',tradeoffs:'Access and operating constraints remain in tension.',developments:'Only initial views are available; later change is not established.',nextSteps:'The analysis suggests checking operating assumptions.'});
+const draft = () => ({sections:sections(),findings:[]});
 const discussion = ():PublicDiscussionEvidence => ({version:1,scope:'Initial public statements only.',initialStatements:1,followupStatements:0,omitted:0,statements:[{id:'public-1',actor:'Resident',nodeIds:[],phase:'initial',text:'PUBLIC_SOURCE_ONLY_SERVER: reliable access needs suitable operating hours.'}],nodes:[]});
 function setup(t:TestContext) {
   const directory = mkdtempSync(join(tmpdir(),'detailed-report-'));
@@ -21,7 +22,7 @@ function setup(t:TestContext) {
   let current=run(),calls=0,reads=0,sourceReads=0;
   const readSnapshot=async(id:string,provided:string)=>{reads++;if(provided!==token||id!==current.runId)throw Error('PUBLIC_ACCESS');return structuredClone(current);};
   const readDiscussion=async()=>{sourceReads++;return discussion();};
-  const generate=async()=>{calls++;return sections();};
+  const generate=async()=>{calls++;return draft();};
   const service=implementation.createDetailedReportService({storeDirectory:directory,readSnapshot,readDiscussion,generate});
   return {directory,service,readSnapshot,readDiscussion,generate,get calls(){return calls;},get reads(){return reads;},get sourceReads(){return sourceReads;},get current(){return current;},set current(v:PublicExplore){current=v;}};
 }
@@ -30,7 +31,7 @@ test('detailed reports persist independently and authenticated reads never invok
   const d=setup(t),before=await d.service.read('detailed-test',token);
   assert.equal(before.report,null);assert.equal(d.calls,0);assert.equal(d.sourceReads,0);
   const report=await d.service.generate('detailed-test',token,before.snapshotKey);
-  assert.equal(report.version,1);assert.equal(report.question,'What may change?');assert.equal(report.runStatus,'partial');assert.deepEqual(report.sections,sections());
+  assert.equal(report.version,2);assert.equal(report.question,'What may change?');assert.equal(report.runStatus,'partial');assert.deepEqual(report.sections,sections());
   const reopened=implementation.createDetailedReportService({storeDirectory:d.directory,readSnapshot:d.readSnapshot,readDiscussion:d.readDiscussion,generate:d.generate});
   assert.deepEqual((await reopened.read('detailed-test',token)).report,report);
   assert.deepEqual(await reopened.generate('detailed-test',token,before.snapshotKey),report);assert.equal(d.calls,1);assert.equal(d.sourceReads,1);
@@ -68,7 +69,7 @@ test('running coordinator and stale requests are rejected before source reads or
 test('concurrent requests share one writer operation; explicit failures have no automatic retries',async t=>{
   const d=setup(t);let release!:()=>void,started!:()=>void,calls=0;
   const gate=new Promise<void>(r=>release=r),entered=new Promise<void>(r=>started=r);
-  const service=implementation.createDetailedReportService({storeDirectory:d.directory,readSnapshot:d.readSnapshot,readDiscussion:d.readDiscussion,generate:async()=>{calls++;started();await gate;return sections();}});
+  const service=implementation.createDetailedReportService({storeDirectory:d.directory,readSnapshot:d.readSnapshot,readDiscussion:d.readDiscussion,generate:async()=>{calls++;started();await gate;return draft();}});
   const key=(await service.read('detailed-test',token)).snapshotKey;
   const one=service.generate('detailed-test',token,key),two=service.generate('detailed-test',token,key);await entered;release();
   assert.deepEqual(await one,await two);assert.equal(calls,1);assert.equal(d.sourceReads,1);
@@ -85,7 +86,7 @@ test('changed or resumed snapshots after source loading or inference never save 
   for(const stage of ['discussion','inference']){
     let calls=0;
     const change=()=>{d.current.session!.revision++;};
-    const service=implementation.createDetailedReportService({storeDirectory:d.directory,readSnapshot:d.readSnapshot,readDiscussion:async()=>{if(stage==='discussion')change();return discussion();},generate:async()=>{calls++;if(stage==='inference')change();return sections();}});
+    const service=implementation.createDetailedReportService({storeDirectory:d.directory,readSnapshot:d.readSnapshot,readDiscussion:async()=>{if(stage==='discussion')change();return discussion();},generate:async()=>{calls++;if(stage==='inference')change();return draft();}});
     const key=(await service.read('detailed-test',token)).snapshotKey;
     await assert.rejects(()=>service.generate('detailed-test',token,key),{code:'REPORT_STALE'});
     assert.equal(calls,stage==='discussion'?0:1);assert.equal(readdirSync(d.directory).filter(p=>p.endsWith('.json')).length,0);
@@ -100,7 +101,7 @@ test('malformed or oversized writer sections are rejected without overwriting an
   const previous=await d.service.generate('detailed-test',token,key);
   const file=join(d.directory,readdirSync(d.directory).find(p=>p.endsWith('.json'))!),contents=readFileSync(file,'utf8');
   d.current.question='Changed';
-  const service=implementation.createDetailedReportService({storeDirectory:d.directory,readSnapshot:d.readSnapshot,readDiscussion:d.readDiscussion,generate:async()=>({...sections(),assessment:'x'.repeat(12001)})});
+  const service=implementation.createDetailedReportService({storeDirectory:d.directory,readSnapshot:d.readSnapshot,readDiscussion:d.readDiscussion,generate:async()=>({sections:{...sections(),assessment:'x'.repeat(12001)},findings:[]})});
   const next=(await service.read('detailed-test',token)).snapshotKey;
   await assert.rejects(()=>service.generate('detailed-test',token,next));assert.equal(readFileSync(file,'utf8'),contents);
   assert.equal(previous.snapshotKey,key);assert.equal((await service.read('detailed-test',token)).report,null);
@@ -136,17 +137,18 @@ test('detailed generator sends one structured completion through the configured 
   setup(t);
   const {MODEL,PROVIDER}=await import('../../server/inference/deepseek.ts');
   const {projectDetailedReportEvidence}=await import('../../report-detailed/evidence.ts');
-  const evidence={...projectDetailedReportEvidence(run()),publicDiscussion:discussion()};
+  const {buildFindingEvidenceCatalog}=await import('../../server/report-detailed-findings.ts');
+  const evidence={...projectDetailedReportEvidence(run()),publicDiscussion:discussion(),findingEvidence:buildFindingEvidenceCatalog(run(),discussion())};
   let calls=0;
   const generator=implementation.createDetailedReportGenerator({key:'mock-private-key',timeoutMs:45000,fetcher:async(url,init)=>{
     calls++;assert.equal(String(url),'https://openrouter.ai/api/v1/chat/completions');
     const body=JSON.parse(String(init?.body));assert.equal(body.model,MODEL);assert.deepEqual(body.provider,{only:[PROVIDER],allow_fallbacks:false,require_parameters:true});assert.ok(body.max_tokens<=6500);assert.ok(body.max_tokens>=4000);
-    assert.deepEqual(body.response_format.json_schema.schema.required,['assessment','impacts','perspectives','tradeoffs','developments','nextSteps']);assert.equal(body.response_format.json_schema.schema.additionalProperties,false);assert.deepEqual(JSON.parse(body.messages[1].content),evidence);assert.ok(!body.messages[1].content.includes('mock-private-key'));
-    return Response.json({id:'mock-detailed',model:MODEL,provider:'DigitalOcean',choices:[{finish_reason:'stop',message:{content:JSON.stringify(sections())}}],usage:{prompt_tokens:100,completion_tokens:100,total_tokens:200}});
+    const schema=body.response_format.json_schema.schema;assert.equal(body.response_format.json_schema.name,'detailed_report_v2');assert.deepEqual(schema.required,['sections','findings']);assert.deepEqual(schema.properties.sections.required,['assessment','impacts','perspectives','tradeoffs','developments','nextSteps']);assert.equal(schema.additionalProperties,false);assert.deepEqual(schema.properties.findings.items.properties.supportIds.items.enum,evidence.findingEvidence.map(item=>item.id));assert.deepEqual(JSON.parse(body.messages[1].content),evidence);assert.ok(!body.messages[1].content.includes('mock-private-key'));
+    return Response.json({id:'mock-detailed',model:MODEL,provider:'DigitalOcean',choices:[{finish_reason:'stop',message:{content:JSON.stringify(draft())}}],usage:{prompt_tokens:100,completion_tokens:100,total_tokens:200}});
   }});
-  assert.deepEqual(await generator(evidence),sections());assert.equal(calls,1);
+  assert.deepEqual(await generator(evidence),draft());assert.equal(calls,1);
   let failures=0;
-  const truncated=implementation.createDetailedReportGenerator({key:'mock-private-key',fetcher:async()=>{failures++;return Response.json({id:'mock-truncated',model:MODEL,provider:'DigitalOcean',choices:[{finish_reason:'length',message:{content:JSON.stringify(sections())}}],usage:{}});}});
+  const truncated=implementation.createDetailedReportGenerator({key:'mock-private-key',fetcher:async()=>{failures++;return Response.json({id:'mock-truncated',model:MODEL,provider:'DigitalOcean',choices:[{finish_reason:'length',message:{content:JSON.stringify(draft())}}],usage:{}});}});
   await assert.rejects(()=>truncated(evidence),{code:'AI_RESPONSE_INCOMPLETE'});assert.equal(failures,1);
 });
 
@@ -156,6 +158,6 @@ test('oversized UTF-8 detailed evidence is rejected before provider dispatch',as
   const pack=discussion();pack.statements[0].text='界'.repeat(90000);
   let calls=0;
   const generator=implementation.createDetailedReportGenerator({key:'mock-private-key',fetcher:async()=>{calls++;throw Error('Must not dispatch');}});
-  await assert.rejects(()=>generator({...projectDetailedReportEvidence(run()),publicDiscussion:pack}),{code:'REPORT_INPUT',status:413});
+  await assert.rejects(()=>generator({...projectDetailedReportEvidence(run()),publicDiscussion:pack,findingEvidence:[]}),{code:'REPORT_INPUT',status:413});
   assert.equal(calls,0);
 });

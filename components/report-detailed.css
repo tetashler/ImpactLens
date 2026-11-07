@@ -15,4 +15,11 @@
 .report-detailed-chapter h3 { margin: 0 0 .6rem; line-height: 1.35; }
 .report-detailed-chapter p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; }
 .report-detailed-error { color: #ffd1c7; overflow-wrap: anywhere; }
+.report-findings{margin:1.75rem 0 2.25rem;padding-bottom:1rem;border-bottom:1px solid #54727e}
+.report-findings>h3{font-size:1.15rem;margin:0 0 .65rem}.report-findings-note,.report-findings-sparse{font-size:.9rem;line-height:1.6}
+.report-finding{margin:1.25rem 0;padding:1.1rem;border:1px solid #54727e;border-radius:8px}.report-finding h4{margin:0 0 .5rem;font-size:.9rem}.report-finding-text{margin:.5rem 0;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}
+.report-finding-basis{display:flex;flex-wrap:wrap;gap:.4rem;list-style:none;padding:0;margin:.75rem 0}.report-finding-basis li{padding:.2rem .5rem;border:1px solid #7896a0;border-radius:4px;font-size:.75rem;line-height:1.5}
+.report-finding-caveats{font-size:.88rem;line-height:1.65}.report-finding-caveats ul{padding-left:1.25rem;margin:.3rem 0 .8rem}.report-finding-caveats p{margin:.3rem 0 .8rem}
+.report-finding-why{margin-top:1rem}.report-finding-why>summary{cursor:pointer;font-weight:600;text-decoration:underline;text-underline-offset:3px;padding:.4rem 0}.report-finding-why>summary:focus-visible,.report-finding-evidence a:focus-visible{outline:2px solid #d4e8eb;outline-offset:4px}
+.report-finding-why code{font-size:.78rem;overflow-wrap:anywhere}.report-finding-evidence{margin:1rem 0;padding-top:1rem;border-top:1px solid #54727e;line-height:1.65;overflow-wrap:anywhere}.report-finding-evidence h5{font-size:.95rem;margin:.3rem 0}.report-finding-kind{font-size:.8rem;margin:0;font-weight:600}.report-finding-evidence blockquote{margin:.7rem 0;padding-left:1rem;border-left:3px solid #7896a0;white-space:pre-wrap}.report-finding-evidence dl{font-size:.85rem}.report-finding-evidence dl>div{margin:.45rem 0}.report-finding-evidence dt{font-weight:600}.report-finding-evidence dd{margin:.1rem 0 0}.report-finding-evidence a{color:inherit;text-decoration:underline;text-underline-offset:3px}.report-finding-evidence ul{padding-left:1.25rem;font-size:.85rem}
 @media (max-width: 600px) { .report-detailed { padding: 1rem; } .report-detailed-actions { width: 100%; } .report-detailed-actions button { flex: 1 1 auto; } }

@@ -1,7 +1,7 @@
 import type {PublicExplore} from '../society/public-contract.ts';
 import {parseReportSummary} from '../report-summary/contract.ts';
 import {projectReportEvidence, reportSnapshotPayload} from '../report-summary/evidence.ts';
-import {detailedReportSnapshotPayload, parseDetailedReport} from './contract.ts';
+import {detailedReportSnapshotPayload, legacyDetailedReportSnapshotPayload, parseDetailedReport} from './contract.ts';
 
 export type AutomaticReportKind = 'summary' | 'detailed';
 export type AutomaticReportStatus = 'pending' | 'available' | 'attempted' | 'failed' | 'skipped';
@@ -123,12 +123,23 @@ async function execute(task: Task, run: PublicExplore, keys: Record<AutomaticRep
         const matching = (value: unknown) => {
           const report = parse(value);
           if (report.runId !== run.runId || report.snapshotKey !== snapshotKey) throw Error('The saved report does not match this run.');
+          if(kind==='detailed'&&(report.version!==2||!('question' in report)||report.question!==run.question))throw Error('The saved detailed report does not match this report version.');
           return report;
         };
         if (body[field] !== null) {
           matching(body[field]);
           task.state[kind] = 'available';
           notify(task, kind);
+          continue;
+        }
+
+        // A retained V1 report remains useful and readable. Upgrading it is an
+        // explicit user action; loading a finished run must not incur that cost.
+        if(kind==='detailed'&&Object.hasOwn(body,'legacyReport')){
+          const legacy=parseDetailedReport(body.legacyReport),legacyKey=await sha256(legacyDetailedReportSnapshotPayload(run));
+          if(legacy.version!==1||legacy.runId!==run.runId||legacy.question!==run.question||legacy.snapshotKey!==legacyKey)throw Error('The saved legacy report does not match this run.');
+          task.state.detailed='available';
+          notify(task,kind);
           continue;
         }
 
