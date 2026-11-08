@@ -39,4 +39,12 @@ Verified on 8 November 2026:
 - TypeScript `--noEmit` and whitespace checks passed. `git diff --ignore-space-at-eol -- data` is empty.
 - An initial run inside the OneDrive workspace hit an unrelated `EPERM` on an archive test directory rename; the same selection passed in the isolated export outside OneDrive. No archive test or production storage behavior was changed to suppress that local failure.
 
-No application deployment, CI rerun or push was performed. The repair remains uncommitted, and live Linux build/server acceptance is still pending the next push.
+## Linux follow-up after pushing
+
+The source-byte repair was committed and pushed as `fdae435`. [Linux run 42453449509](https://github.com/tetashler/ImpactLens/actions/runs/42453449509) passed all 47 tests, including the native singleton test, and built the production application. It then exposed a separate server-startup preflight failure.
+
+Commit `67a5324` added startup diagnostics that drain child output but retain only recognised deployment error codes. A regression checks that arbitrary output and secrets are excluded. [Linux run 42453714712](https://github.com/tetashler/ImpactLens/actions/runs/42453714712) identified `DEPLOYMENT_RELEASE`: the prepared MapLibre shared module was empty.
+
+MapLibre's installed distribution also contains this valid empty shared module. Preflight now permits that single prepared file to be empty only when the installed package copy is a readable, regular, nonsymlink file of zero bytes. Missing or nonempty package copies still fail; all other release assets must remain nonempty. The smoke diagnostic uses the same asset check as preflight.
+
+The new regression was observed failing before this repair, then passed alongside the other deployment preflight, source-byte and diagnostics checks: **10 passed, 0 failed**. Complete Linux build and server acceptance for this follow-up remains pending the next push. These CI checks do not deploy the application to a production host.

@@ -13,6 +13,22 @@ export const REQUIRED_RELEASE_FILES=Object.freeze([
  ...['agency','stops','routes','trips','stop_times','calendar','calendar_dates','feed_info'].map(name=>'data/transport/mrt-network/'+name+'.txt'),
  ...['ct17565','ct17586','ct17594','ct17582'].flatMap(id=>['original.csv','source-metadata.json'].map(name=>'data/employment/singstat-census2020-'+id+'/'+name)),
 ]);
+/** MapLibre may ship a valid empty shared module; require the package to confirm that case. */
+export function invalidReleaseAssets(projectRoot:string):string[]{
+ return REQUIRED_RELEASE_FILES.filter(file=>{
+  try{
+   const path=join(projectRoot,file),stat=lstatSync(path);
+   if(!stat.isFile()||stat.isSymbolicLink())return true;
+   if(stat.size===0){
+    if(file!=='public/vendor/maplibre/maplibre-gl-shared.mjs')return true;
+    const source=join(projectRoot,'node_modules/maplibre-gl/dist/maplibre-gl-shared.mjs'),installed=lstatSync(source);
+    if(!installed.isFile()||installed.isSymbolicLink()||installed.size!==0)return true;
+    accessSync(source,constants.R_OK);
+   }
+   accessSync(path,constants.R_OK);return false;
+  }catch{return true;}
+ });
+}
 const requireValue=(condition:unknown,code:string):void=>{if(!condition)throw Error(code);};
 function within(parent:string,child:string){const part=relative(parent,child);return part===''||!isAbsolute(part)&&part!=='..'&&!part.startsWith('..'+sep);}
 function plainAncestors(path:string){
@@ -44,8 +60,7 @@ export function preparePersistentDeployment({projectRoot=process.cwd(),env=proce
  const keys=['SOCIAL_STORAGE_ROOT','POPULATION_STORAGE_ROOT','CITIZEN_DATASET_ROOT',...(env.SOCIAL_PROSE_OBSERVATION_ROOT?['SOCIAL_PROSE_OBSERVATION_ROOT']:[])];
  const paths=keys.map(key=>{const value=env[key];requireValue(typeof value==='string'&&isAbsolute(value),'DEPLOYMENT_STATE_CONFIG');const path=resolve(value!);plainAncestors(path);requireValue(path!==stateRoot&&within(stateRoot,path),'DEPLOYMENT_STATE_PATH');return path;});
  for(let i=0;i<paths.length;i++)for(let j=0;j<i;j++)requireValue(!within(paths[i],paths[j])&&!within(paths[j],paths[i]),'DEPLOYMENT_STATE_PATH');
- try{for(const file of REQUIRED_RELEASE_FILES){const path=join(project,file),stat=lstatSync(path);requireValue(stat.isFile()&&!stat.isSymbolicLink()&&stat.size>0,'DEPLOYMENT_RELEASE');accessSync(path,constants.R_OK);}}
- catch{throw Error('DEPLOYMENT_RELEASE');}
+ requireValue(invalidReleaseAssets(project).length===0,'DEPLOYMENT_RELEASE');
  try{probe(stateRoot);for(const path of paths)probe(path);probe(join(project,'.next/cache'));}
  catch(error){if(error instanceof Error&&/^DEPLOYMENT_/.test(error.message))throw error;throw Error('DEPLOYMENT_STATE_WRITABLE');}
  return {host:'127.0.0.1',port:Number(port)};

@@ -1,12 +1,12 @@
 /** Linux acceptance of the built server. New isolated state, no paid APIs or user simulations. */
 import assert from 'node:assert/strict';
-import {mkdirSync,mkdtempSync,writeFileSync,readFileSync,readdirSync,lstatSync} from 'node:fs';
+import {mkdirSync,mkdtempSync,writeFileSync,readFileSync,readdirSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createServer} from 'node:net';
 import {spawn,type ChildProcess} from 'node:child_process';
 import {observeStartup} from './persistent-startup-diagnostics.ts';
-import {REQUIRED_RELEASE_FILES} from '../../lib/server/deployment/preflight.ts';
+import {invalidReleaseAssets} from '../../lib/server/deployment/preflight.ts';
 
 assert.equal(process.platform,'linux','Run this acceptance on Linux after the production build.');
 const state=mkdtempSync(join(tmpdir(),'impactlens-production-'));
@@ -18,7 +18,7 @@ const start=()=>{const child=spawn('/bin/sh',['deploy/start-single-instance.sh']
 const exit=(child:ChildProcess)=>new Promise<number|null>((yes,no)=>{child.once('exit',yes);child.once('error',no);});
 async function healthy(child:ChildProcess){
  for(let i=0;i<150;i++){
-  const invalid=child.exitCode===null?[]:REQUIRED_RELEASE_FILES.filter(file=>{try{const s=lstatSync(file);return !s.isFile()||s.isSymbolicLink()||s.size===0;}catch{return true;}});
+  const invalid=child.exitCode===null?[]:invalidReleaseAssets(process.cwd());
   assert.equal(child.exitCode,null,`The built server exited before liveness succeeded. Startup: ${diagnostics.get(child)?.()}. Invalid release assets: ${invalid.join(', ')||'none'}.`);
   try{const response=await fetch(`http://127.0.0.1:${port}/api/health`,{signal:AbortSignal.timeout(1000)});assert.equal(response.headers.get('cache-control'),'no-store');assert.deepEqual(await response.json(),{version:1,status:'ok'});return;}catch{}
   await new Promise(yes=>setTimeout(yes,100));

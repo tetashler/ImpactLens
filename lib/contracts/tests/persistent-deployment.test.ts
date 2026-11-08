@@ -44,6 +44,19 @@ test('preflight rejects configuration and source errors before making runtime di
  assert.ok(!existsSync(env.SOCIAL_STORAGE_ROOT));
 });
 
+test('preflight accepts the empty MapLibre shared module only when its installed source is also empty',async()=>{
+ const {module,project,env}=await deploymentFixture();
+ const prepared=join(project,'public/vendor/maplibre/maplibre-gl-shared.mjs'),packaged=join(project,'node_modules/maplibre-gl/dist/maplibre-gl-shared.mjs');
+ writeFileSync(prepared,'');
+ assert.throws(()=>module.preparePersistentDeployment({projectRoot:project,env}),/DEPLOYMENT_RELEASE/);
+ mkdirSync(dirname(packaged),{recursive:true});writeFileSync(packaged,'export const needed = true;');
+ assert.throws(()=>module.preparePersistentDeployment({projectRoot:project,env}),/DEPLOYMENT_RELEASE/);
+ writeFileSync(packaged,'');
+ assert.deepEqual(module.preparePersistentDeployment({projectRoot:project,env}),{host:'127.0.0.1',port:3000});
+ writeFileSync(join(project,'public/vendor/maplibre/maplibre-gl-worker.mjs'),'');
+ assert.throws(()=>module.preparePersistentDeployment({projectRoot:project,env}),/DEPLOYMENT_RELEASE/);
+});
+
 test('preflight rejects symlink ancestors and file collisions without deleting foreign files',async()=>{
  const {module,project,state,env}=await deploymentFixture(),target=join(state,'real'),alias=join(state,'alias');mkdirSync(target);
  symlinkSync(target,alias,process.platform==='win32'?'junction':'dir');
