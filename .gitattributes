@@ -1,5 +1,13 @@
 # Preserve original official CSV bytes and source SHA-256 pins.
 data/employment/**/original.csv -text
 
+# These immutable source identities were accepted from the bytes retained locally.
+# Do not clean/smudge their line endings on checkout or when creating Git blobs.
+data/demographics/ResidentPopulationbyPlanningAreaSubzoneofResidenceAgeGroupandSexCensusofPopulation2020.csv -text whitespace=cr-at-eol
+data/geography/MasterPlan2019SubzoneBoundaryNoSeaGEOJSON.geojson -text whitespace=cr-at-eol
+data/transport/origin_destination_train_202609.csv -text whitespace=cr-at-eol
+data/transport/LTAMRTStationExitGEOJSON.geojson -text whitespace=cr-at-eol
+data/transport/mrt-network/stops.txt -text whitespace=cr-at-eol
+
 # Keep production entry points executable by POSIX shells after Windows checkouts.
 deploy/*.sh text eol=lf
